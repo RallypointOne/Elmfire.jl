@@ -1,0 +1,102 @@
+---
+title: "API Reference"
+subtitle: "Complete function and type documentation"
+---
+
+This section provides comprehensive API documentation for Elmfire.jl.
+
+## Core Modules
+
+### [Fuel Models](fuel-models.qmd)
+
+Types and functions for managing fuel model data:
+
+- `FuelModel` - Processed fuel model with derived quantities
+- `FuelModelTable` - Collection of fuel models
+- `create_standard_fuel_table()` - Create standard 13 FBFM fuel models
+
+### [Simulation](simulation.qmd)
+
+Fire simulation state and execution:
+
+- `FireState` - Main simulation state container
+- `SimulationConfig` - Configuration options
+- `simulate!()` / `simulate_full!()` - Run simulations
+- `ignite!()` - Start fires
+
+### [Weather](weather.qmd)
+
+Weather data management and interpolation:
+
+- `ConstantWeather` - Uniform weather conditions
+- `WeatherInterpolator` - Spatiotemporal weather
+- `create_constant_interpolator()` - Create interpolator from constant weather
+
+### [Geospatial I/O](geospatial.qmd)
+
+Reading and writing geospatial data:
+
+- `read_geotiff()` / `write_geotiff()` - GeoTIFF I/O
+- `read_landscape()` - Load complete landscape data
+- `compute_slope_aspect()` - Derive terrain from DEM
+
+### [Ensemble](ensemble.qmd)
+
+Monte Carlo ensemble simulations:
+
+- `EnsembleConfig` - Ensemble configuration
+- `run_ensemble!()` - Run Monte Carlo ensemble
+- `run_ensemble_threaded!()` - Parallel ensemble execution
+
+### [WUI & Suppression](wui-suppression.qmd)
+
+Wildland-urban interface and fire suppression:
+
+- `WUIBuilding` / `WUIGrid` - Building representation
+- `SuppressionResource` / `SuppressionState` - Suppression modeling
+- `simulate_with_suppression!()` - Integrated suppression simulation
+
+## Quick Reference
+
+### Main Types
+
+| Type | Description |
+|------|-------------|
+| `FireState{T}` | Simulation state with level set, arrival times, burned area |
+| `FuelModel{T}` | Fuel model properties with derived spread coefficients |
+| `SimulationConfig{T}` | Crown fire, spotting, and solver settings |
+| `ConstantWeather{T}` | Uniform wind and moisture conditions |
+| `EnsembleResult{T}` | Monte Carlo ensemble results and statistics |
+
+### Main Functions
+
+| Function | Description |
+|----------|-------------|
+| `simulate!(state, ...)` | Run fire simulation |
+| `simulate_full!(state, ...)` | Full simulation with crown fire/spotting |
+| `ignite!(state, ix, iy, t)` | Ignite fire at grid location |
+| `run_ensemble!(config, ...)` | Run Monte Carlo ensemble |
+| `read_landscape(T, paths...)` | Load landscape from GeoTIFF files |
+
+### Constants
+
+```julia
+# Unit conversions
+FT_TO_M = 0.3048        # Feet to meters
+M_TO_FT = 3.28084       # Meters to feet
+BTUPFT2MIN_TO_KWPM2 = 0.18956  # BTU/ft²/min to kW/m²
+```
+
+## Type Parameters
+
+Most types in Elmfire.jl are parametric on the floating-point type `T`:
+
+```julia
+# Float64 for maximum precision
+state = FireState{Float64}(100, 100, 30.0)
+
+# Float32 for memory efficiency
+state = FireState{Float32}(100, 100, 30.0f0)
+```
+
+This allows trading precision for memory when running large ensembles or high-resolution simulations.

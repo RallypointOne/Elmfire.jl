@@ -1,0 +1,213 @@
+---
+title: "Suppression"
+subtitle: "Fire containment and resource management"
+---
+
+This tutorial covers fire suppression modeling in Elmfire.jl.
+
+```{julia}
+using Elmfire
+using Plots
+```
+
+## Suppression Resources
+
+Elmfire supports different resource types:
+
+```{julia}
+# Create different resource types
+hand_crew = SuppressionResource{Float64}(1, :hand_crew; location_x = 10.0, location_y = 10.0)
+engine = SuppressionResource{Float64}(2, :engine; location_x = 15.0, location_y = 10.0)
+dozer = SuppressionResource{Float64}(3, :dozer; location_x = 20.0, location_y = 10.0)
+aircraft = SuppressionResource{Float64}(4, :aircraft; location_x = 50.0, location_y = 50.0)
+
+for r in [hand_crew, engine, dozer, aircraft]
+    println("$(r.resource_type): Production rate = $(r.line_production_rate) ft/min, Width = $(r.effective_width) ft")
+end
+```
+
+## Creating Suppression State
+
+```{julia}
+ncols, nrows = 100, 100
+
+supp_state = SuppressionState{Float64}(ncols, nrows)
+
+# Add resources
+add_resource!(supp_state, hand_crew)
+add_resource!(supp_state, engine)
+add_resource!(supp_state, dozer)
+
+println("Total resources: $(length(supp_state.resources))")
+```
+
+## Resource Assignment
+
+Assign resources to build containment lines:
+
+```{julia}
+# Assign dozer to build line from (30,30) to (30,70)
+targets = [(30, y) for y in 30:5:70]
+assign_resource!(supp_state, 3, targets)
+
+# Check assignment
+println("Dozer status: $(supp_state.resources[3].status)")
+println("Assignment targets: $(length(supp_state.active_assignments[3])) cells")
+```
+
+## Building Containment Lines
+
+```{julia}
+fire_state = FireState{Float64}(ncols, nrows, 30.0)
+
+# Manually construct a line
+cells_built, length_built = construct_containment_line!(
+    supp_state,
+    supp_state.resources[3],  # Dozer
+    30, 30,                    # Start
+    30, 50,                    # Target
+    20.0,                      # Time (minutes)
+    30.0,                      # Cell size
+    0.0                        # Current time
+)
+
+println("Built $(length(cells_built)) cells")
+println("Length: $(round(length_built, digits=0)) ft")
+
+# Visualize
+heatmap(supp_state.contained_cells',
+    title = "Containment Line",
+    color = [:white, :blue],
+    aspect_ratio = 1
+)
+```
+
+## Containment Effectiveness
+
+Containment lines reduce fire spread:
+
+```{julia}
+# Check effectiveness at contained cells
+ix, iy = cells_built[1]
+eff = supp_state.containment_effectiveness[ix, iy]
+println("Effectiveness at ($ix, $iy): $(round((1-eff)*100, digits=0))% reduction")
+```
+
+## Simulation with Suppression
+
+```{julia}
+ncols, nrows = 100, 100
+cellsize = 30.0
+
+fire_state = FireState{Float64}(ncols, nrows, cellsize)
+supp_state = SuppressionState{Float64}(ncols, nrows)
+fuel_table = create_standard_fuel_table(Float64)
+fuel_ids = fill(1, ncols, nrows)
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 10.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+# Add a dozer
+dozer = SuppressionResource{Float64}(1, :dozer; location_x = 70.0, location_y = 30.0)
+add_resource!(supp_state, dozer)
+
+# Pre-build containment line ahead of fire
+for y in 30:70
+    supp_state.contained_cells[70, y] = true
+    supp_state.containment_effectiveness[70, y] = 0.1  # 90% reduction
+end
+
+# Ignite fire
+ignite!(fire_state, 40, 50, 0.0)
+
+# Run simulation with suppression
+simulate_with_suppression!(
+    fire_state,
+    supp_state,
+    fuel_ids,
+    fuel_table,
+    weather,
+    slope,
+    aspect,
+    0.0, 45.0
+)
+
+# Visualize
+p1 = heatmap(fire_state.burned',
+    title = "Fire with Containment Line",
+    color = :YlOrRd, aspect_ratio = 1)
+
+# Overlay containment line
+contained_x = [ix for ix in 1:ncols for iy in 1:nrows if supp_state.contained_cells[ix, iy]]
+contained_y = [iy for ix in 1:ncols for iy in 1:nrows if supp_state.contained_cells[ix, iy]]
+scatter!(p1, contained_x, contained_y, color = :blue, markersize = 2, label = "Containment")
+
+p1
+```
+
+## Comparing With and Without Suppression
+
+```{julia}
+# Without suppression
+state_no_supp = FireState{Float64}(ncols, nrows, cellsize)
+ignite!(state_no_supp, 40, 50, 0.0)
+simulate_uniform!(state_no_supp, 1, fuel_table, weather, 0.0, 0.0, 0.0, 45.0)
+
+# With suppression (already run above as fire_state)
+
+p1 = heatmap(state_no_supp.burned',
+    title = "No Suppression\n$(round(get_burned_area_acres(state_no_supp), digits=1)) acres",
+    color = :YlOrRd, aspect_ratio = 1)
+
+p2 = heatmap(fire_state.burned',
+    title = "With Containment Line\n$(round(get_burned_area_acres(fire_state), digits=1)) acres",
+    color = :YlOrRd, aspect_ratio = 1)
+
+plot(p1, p2, layout = (1, 2), size = (800, 400))
+```
+
+## Suppression Statistics
+
+```{julia}
+stats = get_suppression_statistics(supp_state)
+
+println("Suppression Summary:")
+println("  Total resources: $(stats.total_resources)")
+println("  Available: $(stats.available)")
+println("  Deployed: $(stats.deployed)")
+println("  Resting: $(stats.resting)")
+println("  Contained cells: $(stats.contained_cells)")
+println("  Total line: $(round(stats.total_line_feet, digits=0)) ft ($(round(stats.total_line_miles, digits=2)) miles)")
+```
+
+## Tactical Planning
+
+Plan indirect attack ahead of fire:
+
+```{julia}
+# Get current fire state
+state = FireState{Float64}(ncols, nrows, cellsize)
+for ix in 35:45, iy in 45:55
+    state.burned[ix, iy] = true
+end
+
+# Plan indirect line 5 cells ahead
+line_cells = plan_indirect_attack(state, weather, 5)
+
+println("Planned $(length(line_cells)) cells for indirect attack")
+```
+
+## Direct Attack
+
+Target the perimeter directly:
+
+```{julia}
+perimeter = plan_direct_attack(state)
+println("Perimeter has $(length(perimeter)) cells for direct attack")
+```

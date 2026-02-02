@@ -1,0 +1,266 @@
+---
+title: "Fuel Models"
+subtitle: "Fuel model types and functions"
+---
+
+Fuel models describe the physical characteristics of wildland fuels and are essential inputs to the Rothermel fire spread model.
+
+```{julia}
+using Elmfire
+```
+
+## Types
+
+### RawFuelModel
+
+Raw fuel model parameters as read from CSV files before coefficient calculation.
+
+```julia
+struct RawFuelModel{T<:AbstractFloat}
+    id::Int              # Fuel model ID
+    name::String         # Descriptive name
+    dynamic::Bool        # Whether herbaceous fuel transfers based on moisture
+
+    # Fuel loadings (lb/ft²)
+    W0_1hr::T            # 1-hour dead fuel
+    W0_10hr::T           # 10-hour dead fuel
+    W0_100hr::T          # 100-hour dead fuel
+    W0_herb::T           # Live herbaceous
+    W0_woody::T          # Live woody
+
+    # Surface area to volume ratios (1/ft)
+    SIG_1hr::T           # 1-hour SAV
+    SIG_live_herb::T     # Live herbaceous SAV
+    SIG_live_woody::T    # Live woody SAV
+
+    # Fuel bed properties
+    delta::T             # Fuel bed thickness (ft)
+    mex_dead::T          # Dead fuel moisture of extinction (fraction)
+    hoc::T               # Heat of combustion (Btu/lb)
+end
+```
+
+### FuelModel
+
+Complete fuel model with all computed Rothermel coefficients. Created from `RawFuelModel` via `compute_fuel_model()`.
+
+**Fields (selected):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `Int` | Fuel model identifier |
+| `name` | `String` | Descriptive name |
+| `dynamic` | `Bool` | Dynamic fuel transfer flag |
+| `W0` | `NTuple{6,T}` | Fuel loadings for 6 size classes |
+| `SIG` | `NTuple{6,T}` | SAV ratios for 6 size classes |
+| `delta` | `T` | Fuel bed depth (ft) |
+| `mex_dead` | `T` | Dead fuel moisture of extinction |
+| `rhob` | `T` | Bulk density (lb/ft³) |
+| `beta` | `T` | Packing ratio |
+| `betaop` | `T` | Optimal packing ratio |
+| `gammaprime` | `T` | Reaction velocity (1/min) |
+| `tr` | `T` | Residence time (min) |
+
+The 6 size classes are:
+
+1. 1-hour dead
+2. 10-hour dead
+3. 100-hour dead
+4. Dynamic dead (transferred herbaceous)
+5. Live herbaceous
+6. Live woody
+
+### FuelModelTable
+
+Collection of fuel models indexed by `(fuel_id, live_moisture_class)`.
+
+```julia
+struct FuelModelTable{T<:AbstractFloat}
+    models::Dict{Tuple{Int,Int}, FuelModel{T}}
+    raw_models::Dict{Int, RawFuelModel{T}}
+end
+```
+
+## Functions
+
+### create_standard_fuel_table
+
+```julia
+create_standard_fuel_table(::Type{T}) -> FuelModelTable{T}
+```
+
+Create a fuel model table with the standard 13 Anderson (1982) fuel models.
+
+```{julia}
+fuel_table = create_standard_fuel_table(Float64)
+println("Loaded $(length(fuel_table.raw_models)) fuel models")
+```
+
+### compute_fuel_model
+
+```julia
+compute_fuel_model(raw::RawFuelModel{T}, live_moisture_class::Int=30) -> FuelModel{T}
+```
+
+Compute all Rothermel coefficients from raw fuel model data.
+
+For dynamic fuel models, live herbaceous fuel is partitioned between dead and live classes based on the live moisture class (30-120, representing 30% to 120% moisture content).
+
+```{julia}
+# Get raw fuel model 1 (short grass)
+raw = fuel_table.raw_models[1]
+
+# Compute fuel model at different moisture levels
+fm_dry = compute_fuel_model(raw, 30)   # Very dry
+fm_wet = compute_fuel_model(raw, 120)  # Green
+
+println("Fuel model: $(fm_dry.name)")
+println("Dynamic: $(fm_dry.dynamic)")
+println("Reaction velocity: $(round(fm_dry.gammaprime, digits=2)) 1/min")
+```
+
+### add_raw_model!
+
+```julia
+add_raw_model!(table::FuelModelTable{T}, raw::RawFuelModel) -> FuelModelTable
+```
+
+Add a raw fuel model to the table and compute coefficients for all live moisture classes (30-120).
+
+```{julia}
+# Create custom fuel model
+custom = RawFuelModel(
+    100,                    # id
+    "Custom tall grass",    # name
+    true,                   # dynamic
+    0.20, 0.0, 0.0,        # 1hr, 10hr, 100hr loading
+    0.30, 0.0,             # herb, woody loading
+    2000.0, 1500.0, 1500.0, # SAV ratios
+    3.0,                    # depth (ft)
+    0.15,                   # moisture of extinction
+    8000.0                  # heat of combustion
+)
+
+add_raw_model!(fuel_table, custom)
+println("Added fuel model $(custom.id): $(custom.name)")
+```
+
+### get_fuel_model
+
+```julia
+get_fuel_model(table::FuelModelTable, fuel_id::Int, live_moisture) -> FuelModel
+```
+
+Get the fuel model for the given fuel ID and live moisture content. Live moisture can be specified as a fraction (0.3 to 1.2) or as an integer class (30 to 120).
+
+```{julia}
+# By moisture fraction
+fm = get_fuel_model(fuel_table, 1, 0.6)  # 60% live moisture
+println("Fuel: $(fm.name), SAV: $(round(fm.SIG_overall, digits=0)) 1/ft")
+
+# By moisture class
+fm2 = get_fuel_model(fuel_table, 1, 60)
+println("Same model: $(fm.SIG_overall == fm2.SIG_overall)")
+```
+
+### isnonburnable
+
+```julia
+isnonburnable(fm::FuelModel) -> Bool
+```
+
+Check if a fuel model is non-burnable (ID 256 or zero fuel loading).
+
+```{julia}
+fm1 = get_fuel_model(fuel_table, 1, 60)
+println("Fuel 1 burnable: $(! isnonburnable(fm1))")
+```
+
+## Standard Fuel Models
+
+The 13 standard Anderson (1982) fuel models:
+
+| ID | Name | Fuel Type | Spread Rate |
+|----|------|-----------|-------------|
+| 1 | Short grass | Grass | Fast |
+| 2 | Timber grass/understory | Grass | Fast |
+| 3 | Tall grass | Grass | Very fast |
+| 4 | Chaparral | Brush | Fast |
+| 5 | Brush | Brush | Moderate |
+| 6 | Dormant brush | Brush | Moderate |
+| 7 | Southern rough | Brush | Slow |
+| 8 | Compact timber litter | Timber | Slow |
+| 9 | Hardwood litter | Timber | Moderate |
+| 10 | Timber understory | Timber | Moderate |
+| 11 | Light slash | Slash | Moderate |
+| 12 | Medium slash | Slash | Fast |
+| 13 | Heavy slash | Slash | Fast |
+
+```{julia}
+using Plots
+
+# Compare spread rates across fuel models
+fuel_table = create_standard_fuel_table(Float64)
+fm_ids = 1:13
+rates = Float64[]
+
+for id in fm_ids
+    fm = get_fuel_model(fuel_table, id, 60)
+    # Approximate no-wind, no-slope rate of spread
+    push!(rates, fm.gammaprime * fm.xi * 10)  # Scaled for visualization
+end
+
+bar(fm_ids, rates,
+    xlabel = "Fuel Model ID",
+    ylabel = "Relative Spread Rate",
+    title = "Comparison of 13 Standard Fuel Models",
+    legend = false,
+    xticks = 1:13
+)
+```
+
+## Dynamic Fuel Models
+
+Dynamic fuel models transfer live herbaceous fuel to the dead fuel category as live moisture content decreases. This simulates curing of grasses.
+
+```{julia}
+# Fuel model 1 is dynamic (short grass)
+raw = fuel_table.raw_models[1]
+
+moistures = 30:10:120
+dead_loadings = Float64[]
+live_loadings = Float64[]
+
+for m in moistures
+    fm = compute_fuel_model(raw, m)
+    push!(dead_loadings, sum(fm.W0[1:4]))  # Dead classes
+    push!(live_loadings, sum(fm.W0[5:6]))  # Live classes
+end
+
+plot(moistures, [dead_loadings live_loadings],
+    xlabel = "Live Moisture Class (%)",
+    ylabel = "Fuel Loading (lb/ft²)",
+    title = "Dynamic Fuel Transfer in Model 1",
+    label = ["Dead" "Live"],
+    linewidth = 2
+)
+```
+
+## Rothermel Coefficients
+
+The `FuelModel` type pre-computes many Rothermel model coefficients for efficiency:
+
+```{julia}
+fm = get_fuel_model(fuel_table, 1, 60)
+
+println("Rothermel Coefficients for $(fm.name):")
+println("  A coefficient: $(round(fm.A, digits=4))")
+println("  B coefficient: $(round(fm.B, digits=4))")
+println("  C coefficient: $(round(fm.C, digits=4))")
+println("  E coefficient: $(round(fm.E, digits=4))")
+println("  Reaction velocity (Γ'): $(round(fm.gammaprime, digits=3)) 1/min")
+println("  Propagating flux ratio (ξ): $(round(fm.xi, digits=4))")
+println("  Residence time (τr): $(round(fm.tr, digits=2)) min")
+println("  Packing ratio (β): $(round(fm.beta, digits=5))")
+println("  Optimal packing ratio (βop): $(round(fm.betaop, digits=5))")
+```

@@ -1,0 +1,492 @@
+---
+title: "Simulation"
+subtitle: "Fire state and simulation functions"
+---
+
+This module provides the core fire simulation state and execution functions.
+
+```{julia}
+using Elmfire
+using Plots
+```
+
+## Types
+
+### FireState
+
+Complete state of a fire simulation, including the level set field, burned area, and fire behavior outputs.
+
+```julia
+mutable struct FireState{T<:AbstractFloat}
+    # Level set field (with 2-cell padding for stencil operations)
+    phi::Matrix{T}
+    phi_old::Matrix{T}
+
+    # Output fields (no padding, matches grid dimensions)
+    time_of_arrival::Matrix{T}    # -1 if not burned
+    burned::BitMatrix             # True if cell has burned
+    spread_rate::Matrix{T}        # Final spread rate (ft/min)
+    fireline_intensity::Matrix{T} # Fireline intensity (kW/m)
+    flame_length::Matrix{T}       # Flame length (ft)
+
+    # Velocity components (with padding)
+    ux::Matrix{T}
+    uy::Matrix{T}
+
+    # Narrow band tracking
+    narrow_band::NarrowBand
+
+    # Grid parameters
+    ncols::Int           # Number of columns (without padding)
+    nrows::Int           # Number of rows (without padding)
+    cellsize::T          # Cell size (ft)
+    xllcorner::T         # X coordinate of lower-left corner
+    yllcorner::T         # Y coordinate of lower-left corner
+    padding::Int         # Padding for stencil operations
+end
+```
+
+**Constructor:**
+
+```julia
+FireState{T}(ncols, nrows, cellsize;
+    xllcorner = zero(T),
+    yllcorner = zero(T),
+    padding = 2,
+    band_thickness = 5
+) -> FireState{T}
+```
+
+```{julia}
+# Create a 100x100 grid with 30ft cells
+state = FireState{Float64}(100, 100, 30.0)
+
+println("Grid size: $(state.ncols) x $(state.nrows)")
+println("Cell size: $(state.cellsize) ft")
+println("Domain: $(state.ncols * state.cellsize) x $(state.nrows * state.cellsize) ft")
+```
+
+### SimulationConfig
+
+Configuration for full simulation with crown fire, spotting, and weather interpolation.
+
+```julia
+struct SimulationConfig{T<:AbstractFloat}
+    enable_crown_fire::Bool        # Enable crown fire modeling
+    enable_spotting::Bool          # Enable ember transport
+    crown_fire_adj::T              # Crown fire adjustment factor
+    critical_canopy_cover::T       # Minimum CC for active crown fire
+    foliar_moisture::T             # Foliar moisture content (%)
+    spotting_params::Union{Nothing, SpottingParameters{T}}
+    use_sardoy::Bool               # Use Sardoy model for spotting
+end
+```
+
+**Constructor:**
+
+```julia
+SimulationConfig{T}(;
+    enable_crown_fire = false,
+    enable_spotting = false,
+    crown_fire_adj = 1.0,
+    critical_canopy_cover = 0.4,
+    foliar_moisture = 100.0,
+    spotting_params = nothing,
+    use_sardoy = false
+) -> SimulationConfig{T}
+```
+
+```{julia}
+# Basic configuration (surface fire only)
+config_basic = SimulationConfig{Float64}()
+
+# Crown fire enabled
+config_crown = SimulationConfig{Float64}(
+    enable_crown_fire = true,
+    foliar_moisture = 100.0
+)
+
+# Full configuration with spotting
+spotting = SpottingParameters{Float64}(
+    mean_distance = 100.0,
+    normalized_variance = 0.5,
+    ws_exponent = 1.0,
+    flin_exponent = 0.5,
+    nembers_max = 10,
+    surface_spotting_percent = 1.0,
+    crown_spotting_percent = 10.0,
+    pign = 50.0,
+    min_distance = 10.0,
+    max_distance = 2000.0
+)
+
+config_full = SimulationConfig{Float64}(
+    enable_crown_fire = true,
+    enable_spotting = true,
+    spotting_params = spotting
+)
+```
+
+### CanopyGrid
+
+Grid of canopy properties for crown fire modeling.
+
+```julia
+struct CanopyGrid{T<:AbstractFloat}
+    cbd::Matrix{T}      # Canopy bulk density (kg/m³)
+    cbh::Matrix{T}      # Canopy base height (m)
+    cc::Matrix{T}       # Canopy cover (fraction 0-1)
+    ch::Matrix{T}       # Canopy height (m)
+end
+```
+
+```{julia}
+# Create uniform canopy
+canopy = CanopyGrid{Float64}(
+    fill(0.15, 100, 100),  # CBD
+    fill(2.0, 100, 100),   # CBH
+    fill(0.6, 100, 100),   # CC
+    fill(20.0, 100, 100)   # CH
+)
+
+println("Canopy bulk density: $(canopy.cbd[1,1]) kg/m³")
+println("Canopy base height: $(canopy.cbh[1,1]) m")
+println("Canopy cover: $(canopy.cc[1,1] * 100)%")
+println("Canopy height: $(canopy.ch[1,1]) m")
+```
+
+## Simulation Functions
+
+### simulate!
+
+Run fire simulation with spatially-varying conditions.
+
+```julia
+simulate!(
+    state::FireState{T},
+    fuel_ids::AbstractMatrix{Int},
+    fuel_table::FuelModelTable{T},
+    weather::ConstantWeather{T},
+    slope::AbstractMatrix{T},
+    aspect::AbstractMatrix{T},
+    t_start::T,
+    t_stop::T;
+    dt_initial = 1.0,
+    target_cfl = 0.9,
+    dt_max = 10.0,
+    callback = nothing
+)
+```
+
+| Argument | Description |
+|----------|-------------|
+| `state` | Fire state (modified in place) |
+| `fuel_ids` | Matrix of fuel model IDs |
+| `fuel_table` | Fuel model lookup table |
+| `weather` | Constant weather conditions |
+| `slope` | Slope in degrees for each cell |
+| `aspect` | Aspect direction in degrees |
+| `t_start` | Start time (minutes) |
+| `t_stop` | Stop time (minutes) |
+
+```{julia}
+fuel_table = create_standard_fuel_table(Float64)
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 10.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+state = FireState{Float64}(100, 100, 30.0)
+fuel_ids = fill(1, 100, 100)
+slope = zeros(Float64, 100, 100)
+aspect = zeros(Float64, 100, 100)
+
+ignite!(state, 50, 50, 0.0)
+simulate!(state, fuel_ids, fuel_table, weather, slope, aspect, 0.0, 30.0)
+
+println("Burned area: $(round(get_burned_area_acres(state), digits=2)) acres")
+
+heatmap(state.burned', title = "Burned Area", color = :YlOrRd, aspect_ratio = 1)
+```
+
+### simulate_uniform!
+
+Run simulation with uniform fuel, slope, and aspect across the entire domain.
+
+```julia
+simulate_uniform!(
+    state::FireState{T},
+    fuel_id::Int,
+    fuel_table::FuelModelTable{T},
+    weather::ConstantWeather{T},
+    slope_deg::T,
+    aspect_deg::T,
+    t_start::T,
+    t_stop::T;
+    kwargs...
+)
+```
+
+```{julia}
+state = FireState{Float64}(100, 100, 30.0)
+ignite!(state, 50, 50, 0.0)
+
+# Uniform fuel model 1 (short grass), 10° slope facing east
+simulate_uniform!(state, 1, fuel_table, weather, 10.0, 90.0, 0.0, 30.0)
+
+println("Burned area: $(round(get_burned_area_acres(state), digits=2)) acres")
+```
+
+### simulate_full!
+
+Run full simulation with crown fire, spotting, and weather interpolation support.
+
+```julia
+simulate_full!(
+    state::FireState{T},
+    fuel_ids::AbstractMatrix{Int},
+    fuel_table::FuelModelTable{T},
+    weather_interp::WeatherInterpolator{T},
+    slope::AbstractMatrix{T},
+    aspect::AbstractMatrix{T},
+    t_start::T,
+    t_stop::T;
+    canopy = nothing,
+    config = SimulationConfig{T}(),
+    dt_initial = 1.0,
+    target_cfl = 0.9,
+    dt_max = 10.0,
+    callback = nothing,
+    rng = Random.default_rng()
+) -> SpotFireTracker
+```
+
+```{julia}
+using Random
+
+state = FireState{Float64}(100, 100, 30.0)
+fuel_ids = fill(10, 100, 100)  # Timber understory
+slope = zeros(Float64, 100, 100)
+aspect = zeros(Float64, 100, 100)
+
+# Create canopy
+canopy = CanopyGrid{Float64}(
+    fill(0.15, 100, 100),
+    fill(2.0, 100, 100),
+    fill(0.6, 100, 100),
+    fill(20.0, 100, 100)
+)
+
+# Configuration with crown fire
+config = SimulationConfig{Float64}(
+    enable_crown_fire = true,
+    foliar_moisture = 100.0
+)
+
+weather_interp = create_constant_interpolator(weather, 100, 100, 30.0)
+
+ignite!(state, 50, 50, 0.0)
+simulate_full!(state, fuel_ids, fuel_table, weather_interp, slope, aspect,
+    0.0, 30.0; canopy = canopy, config = config)
+
+println("Burned area: $(round(get_burned_area_acres(state), digits=2)) acres")
+println("Max fireline intensity: $(round(maximum(state.fireline_intensity), digits=0)) kW/m")
+```
+
+## Ignition Functions
+
+### ignite!
+
+Ignite a cell at grid coordinates.
+
+```julia
+ignite!(state::FireState{T}, ix::Int, iy::Int, t::T)
+```
+
+Sets up the level set as a signed distance function near the ignition point.
+
+```{julia}
+state = FireState{Float64}(50, 50, 30.0)
+ignite!(state, 25, 25, 0.0)
+
+println("Cell (25,25) burned: $(state.burned[25, 25])")
+println("Time of arrival: $(state.time_of_arrival[25, 25]) min")
+```
+
+### ignite_point!
+
+Ignite a cell at world coordinates.
+
+```julia
+ignite_point!(state::FireState{T}, x::T, y::T, t::T)
+```
+
+Converts world coordinates to grid indices and ignites the corresponding cell.
+
+### ignite_circle!
+
+Ignite all cells within a circular area.
+
+```julia
+ignite_circle!(state::FireState{T}, center_x::Int, center_y::Int, radius_cells::T, t::T)
+```
+
+```{julia}
+state = FireState{Float64}(50, 50, 30.0)
+ignite_circle!(state, 25, 25, 3.0, 0.0)  # 3-cell radius
+
+println("Burned cells: $(count(state.burned))")
+```
+
+## State Management
+
+### reset!
+
+Reset a FireState to initial conditions for reuse in ensemble simulations.
+
+```julia
+reset!(state::FireState{T})
+```
+
+```{julia}
+state = FireState{Float64}(50, 50, 30.0)
+ignite!(state, 25, 25, 0.0)
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 10.0)
+
+println("Before reset: $(count(state.burned)) burned cells")
+reset!(state)
+println("After reset: $(count(state.burned)) burned cells")
+```
+
+### copy
+
+Create a deep copy of a FireState for thread-safe parallel execution.
+
+```julia
+Base.copy(state::FireState{T}) -> FireState{T}
+```
+
+## Output Functions
+
+### get_fire_perimeter
+
+Get the grid coordinates of cells on the fire perimeter.
+
+```julia
+get_fire_perimeter(state::FireState) -> Vector{Tuple{Int, Int}}
+```
+
+Returns burned cells adjacent to unburned cells.
+
+```{julia}
+state = FireState{Float64}(50, 50, 30.0)
+ignite!(state, 25, 25, 0.0)
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 15.0)
+
+perimeter = get_fire_perimeter(state)
+println("Perimeter cells: $(length(perimeter))")
+```
+
+### get_burned_area
+
+Get the total burned area in square feet.
+
+```julia
+get_burned_area(state::FireState{T}) -> T
+```
+
+### get_burned_area_acres
+
+Get the total burned area in acres.
+
+```julia
+get_burned_area_acres(state::FireState{T}) -> T
+```
+
+```{julia}
+state = FireState{Float64}(100, 100, 30.0)
+ignite!(state, 50, 50, 0.0)
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+println("Burned area: $(round(get_burned_area(state), digits=0)) ft²")
+println("Burned area: $(round(get_burned_area_acres(state), digits=2)) acres")
+```
+
+## Helper Functions
+
+### wind_adjustment_factor
+
+Calculate wind adjustment factor (WAF) from 20-ft wind to mid-flame wind.
+
+```julia
+wind_adjustment_factor(fuel_bed_depth::T) -> T
+```
+
+Uses the unsheltered (no canopy) formula.
+
+```{julia}
+depths = [0.5, 1.0, 2.0, 3.0, 4.0]
+wafs = [wind_adjustment_factor(d) for d in depths]
+
+for (d, w) in zip(depths, wafs)
+    println("Depth $d ft: WAF = $(round(w, digits=3))")
+end
+```
+
+### calculate_tanslp2
+
+Calculate tan²(slope) from slope in degrees.
+
+```julia
+calculate_tanslp2(slope_degrees::T) -> T
+```
+
+```{julia}
+slopes = [0, 10, 20, 30, 45]
+for s in slopes
+    println("Slope $(s)°: tan²(slope) = $(round(calculate_tanslp2(Float64(s)), digits=4))")
+end
+```
+
+### Coordinate Conversion
+
+```julia
+grid_to_padded(state::FireState, ix::Int, iy::Int) -> Tuple{Int, Int}
+padded_to_grid(state::FireState, px::Int, py::Int) -> Tuple{Int, Int}
+```
+
+Convert between grid coordinates (1:ncols, 1:nrows) and padded array coordinates.
+
+## Callbacks
+
+The simulation functions accept an optional callback that is called after each timestep:
+
+```julia
+callback(state, t, dt, iteration)
+```
+
+```{julia}
+state = FireState{Float64}(50, 50, 30.0)
+ignite!(state, 25, 25, 0.0)
+
+areas = Float64[]
+times = Float64[]
+
+function track_area(state, t, dt, iter)
+    push!(times, t)
+    push!(areas, get_burned_area_acres(state))
+end
+
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 20.0;
+    callback = track_area)
+
+plot(times, areas,
+    xlabel = "Time (min)",
+    ylabel = "Burned Area (acres)",
+    title = "Fire Growth Over Time",
+    linewidth = 2,
+    legend = false
+)
+```

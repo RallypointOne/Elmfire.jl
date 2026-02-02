@@ -1,0 +1,489 @@
+---
+title: "Getting Started"
+subtitle: "Your First Fire Simulation with Elmfire.jl"
+---
+
+This tutorial will guide you through running your first wildfire simulation with Elmfire.jl. We'll cover the basic components and build up to more complex scenarios with visualizations.
+
+## Setup
+
+First, let's load the required packages:
+
+```{julia}
+using Elmfire
+using Plots
+using Random
+
+# Set a seed for reproducibility
+Random.seed!(42)
+```
+
+## Understanding the Components
+
+A fire simulation in Elmfire.jl requires several components:
+
+1. **FireState** - The simulation grid that tracks fire spread
+2. **FuelModelTable** - Lookup table of fuel properties
+3. **Weather** - Wind speed, direction, and fuel moisture
+4. **Terrain** - Slope and aspect (optional for flat terrain)
+
+Let's explore each component.
+
+## Basic Simulation: Flat Terrain, No Wind
+
+Let's start with the simplest case - a fire spreading on flat terrain with no wind:
+
+```{julia}
+# Create a 100x100 grid with 30-foot cells
+ncols, nrows = 100, 100
+cellsize = 30.0  # feet
+
+state = FireState{Float64}(ncols, nrows, cellsize)
+
+# Create fuel model table with standard fuel models
+fuel_table = create_standard_fuel_table(Float64)
+
+# Weather with NO wind
+weather_no_wind = ConstantWeather{Float64}(
+    wind_speed_mph = 0.0,
+    wind_direction = 0.0,
+    M1 = 0.06,   # 6% moisture for 1-hr fuels
+    M10 = 0.08,
+    M100 = 0.10,
+    MLH = 0.60,
+    MLW = 0.90
+)
+
+# Ignite at the center
+ignite!(state, 50, 50, 0.0)
+
+# Run simulation for 30 minutes
+simulate_uniform!(
+    state,
+    1,              # FBFM01 (Short grass)
+    fuel_table,
+    weather_no_wind,
+    0.0,            # Flat terrain (0 degrees slope)
+    0.0,            # Aspect doesn't matter when flat
+    0.0,            # Start time
+    30.0            # End time (30 minutes)
+)
+
+# Visualize the burned area
+heatmap(
+    state.burned',
+    title = "Fire Spread - No Wind (30 min)",
+    xlabel = "X (cells)",
+    ylabel = "Y (cells)",
+    color = :YlOrRd,
+    aspect_ratio = 1,
+    size = (500, 500)
+)
+```
+
+With no wind, the fire spreads roughly **circularly** from the ignition point. This is because the spread rate is uniform in all directions.
+
+## Adding Wind: Elliptical Fire Spread
+
+Now let's add wind and see how it changes the fire shape:
+
+```{julia}
+# Reset the state
+state = FireState{Float64}(ncols, nrows, cellsize)
+
+# Weather WITH wind from the west (blowing east)
+weather_wind = ConstantWeather{Float64}(
+    wind_speed_mph = 15.0,
+    wind_direction = 270.0,  # Wind FROM west
+    M1 = 0.06,
+    M10 = 0.08,
+    M100 = 0.10,
+    MLH = 0.60,
+    MLW = 0.90
+)
+
+# Ignite at center
+ignite!(state, 50, 50, 0.0)
+
+# Run simulation
+simulate_uniform!(state, 1, fuel_table, weather_wind, 0.0, 0.0, 0.0, 30.0)
+
+# Visualize
+heatmap(
+    state.burned',
+    title = "Fire Spread - 15 mph Wind from West (30 min)",
+    xlabel = "X (cells)",
+    ylabel = "Y (cells)",
+    color = :YlOrRd,
+    aspect_ratio = 1,
+    size = (500, 500)
+)
+```
+
+The fire now spreads in an **elliptical pattern**, moving much faster downwind (to the east) than upwind.
+
+## Comparing Wind Speeds
+
+Let's compare how different wind speeds affect fire spread:
+
+```{julia}
+wind_speeds = [0, 5, 10, 20]
+plots_wind = []
+
+for ws in wind_speeds
+    state = FireState{Float64}(ncols, nrows, cellsize)
+
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = Float64(ws),
+        wind_direction = 270.0,
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+    p = heatmap(
+        state.burned',
+        title = "Wind: $ws mph",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false,
+        axis = false
+    )
+    push!(plots_wind, p)
+end
+
+plot(plots_wind..., layout = (2, 2), size = (800, 800))
+```
+
+As wind speed increases:
+
+- Fire spread becomes more **elliptical**
+- The **head fire** (downwind) moves much faster
+- The **backing fire** (upwind) moves very slowly
+- Total burned area increases significantly
+
+## Effect of Wind Direction
+
+Let's see how wind direction affects the fire spread pattern:
+
+```{julia}
+wind_directions = [0, 90, 180, 270]  # N, E, S, W
+direction_labels = ["From North", "From East", "From South", "From West"]
+plots_dir = []
+
+for (wd, label) in zip(wind_directions, direction_labels)
+    state = FireState{Float64}(ncols, nrows, cellsize)
+
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 15.0,
+        wind_direction = Float64(wd),
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+    p = heatmap(
+        state.burned',
+        title = label,
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    )
+    push!(plots_dir, p)
+end
+
+plot(plots_dir..., layout = (2, 2), size = (800, 800))
+```
+
+## Fuel Moisture Effects
+
+Fuel moisture is critical to fire behavior. Drier fuels burn more intensely:
+
+```{julia}
+moisture_levels = [(0.03, "Very Dry (3%)"), (0.06, "Dry (6%)"),
+                   (0.10, "Moderate (10%)"), (0.15, "Moist (15%)")]
+plots_moisture = []
+
+for (m1, label) in moisture_levels
+    state = FireState{Float64}(ncols, nrows, cellsize)
+
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 10.0,
+        wind_direction = 270.0,
+        M1 = m1,
+        M10 = m1 + 0.02,
+        M100 = m1 + 0.04,
+        MLH = 0.60,
+        MLW = 0.90
+    )
+
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+    acres = get_burned_area_acres(state)
+    p = heatmap(
+        state.burned',
+        title = "$label\n$(round(acres, digits=1)) acres",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    )
+    push!(plots_moisture, p)
+end
+
+plot(plots_moisture..., layout = (2, 2), size = (800, 800))
+```
+
+Lower fuel moisture = faster spread and more area burned!
+
+## Different Fuel Types
+
+The fuel model dramatically affects fire behavior. Let's compare a few standard fuel models:
+
+```{julia}
+fuel_models = [
+    (1, "FBFM01: Short Grass"),
+    (4, "FBFM04: Chaparral"),
+    (8, "FBFM08: Timber Litter"),
+    (13, "FBFM13: Heavy Slash")
+]
+plots_fuel = []
+
+for (fuel_id, label) in fuel_models
+    state = FireState{Float64}(ncols, nrows, cellsize)
+
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 10.0,
+        wind_direction = 270.0,
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, fuel_id, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+    acres = get_burned_area_acres(state)
+    p = heatmap(
+        state.burned',
+        title = "$label\n$(round(acres, digits=1)) acres",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    )
+    push!(plots_fuel, p)
+end
+
+plot(plots_fuel..., layout = (2, 2), size = (800, 800))
+```
+
+Each fuel model has different:
+
+- **Fuel loading** (amount of fuel)
+- **Surface area to volume ratio** (how quickly it burns)
+- **Fuel bed depth** (affects wind adjustment)
+- **Moisture of extinction** (how wet it can be and still burn)
+
+## Terrain Effects: Slope
+
+Fire spreads faster uphill. Let's compare different slopes:
+
+```{julia}
+slopes = [0, 10, 20, 30]  # degrees
+plots_slope = []
+
+for slp in slopes
+    state = FireState{Float64}(ncols, nrows, cellsize)
+
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 5.0,
+        wind_direction = 180.0,  # From south
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+
+    ignite!(state, 50, 50, 0.0)
+
+    # Uphill to the north (aspect = 180 means slope faces south)
+    simulate_uniform!(state, 1, fuel_table, weather, Float64(slp), 180.0, 0.0, 30.0)
+
+    acres = get_burned_area_acres(state)
+    p = heatmap(
+        state.burned',
+        title = "Slope: $(slp)°\n$(round(acres, digits=1)) acres",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    )
+    push!(plots_slope, p)
+end
+
+plot(plots_slope..., layout = (2, 2), size = (800, 800))
+```
+
+Steeper slopes cause faster uphill spread due to:
+
+- Preheating of uphill fuels by convection
+- Flames directly contacting uphill fuels
+- Increased effective wind (draft effect)
+
+## Time of Arrival Map
+
+The `time_of_arrival` field shows when each cell burned:
+
+```{julia}
+state = FireState{Float64}(ncols, nrows, cellsize)
+
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 12.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+ignite!(state, 50, 50, 0.0)
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 45.0)
+
+# Replace -1 (unburned) with NaN for plotting
+toa = copy(state.time_of_arrival)
+toa[toa .< 0] .= NaN
+
+heatmap(
+    toa',
+    title = "Time of Arrival (minutes)",
+    xlabel = "X (cells)",
+    ylabel = "Y (cells)",
+    color = :viridis,
+    aspect_ratio = 1,
+    size = (600, 500)
+)
+```
+
+The time of arrival map is useful for:
+
+- Evacuation planning
+- Resource deployment timing
+- Understanding fire progression
+
+## Fireline Intensity
+
+Fireline intensity (kW/m) indicates fire severity:
+
+```{julia}
+state = FireState{Float64}(ncols, nrows, cellsize)
+
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 15.0,
+    wind_direction = 270.0,
+    M1 = 0.04, M10 = 0.06, M100 = 0.08,
+    MLH = 0.50, MLW = 0.80
+)
+
+ignite!(state, 50, 50, 0.0)
+simulate_uniform!(state, 4, fuel_table, weather, 5.0, 180.0, 0.0, 30.0)  # Chaparral on slope
+
+# Plot fireline intensity
+flin = copy(state.fireline_intensity)
+flin[flin .== 0] .= NaN
+
+heatmap(
+    flin',
+    title = "Fireline Intensity (kW/m)",
+    xlabel = "X (cells)",
+    ylabel = "Y (cells)",
+    color = :inferno,
+    aspect_ratio = 1,
+    size = (600, 500)
+)
+```
+
+Fireline intensity classifications:
+
+- **< 350 kW/m**: Low intensity, hand crews can work directly
+- **350-1700 kW/m**: Moderate, mechanical equipment needed
+- **1700-3500 kW/m**: High, aerial support required
+- **> 3500 kW/m**: Very high, control very difficult
+
+## Fire Progression Over Time
+
+Let's visualize how a fire grows over time:
+
+```{julia}
+times = [5, 15, 30, 60]
+plots_time = []
+
+for t_end in times
+    state = FireState{Float64}(150, 150, cellsize)
+
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 12.0,
+        wind_direction = 270.0,
+        M1 = 0.05, M10 = 0.07, M100 = 0.09,
+        MLH = 0.55, MLW = 0.85
+    )
+
+    ignite!(state, 75, 75, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, Float64(t_end))
+
+    acres = get_burned_area_acres(state)
+    p = heatmap(
+        state.burned',
+        title = "t = $t_end min\n$(round(acres, digits=1)) acres",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    )
+    push!(plots_time, p)
+end
+
+plot(plots_time..., layout = (2, 2), size = (800, 800),
+     plot_title = "Fire Growth Over Time")
+```
+
+## Multiple Ignition Points
+
+You can simulate fires with multiple ignition points:
+
+```{julia}
+state = FireState{Float64}(150, 150, cellsize)
+
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 8.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+# Multiple ignition points
+ignite!(state, 50, 75, 0.0)
+ignite!(state, 100, 75, 5.0)  # 5 minutes later
+ignite!(state, 75, 50, 10.0)  # 10 minutes later
+
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 45.0)
+
+# Show time of arrival to see fire merger
+toa = copy(state.time_of_arrival)
+toa[toa .< 0] .= NaN
+
+heatmap(
+    toa',
+    title = "Multiple Ignitions - Time of Arrival",
+    color = :viridis,
+    aspect_ratio = 1,
+    size = (600, 500)
+)
+```
+
+## What's Next?
+
+Now that you understand the basics, explore more advanced topics:
+
+- **[Weather Effects](tutorials/weather-effects.qmd)** - Time-varying weather
+- **[Crown Fire](tutorials/crown-fire.qmd)** - Active and passive crown fire
+- **[Spotting](tutorials/spotting.qmd)** - Ember transport and spot fires
+- **[Ensemble Simulations](tutorials/ensemble.qmd)** - Probabilistic forecasting
+- **[WUI Modeling](tutorials/wui.qmd)** - Building ignition
+- **[Suppression](tutorials/suppression.qmd)** - Fire containment

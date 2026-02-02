@@ -1,0 +1,107 @@
+---
+title: "Elmfire.jl"
+subtitle: "A Julia Implementation of the ELMFIRE Wildfire Simulation Model"
+---
+
+## Overview
+
+**Elmfire.jl** is a pure Julia implementation of the ELMFIRE (Eulerian Level Set Model of FIRE spread) wildfire simulation model. It provides high-performance fire spread modeling with support for:
+
+- **Rothermel Surface Fire Spread Model** - Industry-standard fire behavior calculations
+- **Level Set Method** - Efficient fire front propagation using the Eulerian approach
+- **Crown Fire Modeling** - Passive and active crown fire transitions
+- **Ember Transport (Spotting)** - Stochastic ember generation and transport
+- **Weather Interpolation** - Spatially and temporally varying weather conditions
+- **Monte Carlo Ensembles** - Probabilistic fire forecasting with parallel execution
+- **WUI (Wildland-Urban Interface) Models** - Building ignition and urban fire spread
+- **Suppression Models** - Fire containment line construction and resource management
+- **Geospatial I/O** - GeoTIFF reading/writing for integration with GIS workflows
+
+## Features
+
+### Multi-Precision Support
+
+Elmfire.jl supports both `Float64` (default) and `Float32` precision throughout the entire codebase, allowing you to trade off numerical precision for memory efficiency and potentially faster computation on certain hardware.
+
+### High Performance
+
+- **Narrow Band Method** - Only computes fire spread near the active fire front
+- **Multi-threaded Ensemble Runs** - Parallel execution of Monte Carlo simulations
+- **Efficient Memory Layout** - Column-major arrays optimized for Julia
+
+### Comprehensive Fire Behavior
+
+- 53 standard FBFM (Fire Behavior Fuel Models) included
+- Custom fuel model support
+- Dynamic fuel moisture effects
+- Slope and aspect terrain effects
+- Wind-driven elliptical spread patterns
+
+## Quick Start
+
+```julia
+using Elmfire
+
+# Create a fire simulation state (100x100 grid, 30ft cells)
+state = FireState{Float64}(100, 100, 30.0)
+
+# Create standard fuel model table
+fuel_table = create_standard_fuel_table(Float64)
+
+# Set weather conditions
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 15.0,
+    wind_direction = 270.0,  # From west
+    M1 = 0.06,   # 6% 1-hr fuel moisture
+    M10 = 0.08,
+    M100 = 0.10,
+    MLH = 0.60,
+    MLW = 0.90
+)
+
+# Ignite at center
+ignite!(state, 50, 50, 0.0)
+
+# Run for 60 minutes
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 60.0)
+
+# Get results
+println("Burned area: ", get_burned_area_acres(state), " acres")
+```
+
+## Installation
+
+```julia
+using Pkg
+Pkg.add("Elmfire")
+```
+
+Or for the development version:
+
+```julia
+using Pkg
+Pkg.develop(path="path/to/Elmfire.jl")
+```
+
+## Documentation Structure
+
+- **[Getting Started](getting-started.qmd)** - Installation and first simulation
+- **[Tutorials](tutorials/index.qmd)** - Step-by-step guides with examples
+- **[API Reference](reference/index.qmd)** - Complete function and type documentation
+
+## Citation
+
+If you use Elmfire.jl in your research, please cite:
+
+```bibtex
+@software{elmfire_jl,
+  title = {Elmfire.jl: A Julia Implementation of ELMFIRE},
+  author = {Your Name},
+  year = {2024},
+  url = {https://github.com/your-org/Elmfire.jl}
+}
+```
+
+## License
+
+Elmfire.jl is released under the MIT License.

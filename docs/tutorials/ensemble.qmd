@@ -1,0 +1,417 @@
+---
+title: "Ensemble Simulations"
+subtitle: "Monte Carlo probabilistic fire forecasting"
+---
+
+Ensemble simulations run multiple realizations of a fire scenario with perturbed inputs to generate probabilistic forecasts. This tutorial covers Elmfire.jl's ensemble capabilities.
+
+```{julia}
+using Elmfire
+using Plots
+using Random
+Random.seed!(42)
+```
+
+## Why Ensembles?
+
+Fire behavior is inherently uncertain due to:
+
+- **Weather variability** - Wind speed and direction fluctuate
+- **Fuel moisture uncertainty** - Difficult to measure accurately everywhere
+- **Ignition location uncertainty** - GPS errors, multiple potential sources
+- **Model limitations** - Simplified physics can't capture all dynamics
+
+Ensembles quantify this uncertainty by running many simulations with slightly different inputs.
+
+## Basic Ensemble Configuration
+
+Set up perturbation parameters:
+
+```{julia}
+# Define perturbation ranges
+perturbation = PerturbationConfig{Float64}(
+    ignition_perturb_radius = 3.0,           # ±3 cells around ignition
+    wind_speed_factor_range = (0.8, 1.2),    # ±20% wind speed
+    wind_direction_std = 15.0,               # 15° standard deviation
+    moisture_factor_range = (0.85, 1.15),    # ±15% moisture
+    spread_rate_factor_range = (0.9, 1.1)    # ±10% spread rate
+)
+
+# Configure the ensemble
+config = EnsembleConfig{Float64}(
+    n_simulations = 50,                      # Number of ensemble members
+    base_seed = UInt64(12345),               # For reproducibility
+    perturbation = perturbation,
+    simulation_config = SimulationConfig{Float64}(),
+    save_individual_results = true           # Keep individual member results
+)
+```
+
+## Running an Ensemble
+
+```{julia}
+# Set up the simulation domain
+ncols, nrows = 80, 80
+cellsize = 30.0
+
+state_template = FireState{Float64}(ncols, nrows, cellsize)
+fuel_table = create_standard_fuel_table(Float64)
+fuel_ids = fill(1, ncols, nrows)  # Uniform short grass
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+
+# Base weather conditions
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 12.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+# Run the ensemble
+result = run_ensemble!(
+    config,
+    state_template,
+    fuel_ids,
+    fuel_table,
+    weather,
+    slope,
+    aspect,
+    40, 40,     # Ignition point (center)
+    0.0, 45.0;  # 45 minutes
+    show_progress = false
+)
+
+println("Ensemble completed: $(length(result.members)) members")
+println("Mean burned area: $(round(result.mean_burned_area, digits=2)) ± $(round(result.std_burned_area, digits=2)) acres")
+```
+
+## Burn Probability Map
+
+The burn probability shows the likelihood each cell burns across all ensemble members:
+
+```{julia}
+heatmap(
+    result.burn_probability',
+    title = "Burn Probability (n=$(config.n_simulations))",
+    xlabel = "X (cells)",
+    ylabel = "Y (cells)",
+    color = :YlOrRd,
+    clims = (0, 1),
+    aspect_ratio = 1,
+    size = (600, 500)
+)
+```
+
+### Interpreting Burn Probability
+
+- **1.0 (100%)**: Cell burned in all simulations - high confidence area
+- **0.5 (50%)**: Cell burned in half of simulations - moderate uncertainty
+- **0.0 (0%)**: Cell never burned - outside potential fire extent
+
+```{julia}
+# Probability contours
+contour(
+    result.burn_probability',
+    title = "Burn Probability Contours",
+    levels = [0.1, 0.25, 0.5, 0.75, 0.9],
+    color = :reds,
+    fill = true,
+    aspect_ratio = 1,
+    size = (600, 500)
+)
+```
+
+## Mean Arrival Time
+
+Average time of arrival across ensemble members (for cells that burned):
+
+```{julia}
+mean_toa = copy(result.mean_arrival_time)
+mean_toa[mean_toa .< 0] .= NaN
+
+heatmap(
+    mean_toa',
+    title = "Mean Time of Arrival (minutes)",
+    color = :viridis,
+    aspect_ratio = 1,
+    size = (600, 500)
+)
+```
+
+## Individual Ensemble Members
+
+With `save_individual_results = true`, we can examine specific members:
+
+```{julia}
+# Compare smallest and largest fires
+areas = [m.burned_area_acres for m in result.members]
+min_idx = argmin(areas)
+max_idx = argmax(areas)
+
+p1 = heatmap(result.members[min_idx].burned',
+    title = "Smallest Fire\n$(round(areas[min_idx], digits=2)) acres",
+    color = :YlOrRd, aspect_ratio = 1, colorbar = false)
+
+p2 = heatmap(result.members[max_idx].burned',
+    title = "Largest Fire\n$(round(areas[max_idx], digits=2)) acres",
+    color = :YlOrRd, aspect_ratio = 1, colorbar = false)
+
+plot(p1, p2, layout = (1, 2), size = (800, 400))
+```
+
+## Burned Area Distribution
+
+Examine the distribution of burned area across ensemble members:
+
+```{julia}
+areas = [m.burned_area_acres for m in result.members]
+
+histogram(areas,
+    xlabel = "Burned Area (acres)",
+    ylabel = "Frequency",
+    title = "Burned Area Distribution",
+    legend = false,
+    bins = 15,
+    color = :orange
+)
+```
+
+```{julia}
+# Statistics
+println("Burned Area Statistics:")
+println("  Minimum: $(round(minimum(areas), digits=2)) acres")
+println("  25th percentile: $(round(sort(areas)[div(end,4)], digits=2)) acres")
+println("  Median: $(round(sort(areas)[div(end,2)], digits=2)) acres")
+println("  75th percentile: $(round(sort(areas)[3*div(end,4)], digits=2)) acres")
+println("  Maximum: $(round(maximum(areas), digits=2)) acres")
+```
+
+## Exceedance Probability
+
+Calculate the probability that fire exceeds a given size:
+
+```{julia}
+thresholds = 10:5:80
+probs = [get_exceedance_probability(result, Float64(t)) for t in thresholds]
+
+plot(thresholds, probs .* 100,
+    xlabel = "Burned Area Threshold (acres)",
+    ylabel = "Probability of Exceedance (%)",
+    title = "Exceedance Probability Curve",
+    linewidth = 2,
+    legend = false,
+    ylims = (0, 100)
+)
+```
+
+## Percentile Fires
+
+Get representative fires at specific percentiles:
+
+```{julia}
+percentiles = [10, 50, 90]
+plots = []
+
+for p in percentiles
+    member = get_percentile_fire(result, Float64(p))
+    push!(plots, heatmap(member.burned',
+        title = "$(p)th Percentile\n$(round(member.burned_area_acres, digits=1)) acres",
+        color = :YlOrRd, aspect_ratio = 1, colorbar = false))
+end
+
+plot(plots..., layout = (1, 3), size = (900, 300))
+```
+
+## Convergence Analysis
+
+Check if the ensemble has converged (burn probability stabilizing):
+
+```{julia}
+plot(result.convergence_history,
+    xlabel = "Ensemble Member",
+    ylabel = "RMS Change in Burn Probability",
+    title = "Ensemble Convergence",
+    linewidth = 1.5,
+    legend = false,
+    yscale = :log10
+)
+
+println("Converged: ", check_convergence(result, threshold = 0.001))
+```
+
+## Effect of Ensemble Size
+
+Compare ensembles of different sizes:
+
+```{julia}
+ensemble_sizes = [10, 25, 50, 100]
+burn_prob_maps = []
+
+for n in ensemble_sizes
+    cfg = EnsembleConfig{Float64}(
+        n_simulations = n,
+        base_seed = UInt64(42),
+        perturbation = perturbation,
+        simulation_config = SimulationConfig{Float64}(),
+        save_individual_results = false
+    )
+
+    res = run_ensemble!(cfg, state_template, fuel_ids, fuel_table, weather,
+        slope, aspect, 40, 40, 0.0, 45.0; show_progress = false)
+
+    push!(burn_prob_maps, heatmap(res.burn_probability',
+        title = "n = $n",
+        color = :YlOrRd, clims = (0, 1),
+        aspect_ratio = 1, colorbar = false))
+end
+
+plot(burn_prob_maps..., layout = (2, 2), size = (700, 700),
+    plot_title = "Burn Probability vs Ensemble Size")
+```
+
+## Parallel Ensemble Execution
+
+For large ensembles, use multi-threading:
+
+```{julia}
+# Check available threads
+println("Available threads: ", Threads.nthreads())
+
+# Parallel configuration
+parallel_config = ParallelConfig(n_workers = 0, chunk_size = 1)  # 0 = auto-detect
+
+# Larger ensemble for parallel demo
+large_config = EnsembleConfig{Float64}(
+    n_simulations = 100,
+    base_seed = UInt64(99),
+    perturbation = perturbation,
+    save_individual_results = false
+)
+
+# Run threaded ensemble
+@time result_parallel = run_ensemble_threaded!(
+    large_config,
+    state_template,
+    fuel_ids,
+    fuel_table,
+    weather,
+    slope,
+    aspect,
+    40, 40,
+    0.0, 45.0;
+    parallel_config = parallel_config,
+    show_progress = false
+)
+
+println("Threaded ensemble mean area: $(round(result_parallel.mean_burned_area, digits=2)) acres")
+```
+
+## Sensitivity to Perturbation Magnitude
+
+Explore how uncertainty ranges affect results:
+
+```{julia}
+# Low uncertainty
+low_pert = PerturbationConfig{Float64}(
+    ignition_perturb_radius = 1.0,
+    wind_speed_factor_range = (0.95, 1.05),
+    wind_direction_std = 5.0,
+    moisture_factor_range = (0.95, 1.05)
+)
+
+# High uncertainty
+high_pert = PerturbationConfig{Float64}(
+    ignition_perturb_radius = 5.0,
+    wind_speed_factor_range = (0.6, 1.4),
+    wind_direction_std = 30.0,
+    moisture_factor_range = (0.7, 1.3)
+)
+
+plots = []
+for (pert, label) in [(low_pert, "Low Uncertainty"), (high_pert, "High Uncertainty")]
+    cfg = EnsembleConfig{Float64}(
+        n_simulations = 50,
+        base_seed = UInt64(42),
+        perturbation = pert,
+        save_individual_results = false
+    )
+
+    res = run_ensemble!(cfg, state_template, fuel_ids, fuel_table, weather,
+        slope, aspect, 40, 40, 0.0, 45.0; show_progress = false)
+
+    push!(plots, heatmap(res.burn_probability',
+        title = "$label\nStd Area: $(round(res.std_burned_area, digits=1)) ac",
+        color = :YlOrRd, clims = (0, 1), aspect_ratio = 1))
+end
+
+plot(plots..., layout = (1, 2), size = (800, 400))
+```
+
+## Practical Applications
+
+### 1. Evacuation Planning
+
+Use exceedance probabilities to identify areas at risk:
+
+```{julia}
+# Areas with >50% chance of burning within 45 minutes
+high_risk = result.burn_probability .>= 0.5
+
+heatmap(high_risk',
+    title = "High Risk Zone (≥50% burn probability)",
+    color = [:white, :red],
+    aspect_ratio = 1,
+    colorbar = false
+)
+```
+
+### 2. Resource Pre-positioning
+
+Identify areas where fire is likely to spread next:
+
+```{julia}
+# Areas with 10-50% probability (transition zone)
+transition_zone = (result.burn_probability .>= 0.1) .& (result.burn_probability .< 0.5)
+
+heatmap(transition_zone',
+    title = "Transition Zone (10-50% probability)",
+    color = [:white, :yellow],
+    aspect_ratio = 1,
+    colorbar = false
+)
+```
+
+### 3. Communicating Uncertainty
+
+Present multiple scenarios to decision makers:
+
+```{julia}
+# Get 10th, 50th, and 90th percentile scenarios
+small = get_percentile_fire(result, 10.0)
+median = get_percentile_fire(result, 50.0)
+large = get_percentile_fire(result, 90.0)
+
+# Overlay contours
+p = plot(aspect_ratio = 1, legend = :topleft,
+    title = "Fire Spread Scenarios",
+    xlabel = "X", ylabel = "Y")
+
+# Find perimeters (simplified as contours of burned area)
+contour!(p, Float64.(small.burned)', levels = [0.5],
+    linecolor = :green, linewidth = 2, label = "10th percentile")
+contour!(p, Float64.(median.burned)', levels = [0.5],
+    linecolor = :orange, linewidth = 2, label = "50th percentile")
+contour!(p, Float64.(large.burned)', levels = [0.5],
+    linecolor = :red, linewidth = 2, label = "90th percentile")
+
+p
+```
+
+## Best Practices
+
+1. **Ensemble Size**: Start with 50-100 members; increase if convergence is poor
+2. **Perturbation Ranges**: Base on actual measurement/forecast uncertainty
+3. **Seed Setting**: Use consistent seeds for reproducibility
+4. **Save Results**: Store ensemble output for post-processing
+5. **Parallel Execution**: Use threading for ensembles > 50 members

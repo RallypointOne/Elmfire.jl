@@ -1,0 +1,427 @@
+---
+title: "Weather"
+subtitle: "Weather data management and interpolation"
+---
+
+This module handles weather data for fire simulations, including spatially and temporally varying conditions.
+
+```{julia}
+using Elmfire
+using Plots
+```
+
+## Types
+
+### ConstantWeather
+
+Constant (spatially and temporally uniform) weather conditions.
+
+```julia
+struct ConstantWeather{T<:AbstractFloat}
+    wind_speed_20ft::T      # 20-ft wind speed (mph)
+    wind_direction::T       # Wind direction (degrees, meteorological: FROM)
+    M1::T                   # 1-hr dead fuel moisture (fraction)
+    M10::T                  # 10-hr dead fuel moisture (fraction)
+    M100::T                 # 100-hr dead fuel moisture (fraction)
+    MLH::T                  # Live herbaceous moisture (fraction)
+    MLW::T                  # Live woody moisture (fraction)
+end
+```
+
+**Constructor:**
+
+```julia
+ConstantWeather{T}(;
+    wind_speed_mph = 10.0,
+    wind_direction = 0.0,
+    M1 = 0.06,
+    M10 = 0.08,
+    M100 = 0.10,
+    MLH = 0.60,
+    MLW = 0.90
+) -> ConstantWeather{T}
+```
+
+```{julia}
+# Create weather with default values
+weather = ConstantWeather{Float64}()
+println("Wind: $(weather.wind_speed_20ft) mph from $(weather.wind_direction)°")
+println("Dead fuel moisture: M1=$(weather.M1), M10=$(weather.M10), M100=$(weather.M100)")
+println("Live fuel moisture: MLH=$(weather.MLH), MLW=$(weather.MLW)")
+```
+
+```{julia}
+# Custom weather conditions
+dry_weather = ConstantWeather{Float64}(
+    wind_speed_mph = 25.0,     # Strong wind
+    wind_direction = 270.0,    # From west
+    M1 = 0.03,                 # Very dry fine fuels
+    M10 = 0.04,
+    M100 = 0.06,
+    MLH = 0.30,                # Dry live fuels
+    MLW = 0.50
+)
+```
+
+#### Weather Variables
+
+| Variable | Description | Typical Range |
+|----------|-------------|---------------|
+| `wind_speed_20ft` | Wind speed at 20 ft height (mph) | 0-40 |
+| `wind_direction` | Direction wind is FROM (degrees, N=0, E=90) | 0-360 |
+| `M1` | 1-hour dead fuel moisture (fraction) | 0.03-0.15 |
+| `M10` | 10-hour dead fuel moisture (fraction) | 0.04-0.20 |
+| `M100` | 100-hour dead fuel moisture (fraction) | 0.06-0.25 |
+| `MLH` | Live herbaceous moisture (fraction) | 0.30-1.20 |
+| `MLW` | Live woody moisture (fraction) | 0.50-1.50 |
+
+### WeatherGrid
+
+A grid of weather values at a single time, for spatially varying conditions.
+
+```julia
+struct WeatherGrid{T<:AbstractFloat}
+    ws::Matrix{T}      # Wind speed (mph)
+    wd::Matrix{T}      # Wind direction (degrees, FROM)
+    m1::Matrix{T}      # 1-hour dead fuel moisture
+    m10::Matrix{T}     # 10-hour dead fuel moisture
+    m100::Matrix{T}    # 100-hour dead fuel moisture
+    mlh::Matrix{T}     # Live herbaceous moisture
+    mlw::Matrix{T}     # Live woody moisture
+    ncols::Int         # Number of columns
+    nrows::Int         # Number of rows
+    cellsize::T        # Cell size (meters)
+    xllcorner::T       # X coordinate of lower-left corner
+    yllcorner::T       # Y coordinate of lower-left corner
+end
+```
+
+**Constructors:**
+
+```julia
+# Create empty weather grid
+WeatherGrid{T}(ncols, nrows, cellsize; xllcorner=0.0, yllcorner=0.0)
+
+# Create uniform grid from ConstantWeather
+WeatherGrid{T}(weather::ConstantWeather, ncols, nrows, cellsize)
+```
+
+```{julia}
+# Create a weather grid with spatial variation
+ncols, nrows = 10, 10
+cellsize = 1000.0  # 1km cells
+
+wgrid = WeatherGrid{Float64}(ncols, nrows, cellsize)
+
+# Add wind gradient (wind speed increases to the east)
+for ix in 1:ncols
+    wgrid.ws[ix, :] .= 5.0 + 2.0 * ix  # 7-25 mph gradient
+    wgrid.wd[ix, :] .= 270.0            # From west
+end
+
+println("Wind speed range: $(minimum(wgrid.ws)) - $(maximum(wgrid.ws)) mph")
+```
+
+### WeatherTimeSeries
+
+A time series of weather grids for temporally varying conditions.
+
+```julia
+struct WeatherTimeSeries{T<:AbstractFloat}
+    grids::Vector{WeatherGrid{T}}  # Weather grids at each time
+    times::Vector{T}               # Times (minutes from start)
+    dt::T                          # Time step between grids
+end
+```
+
+**Constructors:**
+
+```julia
+# From vector of grids and times
+WeatherTimeSeries{T}(grids::Vector{WeatherGrid}, times::Vector)
+
+# Constant weather over duration
+WeatherTimeSeries{T}(weather::ConstantWeather, ncols, nrows, cellsize, duration)
+```
+
+```{julia}
+# Create time-varying weather
+weather1 = ConstantWeather{Float64}(wind_speed_mph = 10.0, wind_direction = 270.0,
+    M1 = 0.08, M10 = 0.10, M100 = 0.12, MLH = 0.70, MLW = 1.0)
+weather2 = ConstantWeather{Float64}(wind_speed_mph = 20.0, wind_direction = 315.0,
+    M1 = 0.05, M10 = 0.07, M100 = 0.09, MLH = 0.50, MLW = 0.80)
+
+grid1 = WeatherGrid{Float64}(weather1, 1, 1, 1e6)
+grid2 = WeatherGrid{Float64}(weather2, 1, 1, 1e6)
+
+wts = WeatherTimeSeries{Float64}([grid1, grid2], [0.0, 60.0])
+
+println("Weather at t=0: $(wts.grids[1].ws[1,1]) mph from $(wts.grids[1].wd[1,1])°")
+println("Weather at t=60: $(wts.grids[2].ws[1,1]) mph from $(wts.grids[2].wd[1,1])°")
+```
+
+### WeatherInterpolator
+
+Handles interpolation of weather data to simulation grid and time.
+
+```julia
+struct WeatherInterpolator{T<:AbstractFloat}
+    weather_series::WeatherTimeSeries{T}
+    icol_map::Vector{Int}    # Mapping from sim column to weather column
+    irow_map::Vector{Int}    # Mapping from sim row to weather row
+    sim_ncols::Int
+    sim_nrows::Int
+end
+```
+
+## Functions
+
+### create_constant_interpolator
+
+Create a weather interpolator for constant (uniform) weather conditions.
+
+```julia
+create_constant_interpolator(
+    weather::ConstantWeather{T},
+    sim_ncols::Int, sim_nrows::Int,
+    sim_cellsize::T
+) -> WeatherInterpolator{T}
+```
+
+```{julia}
+weather = ConstantWeather{Float64}(wind_speed_mph = 15.0, wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10, MLH = 0.60, MLW = 0.90)
+
+interp = create_constant_interpolator(weather, 100, 100, 30.0)
+
+# Get weather at any cell - always returns the same values
+w = get_weather_at(interp, 50, 50, 30.0)
+println("Wind: $(w.ws) mph from $(w.wd)°")
+```
+
+### get_weather_at
+
+Get interpolated weather values at a simulation grid cell and time.
+
+```julia
+get_weather_at(interp::WeatherInterpolator, ix::Int, iy::Int, t::T) -> NamedTuple
+```
+
+Returns a named tuple with fields: `ws`, `wd`, `m1`, `m10`, `m100`, `mlh`, `mlw`
+
+```{julia}
+w = get_weather_at(interp, 25, 75, 0.0)
+
+println("Wind speed: $(w.ws) mph")
+println("Wind direction: $(w.wd)°")
+println("1-hr moisture: $(w.m1)")
+println("Live herb moisture: $(w.mlh)")
+```
+
+### find_time_indices
+
+Find the indices and interpolation weight for a given time.
+
+```julia
+find_time_indices(wts::WeatherTimeSeries, t::T) -> Tuple{Int, Int, T}
+```
+
+Returns `(i_lo, i_hi, f)` where the interpolated value is:
+`value = (1-f) * grids[i_lo] + f * grids[i_hi]`
+
+```{julia}
+# Time series with weather at t=0 and t=60
+i_lo, i_hi, f = find_time_indices(wts, 30.0)
+println("At t=30: i_lo=$i_lo, i_hi=$i_hi, f=$f (50% interpolation)")
+```
+
+### interpolate_wind_direction
+
+Interpolate wind direction, properly handling the 0°/360° wrap-around.
+
+```julia
+interpolate_wind_direction(wd1::T, wd2::T, f::T) -> T
+```
+
+```{julia}
+# Normal interpolation
+wd = interpolate_wind_direction(270.0, 315.0, 0.5)
+println("Interpolated direction (270° to 315°): $(round(wd, digits=1))°")
+
+# Wrap-around interpolation
+wd = interpolate_wind_direction(350.0, 10.0, 0.5)
+println("Interpolated direction (350° to 10°): $(round(wd, digits=1))°")
+```
+
+### create_grid_mapping
+
+Create mapping from simulation grid to weather grid indices.
+
+```julia
+create_grid_mapping(
+    weather_grid::WeatherGrid,
+    sim_ncols, sim_nrows, sim_cellsize,
+    sim_xllcorner, sim_yllcorner
+) -> Tuple{Vector{Int}, Vector{Int}}
+```
+
+Returns `(icol_weather, irow_weather)` vectors such that simulation cell `(ix, iy)` maps to weather cell `(icol_weather[ix], irow_weather[iy])`.
+
+## Weather Effects on Fire Spread
+
+### Wind Speed Effects
+
+```{julia}
+fuel_table = create_standard_fuel_table(Float64)
+wind_speeds = [5, 10, 15, 20, 25, 30]
+areas = Float64[]
+
+for ws in wind_speeds
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = Float64(ws),
+        wind_direction = 270.0,
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+
+    state = FireState{Float64}(100, 100, 30.0)
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 20.0)
+
+    push!(areas, get_burned_area_acres(state))
+end
+
+plot(wind_speeds, areas,
+    xlabel = "Wind Speed (mph)",
+    ylabel = "Burned Area (acres)",
+    title = "Effect of Wind Speed on Fire Spread (20 min)",
+    linewidth = 2,
+    marker = :circle,
+    legend = false
+)
+```
+
+### Fuel Moisture Effects
+
+```{julia}
+moisture_levels = [0.03, 0.06, 0.09, 0.12, 0.15]
+areas = Float64[]
+
+for m1 in moisture_levels
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 10.0,
+        wind_direction = 270.0,
+        M1 = m1, M10 = m1 + 0.02, M100 = m1 + 0.04,
+        MLH = 0.60, MLW = 0.90
+    )
+
+    state = FireState{Float64}(100, 100, 30.0)
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 20.0)
+
+    push!(areas, get_burned_area_acres(state))
+end
+
+plot(moisture_levels .* 100, areas,
+    xlabel = "1-hr Fuel Moisture (%)",
+    ylabel = "Burned Area (acres)",
+    title = "Effect of Fuel Moisture on Fire Spread (20 min)",
+    linewidth = 2,
+    marker = :circle,
+    legend = false
+)
+```
+
+### Wind Direction
+
+Wind direction is specified in meteorological convention: the direction the wind is blowing **FROM**.
+
+| Direction | Degrees | Fire Spreads To |
+|-----------|---------|-----------------|
+| North | 0° or 360° | South |
+| East | 90° | West |
+| South | 180° | North |
+| West | 270° | East |
+
+```{julia}
+directions = [0, 90, 180, 270]
+labels = ["From N", "From E", "From S", "From W"]
+plots_arr = []
+
+for (dir, lbl) in zip(directions, labels)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 15.0,
+        wind_direction = Float64(dir),
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+
+    state = FireState{Float64}(80, 80, 30.0)
+    ignite!(state, 40, 40, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 20.0)
+
+    push!(plots_arr, heatmap(state.burned', title = lbl, color = :YlOrRd,
+        aspect_ratio = 1, colorbar = false))
+end
+
+plot(plots_arr..., layout = (2, 2), size = (600, 600))
+```
+
+## Fire Weather Scenarios
+
+### Typical Conditions
+
+```{julia}
+# Moderate conditions
+moderate = ConstantWeather{Float64}(
+    wind_speed_mph = 8.0,
+    wind_direction = 270.0,
+    M1 = 0.08, M10 = 0.10, M100 = 0.12,
+    MLH = 0.80, MLW = 1.00
+)
+
+# Hot/dry conditions
+hot_dry = ConstantWeather{Float64}(
+    wind_speed_mph = 15.0,
+    wind_direction = 270.0,
+    M1 = 0.04, M10 = 0.06, M100 = 0.08,
+    MLH = 0.40, MLW = 0.60
+)
+
+# Red flag conditions
+red_flag = ConstantWeather{Float64}(
+    wind_speed_mph = 25.0,
+    wind_direction = 45.0,  # Santa Ana direction
+    M1 = 0.02, M10 = 0.04, M100 = 0.06,
+    MLH = 0.30, MLW = 0.50
+)
+
+println("Moderate: $(moderate.wind_speed_20ft) mph, $(moderate.M1*100)% M1")
+println("Hot/Dry: $(hot_dry.wind_speed_20ft) mph, $(hot_dry.M1*100)% M1")
+println("Red Flag: $(red_flag.wind_speed_20ft) mph, $(red_flag.M1*100)% M1")
+```
+
+### Comparing Scenarios
+
+```{julia}
+scenarios = [
+    ("Moderate", moderate),
+    ("Hot/Dry", hot_dry),
+    ("Red Flag", red_flag)
+]
+
+plots_arr = []
+
+for (name, weather) in scenarios
+    state = FireState{Float64}(100, 100, 30.0)
+    ignite!(state, 30, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+    acres = round(get_burned_area_acres(state), digits=1)
+    push!(plots_arr, heatmap(state.burned',
+        title = "$name\n$acres acres",
+        color = :YlOrRd, aspect_ratio = 1, colorbar = false))
+end
+
+plot(plots_arr..., layout = (1, 3), size = (900, 300))
+```

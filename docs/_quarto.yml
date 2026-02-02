@@ -1,0 +1,48 @@
+project:
+  type: book
+  output-dir: _site
+
+engine: julia
+
+jupyter:
+  kernel: julia-1.12
+
+book:
+  title: "Elmfire.jl"
+  description: "A Julia implementation of the ELMFIRE wildfire simulation model"
+  repo-url: https://github.com/RallypointOne/Elmfire.jl
+  repo-actions: [source]
+  chapters:
+    - index.qmd
+    - getting-started.qmd
+    - part: Tutorials
+      chapters:
+        - tutorials/index.qmd
+        - tutorials/basic-simulation.qmd
+        - tutorials/weather-effects.qmd
+        - tutorials/terrain-effects.qmd
+        - tutorials/crown-fire.qmd
+        - tutorials/spotting.qmd
+        - tutorials/ensemble.qmd
+        - tutorials/wui.qmd
+        - tutorials/suppression.qmd
+    - part: API Reference
+      chapters:
+        - reference/index.qmd
+        - reference/fuel-models.qmd
+        - reference/simulation.qmd
+        - reference/weather.qmd
+        - reference/geospatial.qmd
+        - reference/ensemble.qmd
+        - reference/wui-suppression.qmd
+
+format:
+  html:
+    theme:
+      light: flatly
+      dark: darkly
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    code-tools: true
+    highlight-style: github

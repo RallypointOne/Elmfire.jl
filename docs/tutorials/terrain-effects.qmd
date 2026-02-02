@@ -1,0 +1,289 @@
+---
+title: "Terrain Effects"
+subtitle: "Slope, aspect, and topographic influence"
+---
+
+Terrain dramatically influences fire behavior. This tutorial explores slope and aspect effects.
+
+```{julia}
+using Elmfire
+using Plots
+```
+
+## Slope Effects
+
+Fire spreads faster uphill due to:
+- Preheating of fuels above the fire
+- Convective heat transfer
+- Flame tilting toward uphill fuels
+
+```{julia}
+fuel_table = create_standard_fuel_table(Float64)
+
+slopes = 0:5:35
+areas = Float64[]
+
+for slp in slopes
+    state = FireState{Float64}(100, 100, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 5.0,
+        wind_direction = 180.0,  # From south
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+    ignite!(state, 50, 50, 0.0)
+    # Slope faces south (uphill to north)
+    simulate_uniform!(state, 1, fuel_table, weather, Float64(slp), 180.0, 0.0, 30.0)
+    push!(areas, get_burned_area_acres(state))
+end
+
+plot(slopes, areas,
+    xlabel = "Slope (degrees)",
+    ylabel = "Burned Area (acres)",
+    title = "Slope Effect on Fire Spread (30 min)",
+    linewidth = 2,
+    marker = :circle,
+    legend = false
+)
+```
+
+### Visualizing Slope Effect
+
+```{julia}
+slopes = [0, 10, 20, 30]
+plots = []
+
+for slp in slopes
+    state = FireState{Float64}(100, 100, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 5.0,
+        wind_direction = 180.0,
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+    ignite!(state, 50, 30, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, Float64(slp), 180.0, 0.0, 30.0)
+
+    push!(plots, heatmap(state.burned',
+        title = "Slope: $(slp)°",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    ))
+end
+
+plot(plots..., layout = (2, 2), size = (700, 700),
+    plot_title = "Fire Spread on Different Slopes (Uphill to North)")
+```
+
+## Aspect Effects
+
+Aspect determines which direction the slope faces:
+
+```{julia}
+aspects = [0, 90, 180, 270]
+aspect_labels = ["North-facing", "East-facing", "South-facing", "West-facing"]
+plots = []
+
+for (asp, lbl) in zip(aspects, aspect_labels)
+    state = FireState{Float64}(100, 100, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 5.0,
+        wind_direction = 270.0,  # Wind from west
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 15.0, Float64(asp), 0.0, 25.0)
+
+    push!(plots, heatmap(state.burned',
+        title = lbl,
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    ))
+end
+
+plot(plots..., layout = (2, 2), size = (700, 700),
+    plot_title = "15° Slope with Different Aspects (Wind from West)")
+```
+
+## Slope Factor Calculation
+
+The slope factor in the Rothermel model:
+
+```{julia}
+slopes_deg = 0:1:45
+slope_factors = [calculate_tanslp2(Float64(s)) for s in slopes_deg]
+
+plot(slopes_deg, slope_factors,
+    xlabel = "Slope (degrees)",
+    ylabel = "tan²(slope)",
+    title = "Slope Factor in Rothermel Model",
+    linewidth = 2,
+    legend = false
+)
+```
+
+## Wind vs Slope Interaction
+
+Wind and slope can reinforce or oppose each other:
+
+```{julia}
+# Create scenarios
+scenarios = [
+    ("Wind uphill", 180.0, 180.0),      # Wind from S, slope faces S (uphill N)
+    ("Wind downhill", 0.0, 180.0),       # Wind from N, slope faces S (downhill N)
+    ("Wind cross-slope", 270.0, 180.0),  # Wind from W, slope faces S
+]
+
+plots = []
+
+for (name, wind_dir, aspect) in scenarios
+    state = FireState{Float64}(100, 100, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 10.0,
+        wind_direction = wind_dir,
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 20.0, aspect, 0.0, 25.0)
+
+    acres = round(get_burned_area_acres(state), digits=1)
+    push!(plots, heatmap(state.burned',
+        title = "$name\n$acres acres",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    ))
+end
+
+plot(plots..., layout = (1, 3), size = (900, 300))
+```
+
+## Complex Terrain
+
+Simulate fire on varying terrain:
+
+```{julia}
+ncols, nrows = 100, 100
+cellsize = 30.0
+
+# Create a simple terrain: valley running E-W
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+
+for ix in 1:ncols
+    for iy in 1:nrows
+        dist_from_center = abs(iy - 50)
+        slope[ix, iy] = min(25.0, dist_from_center * 0.6)
+        aspect[ix, iy] = iy < 50 ? 180.0 : 0.0  # South-facing above, North-facing below
+    end
+end
+
+state = FireState{Float64}(ncols, nrows, cellsize)
+fuel_ids = fill(1, ncols, nrows)
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 8.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+ignite!(state, 50, 50, 0.0)  # Ignite at valley bottom
+simulate!(state, fuel_ids, fuel_table, weather, slope, aspect, 0.0, 45.0)
+
+p1 = heatmap(slope', title = "Slope (degrees)", color = :terrain, aspect_ratio = 1)
+p2 = heatmap(aspect', title = "Aspect (degrees)", color = :hsv, aspect_ratio = 1)
+p3 = heatmap(state.burned', title = "Burned Area", color = :YlOrRd, aspect_ratio = 1)
+
+toa = copy(state.time_of_arrival)
+toa[toa .< 0] .= NaN
+p4 = heatmap(toa', title = "Time of Arrival", color = :viridis, aspect_ratio = 1)
+
+plot(p1, p2, p3, p4, layout = (2, 2), size = (800, 800))
+```
+
+## Ridge and Valley Effects
+
+Fire behavior changes dramatically at terrain features:
+
+```{julia}
+# Create terrain with ridge
+ncols, nrows = 120, 120
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+
+# Ridge running N-S at x=60
+for ix in 1:ncols
+    for iy in 1:nrows
+        dist = abs(ix - 60)
+        if dist < 30
+            slope[ix, iy] = 20.0 * (1 - dist/30)
+            aspect[ix, iy] = ix < 60 ? 90.0 : 270.0  # E or W facing
+        end
+    end
+end
+
+state = FireState{Float64}(ncols, nrows, 30.0)
+fuel_ids = fill(1, ncols, nrows)
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 10.0,
+    wind_direction = 270.0,  # From west
+    M1 = 0.05, M10 = 0.07, M100 = 0.09,
+    MLH = 0.55, MLW = 0.85
+)
+
+ignite!(state, 30, 60, 0.0)  # Ignite west of ridge
+simulate!(state, fuel_ids, fuel_table, weather, slope, aspect, 0.0, 45.0)
+
+p1 = heatmap(slope', title = "Ridge Terrain (Slope)", color = :terrain, aspect_ratio = 1)
+p2 = heatmap(state.burned', title = "Fire Spread Over Ridge", color = :YlOrRd, aspect_ratio = 1)
+
+plot(p1, p2, layout = (1, 2), size = (800, 400))
+```
+
+Fire accelerates up the windward slope and may slow on the lee side.
+
+## Steep Terrain Considerations
+
+On very steep slopes (>30°), fire behavior can become extreme:
+
+```{julia}
+# Extreme slope scenario
+state = FireState{Float64}(100, 100, 30.0)
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 15.0,
+    wind_direction = 180.0,  # From south (uphill)
+    M1 = 0.04, M10 = 0.06, M100 = 0.08,
+    MLH = 0.40, MLW = 0.70
+)
+
+ignite!(state, 50, 20, 0.0)
+simulate_uniform!(state, 4, fuel_table, weather, 35.0, 180.0, 0.0, 20.0)
+
+# Check fireline intensity
+max_flin = maximum(state.fireline_intensity)
+println("Maximum fireline intensity: $(round(max_flin, digits=0)) kW/m")
+
+# Classify intensity
+if max_flin > 10000
+    println("EXTREME fire behavior - spotting likely, aerial suppression ineffective")
+elseif max_flin > 4000
+    println("VERY HIGH intensity - indirect attack recommended")
+elseif max_flin > 2000
+    println("HIGH intensity - mechanical equipment needed")
+else
+    println("MODERATE intensity - direct attack possible")
+end
+
+flin = copy(state.fireline_intensity)
+flin[flin .== 0] .= NaN
+
+heatmap(flin',
+    title = "Fireline Intensity on 35° Slope\nMax: $(round(max_flin, digits=0)) kW/m",
+    color = :inferno,
+    aspect_ratio = 1
+)
+```

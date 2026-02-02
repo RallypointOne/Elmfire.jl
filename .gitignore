@@ -1,1 +1,10 @@
 /Manifest*.toml
+*.claude
+docs/_site
+docs/_freeze
+docs/.quarto
+
+# Marshall Fire calibration example outputs
+examples/marshall_fire/results/
+examples/marshall_fire/data/
+examples/output/

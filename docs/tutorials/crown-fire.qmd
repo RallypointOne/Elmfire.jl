@@ -1,0 +1,219 @@
+---
+title: "Crown Fire"
+subtitle: "Modeling passive and active crown fire"
+---
+
+Crown fire occurs when fire spreads through the canopy layer of trees. This tutorial covers crown fire modeling in Elmfire.jl.
+
+```{julia}
+using Elmfire
+using Plots
+```
+
+## Crown Fire Basics
+
+Crown fire is classified as:
+- **Passive (torching)**: Individual trees or groups torch, but fire doesn't spread continuously through canopy
+- **Active**: Fire spreads continuously through the canopy, driven by wind
+
+## Canopy Properties
+
+Crown fire requires canopy data:
+
+```{julia}
+ncols, nrows = 100, 100
+cellsize = 30.0
+
+# Create canopy grid with typical forest values
+canopy = CanopyGrid{Float64}(
+    fill(0.15, ncols, nrows),   # cbd: Canopy bulk density (kg/m³)
+    fill(2.0, ncols, nrows),     # cbh: Canopy base height (m)
+    fill(0.6, ncols, nrows),     # cc: Canopy cover (fraction)
+    fill(20.0, ncols, nrows)     # ch: Canopy height (m)
+)
+
+println("Canopy properties:")
+println("  Bulk density: 0.15 kg/m³")
+println("  Base height: 2.0 m")
+println("  Cover: 60%")
+println("  Height: 20 m")
+```
+
+## Enabling Crown Fire
+
+Configure simulation for crown fire:
+
+```{julia}
+config = SimulationConfig{Float64}(
+    enable_crown_fire = true,
+    enable_spotting = false,
+    crown_fire_adj = 1.0,
+    critical_canopy_cover = 0.4,
+    foliar_moisture = 100.0
+)
+```
+
+## Surface Fire vs Crown Fire
+
+Compare simulations with and without crown fire:
+
+```{julia}
+fuel_table = create_standard_fuel_table(Float64)
+fuel_ids = fill(10, ncols, nrows)  # FBFM10: Timber understory
+
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 20.0,
+    wind_direction = 270.0,
+    M1 = 0.04, M10 = 0.06, M100 = 0.08,
+    MLH = 0.50, MLW = 0.80
+)
+
+# Surface fire only
+state_surface = FireState{Float64}(ncols, nrows, cellsize)
+ignite!(state_surface, 50, 50, 0.0)
+
+config_surface = SimulationConfig{Float64}(enable_crown_fire = false)
+weather_interp = create_constant_interpolator(weather, ncols, nrows, cellsize)
+
+simulate_full!(state_surface, fuel_ids, fuel_table, weather_interp, slope, aspect,
+    0.0, 30.0; config = config_surface)
+
+# Crown fire enabled
+state_crown = FireState{Float64}(ncols, nrows, cellsize)
+ignite!(state_crown, 50, 50, 0.0)
+
+config_crown = SimulationConfig{Float64}(
+    enable_crown_fire = true,
+    critical_canopy_cover = 0.4,
+    foliar_moisture = 100.0
+)
+
+simulate_full!(state_crown, fuel_ids, fuel_table, weather_interp, slope, aspect,
+    0.0, 30.0; canopy = canopy, config = config_crown)
+
+# Compare
+p1 = heatmap(state_surface.burned',
+    title = "Surface Fire Only\n$(round(get_burned_area_acres(state_surface), digits=1)) acres",
+    color = :YlOrRd, aspect_ratio = 1)
+
+p2 = heatmap(state_crown.burned',
+    title = "Crown Fire Enabled\n$(round(get_burned_area_acres(state_crown), digits=1)) acres",
+    color = :YlOrRd, aspect_ratio = 1)
+
+plot(p1, p2, layout = (1, 2), size = (800, 400))
+```
+
+## Critical Fireline Intensity
+
+Crown fire initiation depends on fireline intensity reaching the critical threshold:
+
+```{julia}
+# Calculate critical intensity for different canopy base heights
+cbh_values = 1.0:0.5:10.0  # meters
+foliar_moisture = 100.0  # percent
+
+i_crit = [critical_fireline_intensity(cbh, foliar_moisture) for cbh in cbh_values]
+
+plot(cbh_values, i_crit,
+    xlabel = "Canopy Base Height (m)",
+    ylabel = "Critical Fireline Intensity (kW/m)",
+    title = "Crown Fire Initiation Threshold",
+    linewidth = 2,
+    legend = false
+)
+```
+
+Higher canopy base heights require greater fireline intensity to initiate crown fire.
+
+## Canopy Bulk Density Effect
+
+```{julia}
+cbd_values = [0.05, 0.10, 0.15, 0.20]
+plots = []
+
+for cbd in cbd_values
+    canopy_var = CanopyGrid{Float64}(
+        fill(cbd, ncols, nrows),
+        fill(2.0, ncols, nrows),
+        fill(0.6, ncols, nrows),
+        fill(20.0, ncols, nrows)
+    )
+
+    state = FireState{Float64}(ncols, nrows, cellsize)
+    ignite!(state, 50, 50, 0.0)
+
+    simulate_full!(state, fuel_ids, fuel_table, weather_interp, slope, aspect,
+        0.0, 25.0; canopy = canopy_var, config = config_crown)
+
+    push!(plots, heatmap(state.burned',
+        title = "CBD = $cbd kg/m³",
+        color = :YlOrRd, aspect_ratio = 1, colorbar = false
+    ))
+end
+
+plot(plots..., layout = (2, 2), size = (700, 700),
+    plot_title = "Crown Fire vs Canopy Bulk Density")
+```
+
+## Foliar Moisture Effect
+
+```{julia}
+fm_values = [80, 100, 120, 140]
+plots = []
+
+for fm in fm_values
+    config_fm = SimulationConfig{Float64}(
+        enable_crown_fire = true,
+        foliar_moisture = Float64(fm)
+    )
+
+    state = FireState{Float64}(ncols, nrows, cellsize)
+    ignite!(state, 50, 50, 0.0)
+
+    simulate_full!(state, fuel_ids, fuel_table, weather_interp, slope, aspect,
+        0.0, 25.0; canopy = canopy, config = config_fm)
+
+    push!(plots, heatmap(state.burned',
+        title = "FM = $fm%",
+        color = :YlOrRd, aspect_ratio = 1, colorbar = false
+    ))
+end
+
+plot(plots..., layout = (2, 2), size = (700, 700),
+    plot_title = "Crown Fire vs Foliar Moisture")
+```
+
+## Combined Spread Rate
+
+The total spread rate combines surface and crown fire components:
+
+```{julia}
+# Get canopy properties
+canopy_props = CanopyProperties{Float64}(0.15, 2.0, 0.6, 20.0)
+
+# Range of surface fireline intensities
+flin_range = 100:100:5000
+
+surface_ros = 50.0  # ft/min
+combined_ros = Float64[]
+
+for flin in flin_range
+    cr = crown_spread_rate(canopy_props, Float64(flin), 20.0, 0.06, surface_ros)
+    # SpreadResult fields: velocity, vs0, ir, hpua, flin, phiw, phis
+    sr = SpreadResult{Float64}(surface_ros, surface_ros, 500.0, 1000.0, Float64(flin), 1.0, 0.0)
+    cros = combined_spread_rate(sr, cr)
+    push!(combined_ros, cros)
+end
+
+plot(flin_range, combined_ros,
+    xlabel = "Surface Fireline Intensity (kW/m)",
+    ylabel = "Combined Spread Rate (ft/min)",
+    title = "Crown Fire Contribution to Spread Rate",
+    linewidth = 2,
+    legend = false
+)
+hline!([surface_ros], linestyle = :dash, label = "Surface only")
+```

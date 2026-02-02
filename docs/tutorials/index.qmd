@@ -1,0 +1,38 @@
+---
+title: "Tutorials"
+subtitle: "Step-by-step guides for Elmfire.jl"
+---
+
+These tutorials provide in-depth coverage of Elmfire.jl's features with practical examples.
+
+## Basic Tutorials
+
+- **[Basic Simulation](basic-simulation.qmd)** - Core simulation concepts and API
+- **[Weather Effects](weather-effects.qmd)** - Wind, moisture, and time-varying weather
+- **[Terrain Effects](terrain-effects.qmd)** - Slope, aspect, and topographic influence
+
+## Advanced Fire Behavior
+
+- **[Crown Fire](crown-fire.qmd)** - Passive and active crown fire modeling
+- **[Spotting](spotting.qmd)** - Ember generation and transport
+
+## Operational Features
+
+- **[Ensemble Simulations](ensemble.qmd)** - Monte Carlo probabilistic forecasting
+- **[WUI Modeling](wui.qmd)** - Wildland-urban interface and building ignition
+- **[Suppression](suppression.qmd)** - Fire containment and resource management
+
+## Prerequisites
+
+All tutorials assume you have Elmfire.jl installed:
+
+```julia
+using Pkg
+Pkg.add("Elmfire")
+```
+
+And the following packages for visualization:
+
+```julia
+Pkg.add("Plots")
+```

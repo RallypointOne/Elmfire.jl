@@ -1,0 +1,290 @@
+---
+title: "Basic Simulation"
+subtitle: "Core simulation concepts and API"
+---
+
+This tutorial covers the fundamental components of an Elmfire.jl simulation.
+
+## The FireState Structure
+
+The `FireState` is the central data structure that holds all simulation state:
+
+```{julia}
+using Elmfire
+using Plots
+
+# Create a fire state
+state = FireState{Float64}(100, 100, 30.0)
+
+println("Grid dimensions: $(state.ncols) x $(state.nrows)")
+println("Cell size: $(state.cellsize) ft")
+println("Padding: $(state.padding) cells")
+println("Phi array size: ", size(state.phi))
+```
+
+### Key Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `phi` | `Matrix{T}` | Level set field (negative = burned) |
+| `burned` | `BitMatrix` | Boolean burned map |
+| `time_of_arrival` | `Matrix{T}` | When each cell burned (-1 = unburned) |
+| `spread_rate` | `Matrix{T}` | Spread rate at burn time (ft/min) |
+| `fireline_intensity` | `Matrix{T}` | Intensity at burn time (kW/m) |
+| `flame_length` | `Matrix{T}` | Flame length at burn time (ft) |
+
+## Fuel Models
+
+Fuel models describe the physical properties of vegetation that affect fire behavior:
+
+```{julia}
+# Create the standard fuel table
+fuel_table = create_standard_fuel_table(Float64)
+
+# Get a specific fuel model
+fm = get_fuel_model(fuel_table, 1, 60)  # FBFM01 at live moisture class 60
+
+println("Fuel Model: ", fm.name)
+println("Fuel bed depth: ", fm.delta, " ft")
+println("1-hr load: ", fm.W0[1], " lb/ft²")
+println("Dead fuel extinction moisture: ", fm.mex_dead)
+```
+
+### Standard Fuel Models
+
+The 13 original FBFM models plus 40 additional Scott & Burgan models are included:
+
+```{julia}
+# List available fuel models
+fuel_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+names = [get_fuel_model(fuel_table, id, 60).name for id in fuel_ids]
+
+for (id, name) in zip(fuel_ids, names)
+    println("FBFM$id: $name")
+end
+```
+
+## Weather Conditions
+
+Weather is specified using `ConstantWeather` for uniform conditions:
+
+```{julia}
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 15.0,      # 20-ft wind speed
+    wind_direction = 270.0,     # Meteorological (FROM direction)
+    M1 = 0.06,                  # 1-hr dead fuel moisture (fraction)
+    M10 = 0.08,                 # 10-hr dead fuel moisture
+    M100 = 0.10,                # 100-hr dead fuel moisture
+    MLH = 0.60,                 # Live herbaceous moisture
+    MLW = 0.90                  # Live woody moisture
+)
+```
+
+### Wind Direction Convention
+
+Wind direction uses the **meteorological convention** (direction wind is coming FROM):
+
+- `0°` = Wind from the North (fire spreads South)
+- `90°` = Wind from the East (fire spreads West)
+- `180°` = Wind from the South (fire spreads North)
+- `270°` = Wind from the West (fire spreads East)
+
+```{julia}
+directions = [0, 90, 180, 270]
+labels = ["N→S", "E→W", "S→N", "W→E"]
+plots = []
+
+for (wd, lbl) in zip(directions, labels)
+    state = FireState{Float64}(60, 60, 30.0)
+    w = ConstantWeather{Float64}(wind_speed_mph=12.0, wind_direction=Float64(wd),
+        M1=0.06, M10=0.08, M100=0.10, MLH=0.60, MLW=0.90)
+    ignite!(state, 30, 30, 0.0)
+    simulate_uniform!(state, 1, fuel_table, w, 0.0, 0.0, 0.0, 20.0)
+    push!(plots, heatmap(state.burned', title=lbl, color=:YlOrRd,
+        aspect_ratio=1, colorbar=false, axis=false))
+end
+
+plot(plots..., layout=(2,2), size=(600,600), plot_title="Wind Direction Effects")
+```
+
+## Running a Simulation
+
+### Step 1: Initialize State
+
+```{julia}
+state = FireState{Float64}(100, 100, 30.0)
+```
+
+### Step 2: Set Up Terrain
+
+For the simplified API, terrain is specified as uniform slope and aspect:
+
+```{julia}
+slope_deg = 10.0    # 10-degree slope
+aspect_deg = 180.0  # Slope faces south (uphill is north)
+```
+
+For spatially varying terrain, use matrices:
+
+```{julia}
+# Non-uniform terrain example
+ncols, nrows = 100, 100
+slope_matrix = zeros(Float64, ncols, nrows)
+aspect_matrix = fill(180.0, ncols, nrows)
+
+# Create a ridge running east-west
+for ix in 1:ncols
+    for iy in 1:nrows
+        dist_from_center = abs(iy - 50)
+        slope_matrix[ix, iy] = min(20.0, dist_from_center * 0.5)
+        aspect_matrix[ix, iy] = iy < 50 ? 180.0 : 0.0
+    end
+end
+
+heatmap(slope_matrix', title="Slope (degrees)", color=:terrain, aspect_ratio=1)
+```
+
+### Step 3: Ignite
+
+```{julia}
+state = FireState{Float64}(100, 100, 30.0)
+
+# Single point ignition
+ignite!(state, 50, 50, 0.0)  # (x, y, time)
+
+# Or use world coordinates
+# ignite_point!(state, 1500.0, 1500.0, 0.0)  # (x_ft, y_ft, time)
+
+# Or ignite a circle
+# ignite_circle!(state, 50, 50, 3.0, 0.0)  # (cx, cy, radius_cells, time)
+```
+
+### Step 4: Run Simulation
+
+```{julia}
+weather = ConstantWeather{Float64}(wind_speed_mph=10.0, wind_direction=270.0,
+    M1=0.06, M10=0.08, M100=0.10, MLH=0.60, MLW=0.90)
+
+simulate_uniform!(
+    state,
+    1,              # Fuel model ID
+    fuel_table,
+    weather,
+    10.0,           # Slope (degrees)
+    180.0,          # Aspect (degrees)
+    0.0,            # Start time
+    60.0;           # End time
+    dt_initial = 1.0,      # Initial timestep
+    target_cfl = 0.9,      # CFL target
+    dt_max = 10.0          # Maximum timestep
+)
+
+println("Burned area: ", round(get_burned_area_acres(state), digits=2), " acres")
+```
+
+### Step 5: Extract Results
+
+```{julia}
+# Burned area
+acres = get_burned_area_acres(state)
+sq_ft = get_burned_area(state)
+
+# Fire perimeter (grid cells on the edge)
+perimeter = get_fire_perimeter(state)
+println("Perimeter cells: ", length(perimeter))
+
+# Visualize results
+p1 = heatmap(state.burned', title="Burned Area", color=:YlOrRd, aspect_ratio=1)
+
+toa = copy(state.time_of_arrival)
+toa[toa .< 0] .= NaN
+p2 = heatmap(toa', title="Time of Arrival (min)", color=:viridis, aspect_ratio=1)
+
+flin = copy(state.fireline_intensity)
+flin[flin .== 0] .= NaN
+p3 = heatmap(flin', title="Fireline Intensity (kW/m)", color=:inferno, aspect_ratio=1)
+
+fl = copy(state.flame_length)
+fl[fl .== 0] .= NaN
+p4 = heatmap(fl', title="Flame Length (ft)", color=:hot, aspect_ratio=1)
+
+plot(p1, p2, p3, p4, layout=(2,2), size=(800, 800))
+```
+
+## Simulation with Callbacks
+
+Monitor simulation progress with a callback function:
+
+```{julia}
+state = FireState{Float64}(100, 100, 30.0)
+ignite!(state, 50, 50, 0.0)
+
+# Track burned area over time
+times = Float64[]
+areas = Float64[]
+
+function my_callback(state, t, dt, iteration)
+    push!(times, t)
+    push!(areas, get_burned_area_acres(state))
+end
+
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 60.0;
+    callback = my_callback)
+
+plot(times, areas, xlabel="Time (min)", ylabel="Burned Area (acres)",
+    title="Fire Growth", legend=false, linewidth=2)
+```
+
+## Non-Uniform Conditions
+
+For spatially varying fuel and terrain, use `simulate!`:
+
+```{julia}
+ncols, nrows = 100, 100
+state = FireState{Float64}(ncols, nrows, 30.0)
+
+# Create fuel mosaic (grass and chaparral)
+fuel_ids = fill(1, ncols, nrows)
+fuel_ids[40:60, :] .= 4  # Chaparral strip
+
+# Varying terrain
+slope = zeros(Float64, ncols, nrows)
+slope[:, 60:end] .= 15.0  # Steep uphill in upper portion
+
+aspect = fill(180.0, ncols, nrows)
+
+ignite!(state, 50, 30, 0.0)
+
+simulate!(state, fuel_ids, fuel_table, weather, slope, aspect, 0.0, 45.0)
+
+p1 = heatmap(fuel_ids', title="Fuel Types", color=:Set1, aspect_ratio=1)
+p2 = heatmap(slope', title="Slope (deg)", color=:terrain, aspect_ratio=1)
+p3 = heatmap(state.burned', title="Burned", color=:YlOrRd, aspect_ratio=1)
+
+toa = copy(state.time_of_arrival)
+toa[toa .< 0] .= NaN
+p4 = heatmap(toa', title="Time of Arrival", color=:viridis, aspect_ratio=1)
+
+plot(p1, p2, p3, p4, layout=(2,2), size=(800, 800))
+```
+
+## Float32 Precision
+
+For memory-constrained applications, use Float32:
+
+```{julia}
+# Float32 simulation
+state32 = FireState{Float32}(100, 100, 30.0f0)
+fuel_table32 = create_standard_fuel_table(Float32)
+weather32 = ConstantWeather{Float32}(
+    wind_speed_mph = 10.0f0,
+    wind_direction = 270.0f0,
+    M1 = 0.06f0, M10 = 0.08f0, M100 = 0.10f0,
+    MLH = 0.60f0, MLW = 0.90f0
+)
+
+ignite!(state32, 50, 50, 0.0f0)
+simulate_uniform!(state32, 1, fuel_table32, weather32, 0.0f0, 0.0f0, 0.0f0, 30.0f0)
+
+println("Float32 burned area: ", get_burned_area_acres(state32), " acres")
+```

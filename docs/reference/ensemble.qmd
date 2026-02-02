@@ -1,0 +1,432 @@
+---
+title: "Ensemble"
+subtitle: "Monte Carlo ensemble simulations"
+---
+
+This module implements Monte Carlo ensemble simulations with parameter perturbations for probabilistic fire spread forecasting.
+
+```{julia}
+using Elmfire
+using Plots
+using Random
+Random.seed!(42)
+```
+
+## Types
+
+### PerturbationConfig
+
+Configuration for stochastic parameter perturbations.
+
+```julia
+struct PerturbationConfig{T<:AbstractFloat}
+    ignition_perturb_radius::T         # Radius for ignition point perturbation (cells)
+    wind_speed_factor_range::Tuple{T,T}  # (min, max) multiplier for wind speed
+    wind_direction_std::T              # Standard deviation for wind direction (degrees)
+    moisture_factor_range::Tuple{T,T}  # (min, max) multiplier for fuel moisture
+    spread_rate_factor_range::Tuple{T,T}  # (min, max) multiplier for spread rate
+end
+```
+
+**Constructor:**
+
+```julia
+PerturbationConfig{T}(;
+    ignition_perturb_radius = 0.0,
+    wind_speed_factor_range = (1.0, 1.0),
+    wind_direction_std = 0.0,
+    moisture_factor_range = (1.0, 1.0),
+    spread_rate_factor_range = (1.0, 1.0)
+)
+```
+
+```{julia}
+# No perturbations (deterministic)
+perturb_none = PerturbationConfig{Float64}()
+
+# Moderate perturbations
+perturb_moderate = PerturbationConfig{Float64}(
+    ignition_perturb_radius = 2.0,
+    wind_speed_factor_range = (0.8, 1.2),
+    wind_direction_std = 15.0,
+    moisture_factor_range = (0.9, 1.1)
+)
+
+# High uncertainty
+perturb_high = PerturbationConfig{Float64}(
+    ignition_perturb_radius = 5.0,
+    wind_speed_factor_range = (0.6, 1.4),
+    wind_direction_std = 30.0,
+    moisture_factor_range = (0.7, 1.3)
+)
+```
+
+### EnsembleConfig
+
+Configuration for ensemble simulation runs.
+
+```julia
+struct EnsembleConfig{T<:AbstractFloat}
+    n_simulations::Int                   # Number of ensemble members
+    base_seed::UInt64                    # Base random seed for reproducibility
+    perturbation::PerturbationConfig{T}  # Perturbation settings
+    simulation_config::SimulationConfig{T}  # Base simulation configuration
+    save_individual_results::Bool        # Save individual member results
+end
+```
+
+**Constructor:**
+
+```julia
+EnsembleConfig{T}(;
+    n_simulations = 100,
+    base_seed = UInt64(12345),
+    perturbation = PerturbationConfig{T}(),
+    simulation_config = SimulationConfig{T}(),
+    save_individual_results = false
+)
+```
+
+```{julia}
+config = EnsembleConfig{Float64}(
+    n_simulations = 50,
+    base_seed = UInt64(42),
+    perturbation = perturb_moderate,
+    save_individual_results = true
+)
+
+println("Ensemble size: $(config.n_simulations)")
+println("Base seed: $(config.base_seed)")
+```
+
+### EnsembleMember
+
+Results from a single ensemble member simulation.
+
+```julia
+struct EnsembleMember{T<:AbstractFloat}
+    id::Int                      # Member ID (1 to n_simulations)
+    seed::UInt64                 # Random seed used
+    burned::BitMatrix            # Burned area
+    time_of_arrival::Matrix{T}   # Time of arrival
+    burned_area_acres::T         # Total burned area
+    max_spread_rate::T           # Maximum spread rate
+end
+```
+
+### EnsembleResult
+
+Aggregated results from an ensemble of simulations.
+
+```julia
+mutable struct EnsembleResult{T<:AbstractFloat}
+    config::EnsembleConfig{T}
+    members::Vector{EnsembleMember{T}}  # Individual results (if saved)
+    burn_probability::Matrix{T}         # Probability of each cell burning
+    mean_arrival_time::Matrix{T}        # Mean arrival time (for cells that burn)
+    std_arrival_time::Matrix{T}         # Std dev of arrival time
+    mean_burned_area::T                 # Mean burned area across ensemble
+    std_burned_area::T                  # Std dev of burned area
+    convergence_history::Vector{T}      # RMS change in burn probability
+end
+```
+
+## Functions
+
+### run_ensemble!
+
+Run a Monte Carlo ensemble of fire simulations.
+
+```julia
+run_ensemble!(
+    config::EnsembleConfig{T},
+    state_template::FireState{T},
+    fuel_ids::Matrix{Int},
+    fuel_table::FuelModelTable{T},
+    weather::ConstantWeather{T},
+    slope::Matrix{T},
+    aspect::Matrix{T},
+    ignition_ix::Int, ignition_iy::Int,
+    t_start::T, t_stop::T;
+    show_progress = true
+) -> EnsembleResult{T}
+```
+
+```{julia}
+# Setup
+ncols, nrows = 80, 80
+fuel_table = create_standard_fuel_table(Float64)
+
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 12.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+fuel_ids = fill(1, ncols, nrows)
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+state_template = FireState{Float64}(ncols, nrows, 30.0)
+
+# Run small ensemble
+config = EnsembleConfig{Float64}(
+    n_simulations = 30,
+    base_seed = UInt64(42),
+    perturbation = PerturbationConfig{Float64}(
+        wind_speed_factor_range = (0.8, 1.2),
+        wind_direction_std = 20.0
+    )
+)
+
+result = run_ensemble!(
+    config,
+    state_template,
+    fuel_ids, fuel_table, weather,
+    slope, aspect,
+    40, 40,  # Ignition point
+    0.0, 25.0;
+    show_progress = false
+)
+
+println("Mean burned area: $(round(result.mean_burned_area, digits=1)) acres")
+println("Std burned area: $(round(result.std_burned_area, digits=1)) acres")
+```
+
+### run_ensemble_threaded!
+
+Run ensemble using multiple threads for parallel execution.
+
+```julia
+run_ensemble_threaded!(
+    config::EnsembleConfig{T},
+    state_template::FireState{T},
+    fuel_ids::Matrix{Int},
+    fuel_table::FuelModelTable{T},
+    weather::ConstantWeather{T},
+    slope::Matrix{T},
+    aspect::Matrix{T},
+    ignition_ix::Int, ignition_iy::Int,
+    t_start::T, t_stop::T;
+    show_progress = true
+) -> EnsembleResult{T}
+```
+
+This function distributes ensemble members across available threads for faster execution.
+
+### perturb_weather
+
+Apply stochastic perturbations to weather conditions.
+
+```julia
+perturb_weather(weather::ConstantWeather{T}, config::PerturbationConfig{T}, rng) -> ConstantWeather{T}
+```
+
+```{julia}
+base_weather = ConstantWeather{Float64}(
+    wind_speed_mph = 15.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+perturb = PerturbationConfig{Float64}(
+    wind_speed_factor_range = (0.7, 1.3),
+    wind_direction_std = 25.0,
+    moisture_factor_range = (0.8, 1.2)
+)
+
+rng = MersenneTwister(42)
+
+println("Base weather: $(base_weather.wind_speed_20ft) mph from $(base_weather.wind_direction)°")
+println("\nPerturbed samples:")
+for i in 1:5
+    w = perturb_weather(base_weather, perturb, rng)
+    println("  $(round(w.wind_speed_20ft, digits=1)) mph from $(round(w.wind_direction, digits=0))°, M1=$(round(w.M1, digits=3))")
+end
+```
+
+### perturb_ignition
+
+Perturb ignition location within a given radius.
+
+```julia
+perturb_ignition(ix::Int, iy::Int, radius::T, ncols::Int, nrows::Int, rng) -> Tuple{Int, Int}
+```
+
+### compute_burn_probability
+
+Compute burn probability from ensemble members.
+
+```julia
+compute_burn_probability(members::Vector{EnsembleMember}, ncols::Int, nrows::Int) -> Matrix{T}
+```
+
+### compute_mean_arrival_time
+
+Compute mean arrival time from ensemble members.
+
+```julia
+compute_mean_arrival_time(members::Vector{EnsembleMember}, ncols::Int, nrows::Int) -> Matrix{T}
+```
+
+### aggregate_ensemble_statistics!
+
+Update aggregated statistics in an EnsembleResult.
+
+```julia
+aggregate_ensemble_statistics!(result::EnsembleResult)
+```
+
+### check_convergence
+
+Check if the ensemble has converged based on burn probability stability.
+
+```julia
+check_convergence(result::EnsembleResult, threshold::T = T(0.01)) -> Bool
+```
+
+### get_exceedance_probability
+
+Get probability of burned area exceeding a threshold.
+
+```julia
+get_exceedance_probability(result::EnsembleResult, area_threshold::T) -> T
+```
+
+```{julia}
+# What's the probability of burning more than 2 acres?
+prob_exceed = get_exceedance_probability(result, 2.0)
+println("P(burned area > 2 acres) = $(round(prob_exceed * 100, digits=1))%")
+```
+
+### get_percentile_fire
+
+Get the ensemble member closest to a given percentile of burned area.
+
+```julia
+get_percentile_fire(result::EnsembleResult, percentile::T) -> EnsembleMember
+```
+
+## Visualization
+
+### Burn Probability Map
+
+```{julia}
+heatmap(result.burn_probability',
+    title = "Burn Probability",
+    color = :YlOrRd,
+    clims = (0, 1),
+    aspect_ratio = 1,
+    xlabel = "X (cells)",
+    ylabel = "Y (cells)"
+)
+```
+
+### Comparing Percentiles
+
+```{julia}
+# Run larger ensemble for percentile analysis
+config_large = EnsembleConfig{Float64}(
+    n_simulations = 50,
+    base_seed = UInt64(123),
+    perturbation = PerturbationConfig{Float64}(
+        wind_speed_factor_range = (0.7, 1.3),
+        wind_direction_std = 25.0
+    ),
+    save_individual_results = true
+)
+
+result_large = run_ensemble!(
+    config_large, state_template,
+    fuel_ids, fuel_table, weather,
+    slope, aspect, 40, 40, 0.0, 25.0;
+    show_progress = false
+)
+
+# Get percentile fires
+p10 = get_percentile_fire(result_large, 0.10)
+p50 = get_percentile_fire(result_large, 0.50)
+p90 = get_percentile_fire(result_large, 0.90)
+
+plots_arr = [
+    heatmap(p10.burned', title = "10th percentile\n$(round(p10.burned_area_acres, digits=1)) acres",
+        color = :YlOrRd, aspect_ratio = 1, colorbar = false),
+    heatmap(p50.burned', title = "50th percentile\n$(round(p50.burned_area_acres, digits=1)) acres",
+        color = :YlOrRd, aspect_ratio = 1, colorbar = false),
+    heatmap(p90.burned', title = "90th percentile\n$(round(p90.burned_area_acres, digits=1)) acres",
+        color = :YlOrRd, aspect_ratio = 1, colorbar = false)
+]
+
+plot(plots_arr..., layout = (1, 3), size = (900, 300))
+```
+
+### Burned Area Distribution
+
+```{julia}
+if !isempty(result_large.members)
+    areas = [m.burned_area_acres for m in result_large.members]
+
+    histogram(areas,
+        xlabel = "Burned Area (acres)",
+        ylabel = "Frequency",
+        title = "Distribution of Burned Area",
+        bins = 15,
+        legend = false
+    )
+end
+```
+
+## Best Practices
+
+### Ensemble Size
+
+- **Small ensembles (20-50)**: Quick analysis, rough probability estimates
+- **Medium ensembles (100-200)**: Good balance of accuracy and speed
+- **Large ensembles (500+)**: High-precision probability maps, convergence testing
+
+```{julia}
+# Check convergence history
+if !isempty(result_large.convergence_history)
+    plot(result_large.convergence_history,
+        xlabel = "Ensemble Member",
+        ylabel = "RMS Change in Burn Probability",
+        title = "Convergence History",
+        linewidth = 2,
+        legend = false
+    )
+end
+```
+
+### Perturbation Settings
+
+| Uncertainty Level | Wind Speed Range | Wind Dir Std | Moisture Range |
+|-------------------|------------------|--------------|----------------|
+| Low | (0.9, 1.1) | 10° | (0.95, 1.05) |
+| Moderate | (0.8, 1.2) | 20° | (0.85, 1.15) |
+| High | (0.7, 1.3) | 30° | (0.75, 1.25) |
+| Very High | (0.5, 1.5) | 45° | (0.6, 1.4) |
+
+### Reproducibility
+
+Always set a base seed for reproducible results:
+
+```julia
+config = EnsembleConfig{Float64}(
+    n_simulations = 100,
+    base_seed = UInt64(12345)  # Set for reproducibility
+)
+```
+
+Each ensemble member uses `base_seed + member_id` as its random seed.
+
+## Parallel Execution
+
+Use `run_ensemble_threaded!` for multi-core execution:
+
+```julia
+# Start Julia with multiple threads: julia -t 8
+result = run_ensemble_threaded!(config, ...)
+```
+
+Thread scaling is approximately linear up to the number of physical cores.

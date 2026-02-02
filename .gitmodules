@@ -1,0 +1,3 @@
+[submodule "elmfire"]
+	path = elmfire
+	url = https://github.com/lautenberger/elmfire.git

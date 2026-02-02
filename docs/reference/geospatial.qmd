@@ -1,0 +1,344 @@
+---
+title: "Geospatial I/O"
+subtitle: "Reading and writing geospatial data"
+---
+
+This module provides GeoTIFF reading/writing, raster processing, and landscape data management for fire simulations.
+
+```{julia}
+using Elmfire
+```
+
+## Types
+
+### GeoMetadata
+
+Geospatial metadata for a raster dataset.
+
+```julia
+struct GeoMetadata{T<:AbstractFloat}
+    ncols::Int          # Number of columns
+    nrows::Int          # Number of rows
+    cellsize::T         # Cell size (same units as CRS)
+    xllcorner::T        # X coordinate of lower-left corner
+    yllcorner::T        # Y coordinate of lower-left corner
+    nodata_value::T     # NoData value
+    crs::String         # Coordinate reference system (PROJ4 string)
+    transform::NTuple{6,T}  # GDAL GeoTransform
+end
+```
+
+**Constructor:**
+
+```julia
+GeoMetadata{T}(;
+    ncols::Int,
+    nrows::Int,
+    cellsize::T,
+    xllcorner = zero(T),
+    yllcorner = zero(T),
+    nodata_value = T(-9999),
+    crs = "EPSG:4326",
+    transform = nothing
+)
+```
+
+The GDAL GeoTransform is a 6-element tuple: `(xmin, xres, xskew, ymax, yskew, -yres)`
+
+```{julia}
+metadata = GeoMetadata{Float64}(
+    ncols = 100,
+    nrows = 100,
+    cellsize = 30.0,
+    xllcorner = 0.0,
+    yllcorner = 0.0,
+    crs = "EPSG:32610"  # UTM Zone 10N
+)
+
+println("Grid size: $(metadata.ncols) x $(metadata.nrows)")
+println("Cell size: $(metadata.cellsize)")
+println("CRS: $(metadata.crs)")
+```
+
+### GeoRaster
+
+A raster dataset with geospatial metadata.
+
+```julia
+struct GeoRaster{T<:AbstractFloat}
+    data::Matrix{T}
+    metadata::GeoMetadata{T}
+end
+```
+
+```{julia}
+# Create a simple raster
+data = randn(Float64, 50, 50) .* 100 .+ 500  # Elevation-like data
+metadata = GeoMetadata{Float64}(ncols=50, nrows=50, cellsize=30.0)
+raster = GeoRaster{Float64}(data, metadata)
+
+println("Raster size: $(size(raster))")
+println("Data range: $(minimum(raster.data)) - $(maximum(raster.data))")
+```
+
+### LandscapeData
+
+Complete landscape data for fire simulation including fuel, topography, and canopy.
+
+```julia
+struct LandscapeData{T<:AbstractFloat}
+    fuel_ids::Matrix{Int}                 # Fuel model IDs
+    slope::Matrix{T}                      # Slope (degrees)
+    aspect::Matrix{T}                     # Aspect (degrees from north)
+    elevation::Matrix{T}                  # Elevation
+    canopy::Union{Nothing, CanopyGrid{T}} # Optional canopy data
+    metadata::GeoMetadata{T}              # Geospatial metadata
+end
+```
+
+## Reading Functions
+
+### read_geotiff
+
+Read a GeoTIFF file and return a GeoRaster.
+
+```julia
+read_geotiff(::Type{T}, path::String) -> GeoRaster{T}
+read_geotiff(path::String) -> GeoRaster{Float64}
+```
+
+The data is automatically transposed to match Julia's column-major order.
+
+### read_fuel_raster
+
+Read a fuel model raster (integer fuel IDs) and return the matrix with metadata.
+
+```julia
+read_fuel_raster(::Type{T}, path::String) -> Tuple{Matrix{Int}, GeoMetadata{T}}
+```
+
+### read_dem
+
+Read a Digital Elevation Model raster.
+
+```julia
+read_dem(::Type{T}, path::String) -> GeoRaster{T}
+```
+
+### read_landscape
+
+Read a complete landscape dataset from GeoTIFF files.
+
+```julia
+read_landscape(::Type{T}, fuel_path, dem_path;
+    cbd_path = nothing,    # Canopy bulk density
+    cbh_path = nothing,    # Canopy base height
+    cc_path = nothing,     # Canopy cover
+    ch_path = nothing      # Canopy height
+) -> LandscapeData{T}
+```
+
+**Example usage:**
+
+```julia
+# Read basic landscape
+landscape = read_landscape(Float64,
+    "fuel_model.tif",
+    "elevation.tif"
+)
+
+# Read with canopy data for crown fire
+landscape = read_landscape(Float64,
+    "fuel_model.tif",
+    "elevation.tif";
+    cbd_path = "canopy_bulk_density.tif",
+    cbh_path = "canopy_base_height.tif",
+    cc_path = "canopy_cover.tif",
+    ch_path = "canopy_height.tif"
+)
+```
+
+## Writing Functions
+
+### write_geotiff
+
+Write a GeoRaster to a GeoTIFF file.
+
+```julia
+write_geotiff(path::String, raster::GeoRaster)
+write_geotiff(path::String, data::Matrix, metadata::GeoMetadata)
+```
+
+### write_fire_perimeter
+
+Write fire perimeter to a GeoJSON file.
+
+```julia
+write_fire_perimeter(path::String, state::FireState, metadata::GeoMetadata; format=:geojson)
+```
+
+## Terrain Processing
+
+### compute_slope_aspect
+
+Compute slope and aspect from a DEM using a 3x3 moving window.
+
+```julia
+compute_slope_aspect(dem::GeoRaster) -> Tuple{Matrix, Matrix}
+compute_slope_aspect(elevation::Matrix, cellsize) -> Tuple{Matrix, Matrix}
+```
+
+Returns `(slope_degrees, aspect_degrees)` where:
+- Slope is in degrees (0-90)
+- Aspect is in degrees clockwise from north (0-360), with flat areas set to 0
+
+```{julia}
+# Create synthetic elevation data (a hill)
+ncols, nrows = 100, 100
+elevation = zeros(Float64, ncols, nrows)
+
+for ix in 1:ncols
+    for iy in 1:nrows
+        # Distance from center
+        dx = ix - 50
+        dy = iy - 50
+        dist = sqrt(dx^2 + dy^2)
+        # Gaussian hill
+        elevation[ix, iy] = 100 * exp(-dist^2 / 500)
+    end
+end
+
+# Compute slope and aspect
+slope, aspect = compute_slope_aspect(elevation, 30.0)
+
+println("Slope range: $(round(minimum(slope), digits=1))° - $(round(maximum(slope), digits=1))°")
+println("Aspect range: $(round(minimum(aspect), digits=1))° - $(round(maximum(aspect), digits=1))°")
+```
+
+```{julia}
+using Plots
+
+p1 = heatmap(elevation', title = "Elevation", color = :terrain)
+p2 = heatmap(slope', title = "Slope (degrees)", color = :YlOrRd)
+p3 = heatmap(aspect', title = "Aspect (degrees)", color = :hsv)
+
+plot(p1, p2, p3, layout = (1, 3), size = (900, 300))
+```
+
+## Coordinate Conversion
+
+### grid_to_geo
+
+Convert grid coordinates to geographic coordinates.
+
+```julia
+grid_to_geo(ix::Int, iy::Int, metadata::GeoMetadata) -> Tuple{T, T}
+```
+
+### geo_to_grid
+
+Convert geographic coordinates to grid coordinates.
+
+```julia
+geo_to_grid(x::T, y::T, metadata::GeoMetadata) -> Tuple{Int, Int}
+```
+
+```{julia}
+metadata = GeoMetadata{Float64}(
+    ncols = 100,
+    nrows = 100,
+    cellsize = 30.0,
+    xllcorner = 500000.0,  # UTM easting
+    yllcorner = 4000000.0  # UTM northing
+)
+
+# Grid to geo
+x, y = grid_to_geo(50, 50, metadata)
+println("Grid (50, 50) -> Geo ($(x), $(y))")
+
+# Geo to grid
+ix, iy = geo_to_grid(x, y, metadata)
+println("Geo ($(x), $(y)) -> Grid ($ix, $iy)")
+```
+
+## Resampling
+
+### resample_to_match
+
+Resample a raster to match the resolution and extent of a target raster.
+
+```julia
+resample_to_match(source::GeoRaster, target::GeoMetadata; method=:nearest) -> GeoRaster
+```
+
+Methods:
+- `:nearest` - Nearest neighbor (default, preserves discrete values like fuel IDs)
+- `:bilinear` - Bilinear interpolation (good for continuous data like elevation)
+
+## Workflow Example
+
+```{julia}
+# This example shows the typical workflow for loading landscape data
+# and running a simulation (using synthetic data since we don't have real files)
+
+# Create synthetic landscape data
+ncols, nrows = 100, 100
+cellsize = 30.0
+
+# Synthetic elevation (valley)
+elevation = zeros(Float64, ncols, nrows)
+for ix in 1:ncols, iy in 1:nrows
+    elevation[ix, iy] = 100 + abs(iy - 50) * 5  # Valley at y=50
+end
+
+# Compute terrain from elevation
+slope, aspect = compute_slope_aspect(elevation, cellsize)
+
+# Synthetic fuel (grass with some timber)
+fuel_ids = fill(1, ncols, nrows)  # Grass
+fuel_ids[40:60, :] .= 10           # Timber along valley
+
+# Create fire state
+state = FireState{Float64}(ncols, nrows, cellsize)
+fuel_table = create_standard_fuel_table(Float64)
+
+# Weather
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 10.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+# Ignite and run
+ignite!(state, 50, 50, 0.0)
+simulate!(state, fuel_ids, fuel_table, weather, slope, aspect, 0.0, 30.0)
+
+# Visualize results
+p1 = heatmap(elevation', title = "Elevation", color = :terrain)
+p2 = heatmap(fuel_ids', title = "Fuel Model", color = [:green, :darkgreen])
+p3 = heatmap(state.burned', title = "Burned Area", color = :YlOrRd)
+
+plot(p1, p2, p3, layout = (1, 3), size = (900, 300))
+```
+
+## Data Sources
+
+Elmfire.jl can read landscape data from common sources:
+
+| Data Type | Common Sources | File Format |
+|-----------|----------------|-------------|
+| Fuel Models | LANDFIRE, FCCS | GeoTIFF |
+| Elevation | USGS 3DEP, SRTM | GeoTIFF |
+| Canopy | LANDFIRE | GeoTIFF |
+| Weather | RTMA, RAP, HRRR | NetCDF, GRIB2 |
+
+## Coordinate Reference Systems
+
+Fire simulations require projected coordinates (not lat/lon) for accurate distance calculations. Common projections:
+
+- **UTM** - Universal Transverse Mercator (e.g., EPSG:32610 for zone 10N)
+- **Albers Equal Area** - Good for large areas (e.g., EPSG:5070 for CONUS)
+- **State Plane** - US state-specific projections
+
+All input rasters should be in the same CRS before loading.

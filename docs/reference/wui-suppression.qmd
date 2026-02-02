@@ -1,0 +1,563 @@
+---
+title: "WUI & Suppression"
+subtitle: "Wildland-urban interface and fire suppression models"
+---
+
+This module provides models for building ignition in the Wildland-Urban Interface (WUI) and fire suppression resource management.
+
+```{julia}
+using Elmfire
+using Plots
+using Random
+Random.seed!(42)
+```
+
+## WUI Types
+
+### WUIBuilding
+
+Represents a building that can be ignited by a wildfire.
+
+```julia
+struct WUIBuilding{T<:AbstractFloat}
+    id::Int                       # Building identifier
+    ix::Int                       # Grid X coordinate
+    iy::Int                       # Grid Y coordinate
+    construction_type::Symbol     # :wood, :masonry, :mixed
+    combustible_fraction::T       # Fraction of combustible materials
+    ignition_temperature::T       # Critical ignition temperature (°C)
+end
+```
+
+**Constructor:**
+
+```julia
+WUIBuilding{T}(id, ix, iy;
+    construction_type = :mixed,
+    combustible_fraction = 0.5,
+    ignition_temperature = 350.0
+)
+```
+
+```{julia}
+# Create buildings of different types
+wood_house = WUIBuilding{Float64}(1, 30, 30;
+    construction_type = :wood,
+    combustible_fraction = 0.7,
+    ignition_temperature = 300.0
+)
+
+masonry_house = WUIBuilding{Float64}(2, 40, 30;
+    construction_type = :masonry,
+    combustible_fraction = 0.3,
+    ignition_temperature = 400.0
+)
+
+println("Wood building: combustible=$(wood_house.combustible_fraction)")
+println("Masonry building: combustible=$(masonry_house.combustible_fraction)")
+```
+
+### WUIGrid
+
+Grid of buildings for WUI simulation.
+
+```julia
+struct WUIGrid{T<:AbstractFloat}
+    buildings::Vector{WUIBuilding{T}}
+    building_map::Matrix{Int}      # Building ID at each cell (0 = no building)
+    ignited::BitVector             # Whether each building has ignited
+    ignition_time::Vector{T}       # Time of ignition (-1 = not ignited)
+end
+```
+
+```{julia}
+ncols, nrows = 100, 100
+
+# Create a few buildings
+buildings = [
+    WUIBuilding{Float64}(1, 60, 40; construction_type = :wood),
+    WUIBuilding{Float64}(2, 65, 45; construction_type = :wood),
+    WUIBuilding{Float64}(3, 70, 40; construction_type = :masonry),
+    WUIBuilding{Float64}(4, 60, 50; construction_type = :mixed)
+]
+
+wui_grid = WUIGrid{Float64}(buildings, ncols, nrows)
+
+println("Total buildings: $(length(wui_grid.buildings))")
+```
+
+### BuildingIgnitionResult
+
+Result of a building ignition event.
+
+```julia
+struct BuildingIgnitionResult{T<:AbstractFloat}
+    building_id::Int
+    ignition_time::T
+    ignition_source::Symbol    # :radiation, :ember, :flame_contact, :building_spread
+    ignition_probability::T
+end
+```
+
+### HamadaParameters
+
+Parameters for the Hamada urban fire spread model.
+
+```julia
+struct HamadaParameters{T<:AbstractFloat}
+    critical_separation::T      # Critical building separation (m)
+    wind_spread_factor::T       # Wind effect on spread
+    ember_generation_rate::T    # Ember generation rate
+    base_spread_rate::T         # Base spread rate between buildings
+end
+```
+
+```{julia}
+hamada = HamadaParameters{Float64}(
+    critical_separation = 10.0,
+    wind_spread_factor = 1.5,
+    ember_generation_rate = 0.1,
+    base_spread_rate = 1.0
+)
+```
+
+## WUI Functions
+
+### compute_radiative_heat_flux
+
+Calculate radiative heat flux from fire to a building.
+
+```julia
+compute_radiative_heat_flux(flin::T, distance::T, flame_height::T) -> T  # kW/m²
+```
+
+```{julia}
+# Heat flux vs distance for different fire intensities
+distances = 5:5:50
+intensities = [500, 1000, 2000, 4000]
+
+p = plot(xlabel = "Distance (m)", ylabel = "Heat Flux (kW/m²)",
+    title = "Radiative Heat Flux from Fire", legend = :topright)
+
+for I in intensities
+    fluxes = [compute_radiative_heat_flux(Float64(I), Float64(d), 5.0) for d in distances]
+    plot!(p, distances, fluxes, label = "I = $I kW/m", linewidth = 2)
+end
+
+hline!(p, [12.5], linestyle = :dash, color = :red, label = "Wood ignition threshold")
+p
+```
+
+### compute_view_factor
+
+Calculate view factor for radiation calculation.
+
+```julia
+compute_view_factor(flame_height::T, distance::T) -> T
+```
+
+### building_ignition_probability
+
+Calculate probability of building ignition given heat flux and exposure time.
+
+```julia
+building_ignition_probability(building::WUIBuilding, heat_flux::T, exposure_time::T) -> T
+```
+
+```{julia}
+wood = WUIBuilding{Float64}(1, 10, 10; construction_type = :wood)
+masonry = WUIBuilding{Float64}(2, 10, 10; construction_type = :masonry)
+
+heat_fluxes = 5:5:50
+exposure = 10.0  # minutes
+
+wood_probs = [building_ignition_probability(wood, Float64(q), exposure) for q in heat_fluxes]
+masonry_probs = [building_ignition_probability(masonry, Float64(q), exposure) for q in heat_fluxes]
+
+plot(heat_fluxes, [wood_probs masonry_probs],
+    xlabel = "Heat Flux (kW/m²)",
+    ylabel = "Ignition Probability",
+    title = "Building Ignition Probability (10 min exposure)",
+    label = ["Wood" "Masonry"],
+    linewidth = 2
+)
+```
+
+### hamada_spread_probability
+
+Calculate probability of fire spreading between buildings using Hamada model.
+
+```julia
+hamada_spread_probability(source::WUIBuilding, target::WUIBuilding, params::HamadaParameters,
+    wind_speed::T, wind_direction::T, cellsize::T) -> T
+```
+
+### update_wui_state!
+
+Update WUI state based on current fire conditions.
+
+```julia
+update_wui_state!(wui_grid::WUIGrid, fire_state::FireState, weather, t::T, dt::T, rng) -> Vector{BuildingIgnitionResult}
+```
+
+Returns a vector of any buildings that ignited during this timestep.
+
+### get_wui_statistics
+
+Get summary statistics from a WUI simulation.
+
+```julia
+get_wui_statistics(wui_grid::WUIGrid) -> NamedTuple
+```
+
+### create_building_grid
+
+Create a regular grid of buildings.
+
+```julia
+create_building_grid(::Type{T}, ncols, nrows, spacing, footprint, start_x, start_y;
+    construction_type = :mixed) -> Vector{WUIBuilding{T}}
+```
+
+```{julia}
+# Create a 4x4 grid of buildings
+buildings = create_building_grid(Float64, 100, 100, 15, 3, 60, 30;
+    construction_type = :wood)
+
+println("Created $(length(buildings)) buildings")
+```
+
+## Suppression Types
+
+### SuppressionResource
+
+A suppression resource (crew, engine, etc.).
+
+```julia
+struct SuppressionResource{T<:AbstractFloat}
+    id::Int
+    resource_type::Symbol          # :hand_crew, :engine, :dozer, :aircraft
+    location_x::T                  # Current X location
+    location_y::T                  # Current Y location
+    line_production_rate::T        # Line production (ft/min)
+    effective_width::T             # Line width (ft)
+    status::Symbol                 # :available, :deployed, :resting
+end
+```
+
+**Constructor:**
+
+```julia
+SuppressionResource{T}(id, resource_type;
+    location_x = zero(T),
+    location_y = zero(T)
+)
+```
+
+Resource types have default production rates:
+
+| Type | Production Rate | Effective Width |
+|------|-----------------|-----------------|
+| `:hand_crew` | 30 ft/min | 6 ft |
+| `:engine` | 20 ft/min | 10 ft |
+| `:dozer` | 200 ft/min | 12 ft |
+| `:aircraft` | 500 ft/min | 50 ft |
+
+```{julia}
+hand_crew = SuppressionResource{Float64}(1, :hand_crew; location_x = 10.0, location_y = 10.0)
+engine = SuppressionResource{Float64}(2, :engine; location_x = 15.0, location_y = 10.0)
+dozer = SuppressionResource{Float64}(3, :dozer; location_x = 20.0, location_y = 10.0)
+
+println("Hand crew: $(hand_crew.line_production_rate) ft/min")
+println("Engine: $(engine.line_production_rate) ft/min")
+println("Dozer: $(dozer.line_production_rate) ft/min")
+```
+
+### SuppressionState
+
+Current state of suppression activities.
+
+```julia
+mutable struct SuppressionState{T<:AbstractFloat}
+    resources::Vector{SuppressionResource{T}}
+    contained_cells::BitMatrix           # Cells with containment line
+    containment_effectiveness::Matrix{T} # Effectiveness (0-1, lower = more effective)
+    active_assignments::Dict{Int, Vector{Tuple{Int,Int}}}  # Resource assignments
+    total_line_constructed::T            # Total line length (ft)
+end
+```
+
+```{julia}
+ncols, nrows = 100, 100
+supp_state = SuppressionState{Float64}(ncols, nrows)
+
+# Add resources
+add_resource!(supp_state, hand_crew)
+add_resource!(supp_state, engine)
+add_resource!(supp_state, dozer)
+
+println("Total resources: $(length(supp_state.resources))")
+```
+
+## Suppression Functions
+
+### add_resource!
+
+Add a suppression resource to the state.
+
+```julia
+add_resource!(state::SuppressionState, resource::SuppressionResource)
+```
+
+### construct_containment_line!
+
+Build a containment line from start to target.
+
+```julia
+construct_containment_line!(state::SuppressionState, resource::SuppressionResource,
+    start_ix, start_iy, target_ix, target_iy, dt::T, cellsize::T, t::T
+) -> Tuple{Vector{Tuple{Int,Int}}, T}
+```
+
+Returns `(cells_built, length_built)`.
+
+```{julia}
+# Build a containment line
+cells, length_ft = construct_containment_line!(
+    supp_state,
+    supp_state.resources[3],  # Dozer (fast)
+    30, 30,                   # Start
+    30, 50,                   # Target
+    10.0,                     # Time available (min)
+    30.0,                     # Cell size (ft)
+    0.0                       # Current time
+)
+
+println("Built $(length(cells)) cells ($(round(length_ft, digits=0)) ft)")
+```
+
+### assign_resource!
+
+Assign a resource to build line along specified targets.
+
+```julia
+assign_resource!(state::SuppressionState, resource_id::Int, targets::Vector{Tuple{Int,Int}})
+```
+
+### apply_containment!
+
+Apply containment line effects to reduce fire spread.
+
+```julia
+apply_containment!(fire_state::FireState, suppression_state::SuppressionState)
+```
+
+### plan_indirect_attack
+
+Plan an indirect attack line ahead of the fire.
+
+```julia
+plan_indirect_attack(fire_state::FireState, weather, buffer_cells::Int) -> Vector{Tuple{Int,Int}}
+```
+
+### plan_direct_attack
+
+Plan a direct attack on the fire perimeter.
+
+```julia
+plan_direct_attack(fire_state::FireState) -> Vector{Tuple{Int,Int}}
+```
+
+### simulate_with_suppression!
+
+Run simulation with suppression activities.
+
+```julia
+simulate_with_suppression!(
+    fire_state::FireState,
+    supp_state::SuppressionState,
+    fuel_ids, fuel_table, weather,
+    slope, aspect, t_start, t_stop;
+    kwargs...
+)
+```
+
+### get_suppression_statistics
+
+Get summary statistics from suppression operations.
+
+```julia
+get_suppression_statistics(state::SuppressionState) -> NamedTuple
+```
+
+```{julia}
+stats = get_suppression_statistics(supp_state)
+
+println("Suppression Statistics:")
+println("  Total resources: $(stats.total_resources)")
+println("  Available: $(stats.available)")
+println("  Deployed: $(stats.deployed)")
+println("  Contained cells: $(stats.contained_cells)")
+println("  Total line: $(round(stats.total_line_feet, digits=0)) ft")
+```
+
+## Example: Fire with Suppression
+
+```{julia}
+ncols, nrows = 100, 100
+cellsize = 30.0
+
+fire_state = FireState{Float64}(ncols, nrows, cellsize)
+supp_state = SuppressionState{Float64}(ncols, nrows)
+fuel_table = create_standard_fuel_table(Float64)
+fuel_ids = fill(1, ncols, nrows)
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 10.0,
+    wind_direction = 270.0,
+    M1 = 0.06, M10 = 0.08, M100 = 0.10,
+    MLH = 0.60, MLW = 0.90
+)
+
+# Add a dozer
+dozer = SuppressionResource{Float64}(1, :dozer; location_x = 70.0, location_y = 50.0)
+add_resource!(supp_state, dozer)
+
+# Pre-build containment line
+for y in 30:70
+    supp_state.contained_cells[70, y] = true
+    supp_state.containment_effectiveness[70, y] = 0.1  # 90% reduction
+end
+
+# Ignite and run
+ignite!(fire_state, 40, 50, 0.0)
+
+simulate_with_suppression!(
+    fire_state, supp_state,
+    fuel_ids, fuel_table, weather,
+    slope, aspect, 0.0, 45.0
+)
+
+# Visualize
+p = heatmap(fire_state.burned',
+    title = "Fire with Containment Line",
+    color = :YlOrRd,
+    aspect_ratio = 1
+)
+
+# Overlay containment line
+contained_x = [ix for ix in 1:ncols for iy in 1:nrows if supp_state.contained_cells[ix, iy]]
+contained_y = [iy for ix in 1:ncols for iy in 1:nrows if supp_state.contained_cells[ix, iy]]
+scatter!(p, contained_x, contained_y, color = :blue, markersize = 3, label = "Containment")
+
+p
+```
+
+## Comparing Suppressed vs. Unsuppressed
+
+```{julia}
+# Without suppression
+state_no_supp = FireState{Float64}(ncols, nrows, cellsize)
+ignite!(state_no_supp, 40, 50, 0.0)
+simulate_uniform!(state_no_supp, 1, fuel_table, weather, 0.0, 0.0, 0.0, 45.0)
+
+# With suppression (already run above)
+
+p1 = heatmap(state_no_supp.burned',
+    title = "No Suppression\n$(round(get_burned_area_acres(state_no_supp), digits=1)) acres",
+    color = :YlOrRd, aspect_ratio = 1, colorbar = false)
+
+p2 = heatmap(fire_state.burned',
+    title = "With Containment\n$(round(get_burned_area_acres(fire_state), digits=1)) acres",
+    color = :YlOrRd, aspect_ratio = 1, colorbar = false)
+
+plot(p1, p2, layout = (1, 2), size = (700, 350))
+```
+
+## WUI Simulation Example
+
+```{julia}
+ncols, nrows = 100, 100
+cellsize = 30.0
+
+# Create fire state and landscape
+state = FireState{Float64}(ncols, nrows, cellsize)
+fuel_ids = fill(1, ncols, nrows)
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+
+# Create buildings in the northern part
+buildings = WUIBuilding{Float64}[]
+id = 0
+for ix in 40:12:80
+    for iy in 65:12:90
+        id += 1
+        ctype = rand([:wood, :wood, :masonry])
+        push!(buildings, WUIBuilding{Float64}(id, ix, iy; construction_type = ctype))
+    end
+end
+
+wui_grid = WUIGrid{Float64}(buildings, ncols, nrows)
+
+# Wind from south (pushing fire toward buildings)
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 12.0,
+    wind_direction = 180.0,
+    M1 = 0.05, M10 = 0.07, M100 = 0.09,
+    MLH = 0.50, MLW = 0.80
+)
+
+# Ignite in southern portion
+ignite!(state, 60, 30, 0.0)
+
+# Run simulation
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 60.0)
+
+# Update WUI state
+rng = MersenneTwister(42)
+t = 0.0
+while t < 60.0
+    ignitions = update_wui_state!(wui_grid, state, weather, t, 1.0, rng)
+    for ig in ignitions
+        println("Building $(ig.building_id) ignited at t=$(round(ig.ignition_time, digits=1))")
+    end
+    t += 1.0
+end
+
+# Visualize
+p = heatmap(state.burned',
+    title = "Fire Approaching WUI",
+    color = :YlOrRd,
+    aspect_ratio = 1
+)
+
+# Add buildings
+building_x = [b.ix for b in buildings]
+building_y = [b.iy for b in buildings]
+colors = [wui_grid.ignited[i] ? :red : :blue for i in 1:length(buildings)]
+
+scatter!(p, building_x, building_y,
+    color = colors,
+    markersize = 6,
+    markershape = :square,
+    label = false
+)
+
+p
+```
+
+```{julia}
+# WUI Statistics
+stats = get_wui_statistics(wui_grid)
+
+println("WUI Results:")
+println("  Total buildings: $(stats.total_buildings)")
+println("  Ignited: $(stats.ignited_buildings)")
+println("  Ignition rate: $(round(stats.ignition_fraction * 100, digits=1))%")
+if stats.ignited_buildings > 0
+    println("  First ignition: $(round(stats.first_ignition_time, digits=1)) min")
+    println("  Last ignition: $(round(stats.last_ignition_time, digits=1)) min")
+end
+```

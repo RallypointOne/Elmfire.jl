@@ -1,0 +1,404 @@
+---
+title: "Weather Effects"
+subtitle: "Wind, moisture, and time-varying weather"
+---
+
+Weather is the primary driver of fire behavior. This tutorial explores how different weather parameters affect fire spread.
+
+```{julia}
+using Elmfire
+using Plots
+```
+
+## Wind Speed Effects
+
+Wind is the most critical weather factor for fire spread:
+
+```{julia}
+fuel_table = create_standard_fuel_table(Float64)
+
+wind_speeds = 0:5:30
+burned_areas = Float64[]
+
+for ws in wind_speeds
+    state = FireState{Float64}(100, 100, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = Float64(ws),
+        wind_direction = 270.0,
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+    push!(burned_areas, get_burned_area_acres(state))
+end
+
+plot(wind_speeds, burned_areas,
+    xlabel = "Wind Speed (mph)",
+    ylabel = "Burned Area (acres) in 30 min",
+    title = "Wind Speed vs Fire Size",
+    linewidth = 2,
+    marker = :circle,
+    legend = false
+)
+```
+
+### Wind Creates Elliptical Spread
+
+The fire spread pattern changes dramatically with wind:
+
+```{julia}
+speeds = [0, 10, 20, 30]
+plots = []
+
+for ws in speeds
+    state = FireState{Float64}(100, 100, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = Float64(ws),
+        wind_direction = 270.0,
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+    push!(plots, heatmap(state.burned',
+        title = "$(ws) mph",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false,
+        axis = false
+    ))
+end
+
+plot(plots..., layout = (2, 2), size = (700, 700),
+    plot_title = "Wind Speed Effect on Fire Shape")
+```
+
+### Elliptical Spread Model
+
+Elmfire uses the Anderson elliptical spread model:
+
+```{julia}
+# Visualize ellipse parameters
+ws_mph = 15.0
+base_ros = 30.0  # Base spread rate (ft/min)
+
+# Get ellipse for different wind speeds
+wind_speeds = [5.0, 10.0, 15.0, 20.0]
+p = plot(aspect_ratio = 1, legend = :bottomright,
+    xlabel = "Spread (ft/min)", ylabel = "Spread (ft/min)",
+    title = "Elliptical Fire Spread Model")
+
+for ws in wind_speeds
+    es = elliptical_spread(base_ros, ws)
+
+    # Create ellipse points
+    θ = 0:0.01:2π
+    x = [es.head * cos(t) for t in θ]
+    y = [(es.head + es.back) / 2 * sin(t) for t in θ]
+
+    plot!(p, x, y, label = "$(Int(ws)) mph", linewidth = 2)
+end
+
+p
+```
+
+## Wind Direction
+
+Wind direction determines which way the fire spreads fastest:
+
+```{julia}
+directions = 0:45:315
+dir_labels = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+plots = []
+
+for (wd, lbl) in zip(directions, dir_labels)
+    state = FireState{Float64}(80, 80, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 15.0,
+        wind_direction = Float64(wd),
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = 0.60, MLW = 0.90
+    )
+    ignite!(state, 40, 40, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 25.0)
+
+    push!(plots, heatmap(state.burned',
+        title = "From $lbl ($(wd)°)",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false,
+        axis = false
+    ))
+end
+
+plot(plots..., layout = (2, 4), size = (1000, 500))
+```
+
+## Fuel Moisture
+
+Fuel moisture critically affects fire intensity and spread rate:
+
+```{julia}
+moistures = 0.02:0.02:0.16
+areas = Float64[]
+intensities = Float64[]
+
+for m1 in moistures
+    state = FireState{Float64}(100, 100, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 10.0,
+        wind_direction = 270.0,
+        M1 = m1,
+        M10 = m1 + 0.02,
+        M100 = m1 + 0.04,
+        MLH = 0.60,
+        MLW = 0.90
+    )
+    ignite!(state, 50, 50, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+    push!(areas, get_burned_area_acres(state))
+    push!(intensities, maximum(state.fireline_intensity))
+end
+
+p1 = plot(moistures .* 100, areas,
+    xlabel = "1-hr Fuel Moisture (%)",
+    ylabel = "Burned Area (acres)",
+    title = "Moisture vs Fire Size",
+    linewidth = 2,
+    legend = false
+)
+
+p2 = plot(moistures .* 100, intensities,
+    xlabel = "1-hr Fuel Moisture (%)",
+    ylabel = "Max Intensity (kW/m)",
+    title = "Moisture vs Intensity",
+    linewidth = 2,
+    legend = false,
+    color = :red
+)
+
+plot(p1, p2, layout = (1, 2), size = (800, 350))
+```
+
+### Moisture Damping Coefficient
+
+The moisture damping reduces fire intensity as moisture increases:
+
+```{julia}
+# Get a fuel model
+fm = get_fuel_model(fuel_table, 1, 60)
+
+# Calculate moisture damping for range of moistures
+# moisture_damping takes the ratio: moisture / extinction moisture
+m_range = 0.02:0.01:fm.mex_dead
+damping = [moisture_damping(Float64(m / fm.mex_dead)) for m in m_range]
+
+plot(m_range .* 100, damping,
+    xlabel = "Dead Fuel Moisture (%)",
+    ylabel = "Moisture Damping Coefficient",
+    title = "Moisture Damping (FBFM01, Mex_dead=$(round(fm.mex_dead*100))%)",
+    linewidth = 2,
+    legend = false,
+    xlims = (0, 30)
+)
+vline!([fm.mex_dead * 100], linestyle = :dash, label = "Extinction")
+```
+
+## Live Fuel Moisture
+
+Live herbaceous and woody moisture affect flame length and intensity:
+
+```{julia}
+mlh_values = [0.30, 0.60, 0.90, 1.20]  # Live herbaceous
+mlh_labels = ["30%", "60%", "90%", "120%"]
+plots = []
+
+for (mlh, lbl) in zip(mlh_values, mlh_labels)
+    state = FireState{Float64}(80, 80, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = 10.0,
+        wind_direction = 270.0,
+        M1 = 0.06, M10 = 0.08, M100 = 0.10,
+        MLH = mlh,
+        MLW = 0.90
+    )
+    ignite!(state, 40, 40, 0.0)
+    simulate_uniform!(state, 2, fuel_table, weather, 0.0, 0.0, 0.0, 25.0)  # FBFM02 has live fuels
+
+    flin = copy(state.fireline_intensity)
+    flin[flin .== 0] .= NaN
+
+    push!(plots, heatmap(flin',
+        title = "MLH = $lbl",
+        color = :inferno,
+        aspect_ratio = 1,
+        clims = (0, 500)
+    ))
+end
+
+plot(plots..., layout = (2, 2), size = (700, 700),
+    plot_title = "Live Herbaceous Moisture Effect on Intensity")
+```
+
+## Combining Effects
+
+Wind and moisture interact to produce complex fire behavior:
+
+```{julia}
+wind_speeds = [5, 15]
+moistures = [0.04, 0.10]
+plots = []
+
+for ws in wind_speeds
+    for m1 in moistures
+        state = FireState{Float64}(100, 100, 30.0)
+        weather = ConstantWeather{Float64}(
+            wind_speed_mph = Float64(ws),
+            wind_direction = 270.0,
+            M1 = m1, M10 = m1 + 0.02, M100 = m1 + 0.04,
+            MLH = 0.60, MLW = 0.90
+        )
+        ignite!(state, 50, 50, 0.0)
+        simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+        acres = round(get_burned_area_acres(state), digits=1)
+        push!(plots, heatmap(state.burned',
+            title = "$(ws)mph, $(Int(m1*100))% M\n$acres ac",
+            color = :YlOrRd,
+            aspect_ratio = 1,
+            colorbar = false
+        ))
+    end
+end
+
+plot(plots..., layout = (2, 2), size = (700, 700))
+```
+
+## Time-Varying Weather
+
+For extended simulations, weather changes over time. Use `WeatherTimeSeries`:
+
+```{julia}
+ncols, nrows = 100, 100
+cellsize = 30.0
+
+# Create weather grids for different times
+function make_weather_grid(ws, wd, m1)
+    ConstantWeather{Float64}(
+        wind_speed_mph = ws,
+        wind_direction = wd,
+        M1 = m1, M10 = m1 + 0.02, M100 = m1 + 0.04,
+        MLH = 0.60, MLW = 0.90
+    )
+end
+
+# Morning: light winds from east, higher moisture
+grid1 = WeatherGrid{Float64}(make_weather_grid(5.0, 90.0, 0.08), 1, 1, 1e6)
+# Afternoon: strong winds from west, drier
+grid2 = WeatherGrid{Float64}(make_weather_grid(15.0, 270.0, 0.05), 1, 1, 1e6)
+# Evening: moderate winds from south
+grid3 = WeatherGrid{Float64}(make_weather_grid(10.0, 180.0, 0.06), 1, 1, 1e6)
+
+# Create time series
+times = [0.0, 60.0, 120.0]
+weather_series = WeatherTimeSeries{Float64}([grid1, grid2, grid3], times)
+
+# Create interpolator
+weather_interp = WeatherInterpolator(weather_series, ncols, nrows, cellsize)
+
+# Run simulation
+state = FireState{Float64}(ncols, nrows, cellsize)
+fuel_ids = fill(1, ncols, nrows)
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+
+ignite!(state, 50, 50, 0.0)
+
+simulate_full!(state, fuel_ids, fuel_table, weather_interp, slope, aspect,
+    0.0, 180.0)  # 3 hours
+
+# Visualize with time markers
+toa = copy(state.time_of_arrival)
+toa[toa .< 0] .= NaN
+
+heatmap(toa',
+    title = "Time of Arrival - Changing Weather\n(Wind shifts at 60 & 120 min)",
+    xlabel = "X", ylabel = "Y",
+    color = :viridis,
+    aspect_ratio = 1,
+    size = (600, 500)
+)
+```
+
+## Weather at a Specific Time
+
+Query interpolated weather values:
+
+```{julia}
+# Get weather at center cell at different times
+ix, iy = 50, 50
+
+for t in [0.0, 30.0, 60.0, 90.0, 120.0]
+    w = get_weather_at(weather_interp, ix, iy, t)
+    println("t=$(Int(t))min: WS=$(round(w.ws, digits=1))mph, WD=$(round(w.wd))°, M1=$(round(w.m1*100, digits=1))%")
+end
+```
+
+## Wind Adjustment Factor
+
+The 20-ft wind is adjusted to mid-flame height based on fuel bed depth:
+
+```{julia}
+depths = 0.1:0.1:5.0
+wafs = [wind_adjustment_factor(d) for d in depths]
+
+plot(depths, wafs,
+    xlabel = "Fuel Bed Depth (ft)",
+    ylabel = "Wind Adjustment Factor",
+    title = "20-ft to Mid-flame Wind Adjustment",
+    linewidth = 2,
+    legend = false,
+    ylims = (0, 1)
+)
+```
+
+Taller fuel beds have less wind reduction at mid-flame height.
+
+## Extreme Weather Scenarios
+
+Model extreme fire weather conditions:
+
+```{julia}
+scenarios = [
+    ("Moderate", 10.0, 0.08),
+    ("Red Flag", 25.0, 0.04),
+    ("Extreme", 40.0, 0.02)
+]
+
+plots = []
+
+for (name, ws, m1) in scenarios
+    state = FireState{Float64}(150, 150, 30.0)
+    weather = ConstantWeather{Float64}(
+        wind_speed_mph = ws,
+        wind_direction = 270.0,
+        M1 = m1, M10 = m1 + 0.02, M100 = m1 + 0.04,
+        MLH = 0.40, MLW = 0.70
+    )
+    ignite!(state, 75, 75, 0.0)
+    simulate_uniform!(state, 4, fuel_table, weather, 10.0, 180.0, 0.0, 30.0)
+
+    acres = round(get_burned_area_acres(state), digits=1)
+    push!(plots, heatmap(state.burned',
+        title = "$name\n$acres acres in 30 min",
+        color = :YlOrRd,
+        aspect_ratio = 1,
+        colorbar = false
+    ))
+end
+
+plot(plots..., layout = (1, 3), size = (900, 300))
+```
