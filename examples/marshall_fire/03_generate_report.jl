@@ -11,6 +11,7 @@ Usage:
 using Elmfire
 using Plots
 using JSON3
+using Dates
 
 # Include local modules
 include("data_loading.jl")
@@ -64,8 +65,8 @@ end
 println("\n[2] Loading data and running calibrated simulation...")
 
 data = load_all_data(
-    use_hrrr = false,
-    default_wind_speed = 70.0,
+    use_synthetic = true,
+    default_wind_speed = 100.0,
     default_wind_dir = 270.0
 )
 
