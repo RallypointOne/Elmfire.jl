@@ -329,6 +329,7 @@ end
         dt_initial::T = one(T),
         target_cfl::T = T(0.9),
         dt_max::T = T(10),
+        spread_rate_adj::T = one(T),
         callback::Union{Nothing, Function} = nothing
     )
 
@@ -346,6 +347,7 @@ Run the fire simulation from t_start to t_stop.
 - `dt_initial`: Initial timestep (minutes, default 1.0)
 - `target_cfl`: Target CFL number (default 0.9)
 - `dt_max`: Maximum timestep (minutes, default 10.0)
+- `spread_rate_adj`: Spread rate adjustment factor (default 1.0, multiplies base spread rate)
 - `callback`: Optional callback function(state, t, dt, iteration) called each timestep
 """
 function simulate!(
@@ -360,6 +362,7 @@ function simulate!(
     dt_initial::T = one(T),
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
+    spread_rate_adj::T = one(T),
     callback::Union{Nothing, Function} = nothing
 ) where {T<:AbstractFloat}
     t = t_start
@@ -426,7 +429,8 @@ function simulate!(
                 fm,
                 weather.M1, weather.M10, weather.M100,
                 weather.MLH, weather.MLW,
-                wsmf, tanslp2
+                wsmf, tanslp2;
+                adj = spread_rate_adj
             )
 
             # Compute normal vector to fire front
@@ -503,7 +507,8 @@ function simulate!(
                     fm,
                     weather.M1, weather.M10, weather.M100,
                     weather.MLH, weather.MLW,
-                    wsmf, tanslp2
+                    wsmf, tanslp2;
+                    adj = spread_rate_adj
                 )
 
                 state.spread_rate[ix, iy] = result.velocity
@@ -750,6 +755,7 @@ end
         dt_initial::T = one(T),
         target_cfl::T = T(0.9),
         dt_max::T = T(10),
+        spread_rate_adj::T = one(T),
         callback::Union{Nothing, Function} = nothing,
         rng::AbstractRNG = Random.default_rng()
     )
@@ -770,6 +776,7 @@ Run full fire simulation with crown fire, spotting, and weather interpolation.
 - `dt_initial`: Initial timestep (minutes, default 1.0)
 - `target_cfl`: Target CFL number (default 0.9)
 - `dt_max`: Maximum timestep (minutes, default 10.0)
+- `spread_rate_adj`: Spread rate adjustment factor (default 1.0, multiplies base spread rate)
 - `callback`: Optional callback function(state, t, dt, iteration) called each timestep
 - `rng`: Random number generator for stochastic processes
 
@@ -790,6 +797,7 @@ function simulate_full!(
     dt_initial::T = one(T),
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
+    spread_rate_adj::T = one(T),
     callback::Union{Nothing, Function} = nothing,
     rng::AbstractRNG = Random.default_rng()
 ) where {T<:AbstractFloat}
@@ -881,7 +889,8 @@ function simulate_full!(
                 fm,
                 w.m1, w.m10, w.m100,
                 w.mlh, w.mlw,
-                wsmf, tanslp2
+                wsmf, tanslp2;
+                adj = spread_rate_adj
             )
 
             # Crown fire calculation
@@ -988,7 +997,8 @@ function simulate_full!(
                         fm,
                         w.m1, w.m10, w.m100,
                         w.mlh, w.mlw,
-                        wsmf, tanslp2
+                        wsmf, tanslp2;
+                        adj = spread_rate_adj
                     )
 
                     # Crown fire calculation for recording

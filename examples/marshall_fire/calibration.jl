@@ -150,7 +150,8 @@ function run_simulation_with_params(
         T(duration_minutes);
         dt_initial = T(0.5),
         target_cfl = T(0.9),
-        dt_max = T(5)
+        dt_max = T(5),
+        spread_rate_adj = T(params.spread_rate_factor)
     )
 
     return state

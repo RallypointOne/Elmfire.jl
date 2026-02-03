@@ -5,7 +5,7 @@ project:
 engine: julia
 
 jupyter:
-  kernel: julia-1.12
+  kernel: julia-1.11
 
 book:
   title: "Elmfire.jl"

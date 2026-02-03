@@ -1,6 +1,7 @@
 # Elmfire.jl
 
 [![Build Status](https://github.com/RallypointOne/Elmfire.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/RallypointOne/Elmfire.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![Documentation](https://github.com/RallypointOne/Elmfire.jl/actions/workflows/docs.yml/badge.svg)](https://rallypointone.github.io/Elmfire.jl/)
 
 A Julia implementation of the ELMFIRE wildfire spread model. This package provides tools for simulating fire behavior including surface fire spread, crown fire, ember spotting, and more.
 
