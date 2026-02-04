@@ -33,6 +33,10 @@ jobs:
             Pkg.instantiate()
           '
 
+      - name: Setup Python and Jupyter
+        run: |
+          pip install jupyter
+
       - name: Install IJulia kernel
         run: |
           julia -e '
@@ -41,13 +45,12 @@ jobs:
             using IJulia
             installkernel("Julia", "--project=docs")
           '
+          jupyter kernelspec list
 
       - name: Setup Quarto
         uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Render Quarto docs
-        env:
-          JUPYTER_PATH: /home/runner/.local/share/jupyter
         run: |
           cd docs
           quarto render
