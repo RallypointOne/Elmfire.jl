@@ -10,7 +10,6 @@ Usage:
 
 using Elmfire
 using JSON3
-using ProgressMeter
 
 # Include local modules
 include("data_loading.jl")

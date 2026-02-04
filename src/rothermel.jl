@@ -216,18 +216,22 @@ function elliptical_spread(velocity::T, effective_windspeed_mph::T) where {T<:Ab
     U = max(effective_windspeed_mph, zero(T))
 
     # Length to breadth ratio (Anderson 1982)
+    # Note: The Anderson formula gives unrealistic values at high wind speeds
+    # (e.g., L/B > 10^11 at 100 mph). Real fires rarely exceed L/B of 8-10.
     if U < T(0.5)
         LB = one(T)  # Nearly circular at low wind speeds
     else
         LB = T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397)
-        LB = max(LB, one(T))
+        LB = clamp(LB, one(T), T(8))  # Cap at realistic maximum
     end
 
     # Eccentricity from L/B ratio
-    # LB = (1 + e) / sqrt(1 - e²) → solve for e
-    # For LB > 1: e = sqrt(1 - (1/LB)²) approximately
+    # LB = (1 + e) / sqrt(1 - e²)
+    # Solving: e² * (LB² + 1) = LB² - 1
+    # Therefore: e = sqrt((LB² - 1) / (LB² + 1))
     eccentricity = if LB > T(1.001)
-        sqrt(one(T) - one(T) / (LB * LB))
+        LB2 = LB * LB
+        sqrt((LB2 - one(T)) / (LB2 + one(T)))
     else
         zero(T)
     end

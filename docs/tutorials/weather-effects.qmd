@@ -80,26 +80,37 @@ plot(plots..., layout = (2, 2), size = (700, 700),
 Elmfire uses the Anderson elliptical spread model:
 
 ```{julia}
-# Visualize ellipse parameters
-ws_mph = 15.0
-base_ros = 30.0  # Base spread rate (ft/min)
+# Visualize how wind speed affects fire shape
+# Higher wind = more elongated ellipse stretching downwind
 
-# Get ellipse for different wind speeds
-wind_speeds = [5.0, 10.0, 15.0, 20.0]
-p = plot(aspect_ratio = 1, legend = :bottomright,
-    xlabel = "Spread (ft/min)", ylabel = "Spread (ft/min)",
-    title = "Elliptical Fire Spread Model")
+wind_speeds = [0.0, 2.0, 5.0, 8.0]
+p = plot(aspect_ratio = 1, legend = :topright,
+    xlabel = "Distance (ft)", ylabel = "Distance (ft)",
+    title = "Fire Spread Shape vs Wind Speed\n(after 1 minute, wind blowing East →)")
 
 for ws in wind_speeds
+    # Use a base spread rate that increases with wind (simplified)
+    base_ros = 10.0 + ws * 2  # Faster spread with more wind
     es = elliptical_spread(base_ros, ws)
 
-    # Create ellipse points
-    θ = 0:0.01:2π
-    x = [es.head * cos(t) for t in θ]
-    y = [(es.head + es.back) / 2 * sin(t) for t in θ]
+    # Ellipse with ignition at upwind focus (origin)
+    a = (es.head + es.back) / 2      # Semi-major axis
+    c = (es.head - es.back) / 2      # Focus offset (ignition is at upwind focus)
+    b = es.flank                      # Semi-minor axis
 
-    plot!(p, x, y, label = "$(Int(ws)) mph", linewidth = 2)
+    # Parametric ellipse centered at (c, 0), with ignition at origin
+    t = range(0, 2π, length=200)
+    x = [c + a * cos(τ) for τ in t]
+    y = [b * sin(τ) for τ in t]
+
+    plot!(p, x, y, label = "$(Int(ws)) mph wind", linewidth = 2)
 end
+
+# Mark ignition point
+scatter!(p, [0], [0], marker = :star, markersize = 12, color = :red, label = "Ignition")
+
+# Wind arrow pointing east (direction wind blows)
+quiver!(p, [-8], [8], quiver=([10], [0]), color = :gray, linewidth = 2)
 
 p
 ```
