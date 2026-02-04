@@ -25,11 +25,6 @@ jobs:
         with:
           version: '1.11'
 
-      - name: Cache Julia packages
-        uses: julia-actions/cache@v2
-        with:
-          cache-compiled: false
-
       - name: Install Julia dependencies
         run: |
           julia --project=docs -e '
