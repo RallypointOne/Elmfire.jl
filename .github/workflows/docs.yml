@@ -43,7 +43,7 @@ jobs:
             using Pkg
             Pkg.add("IJulia")
             using IJulia
-            installkernel("Julia", "--project=docs")
+            installkernel("Julia", "--project=${{ github.workspace }}/docs")
           '
           jupyter kernelspec list
 
