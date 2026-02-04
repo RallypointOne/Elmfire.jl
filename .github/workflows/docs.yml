@@ -27,6 +27,8 @@ jobs:
 
       - name: Cache Julia packages
         uses: julia-actions/cache@v2
+        with:
+          cache-compiled: false
 
       - name: Install Julia dependencies
         run: |
