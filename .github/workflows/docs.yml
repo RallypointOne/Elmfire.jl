@@ -46,6 +46,8 @@ jobs:
         uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Render Quarto docs
+        env:
+          JUPYTER_PATH: /home/runner/.local/share/jupyter
         run: |
           cd docs
           quarto render
