@@ -161,7 +161,7 @@ println("  Slope factor (φs): $(round(result.phis, digits=2))")
 # Spread rate vs wind speed for different fuel models
 fuel_ids = [1, 3, 4, 8]  # Short grass, tall grass, chaparral, timber litter
 fuel_names = ["Short grass", "Tall grass", "Chaparral", "Timber litter"]
-wind_speeds = 0:50:1000  # ft/min
+wind_speeds = 0.0:50.0:1000.0  # ft/min
 
 p = plot(
     xlabel = "Midflame Wind Speed (ft/min)",
@@ -204,7 +204,7 @@ plot(moistures .* 100, rates,
 ```{julia}
 # Spread rate vs slope angle
 fm = get_fuel_model(fuel_table, 1, 60)
-slopes_deg = 0:5:45
+slopes_deg = 0.0:5.0:45.0
 slopes_tan2 = tan.(deg2rad.(slopes_deg)).^2
 
 rates_no_wind = [Elmfire.surface_spread_rate(fm, 0.06, 0.08, 0.10, 0.60, 0.90, 0.0, s).velocity
