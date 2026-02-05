@@ -1,0 +1,367 @@
+---
+title: "Rothermel Fire Spread Model"
+subtitle: "Mathematical foundation and implementation"
+---
+
+The Rothermel surface fire spread model (Rothermel 1972) is the foundation of fire behavior prediction in Elmfire.jl. This page describes the mathematical equations and how they are implemented.
+
+```{julia}
+using Elmfire
+using Plots
+```
+
+## Overview
+
+The Rothermel model predicts the **rate of spread** of a surface fire based on:
+
+- **Fuel properties**: Loading, particle size, moisture content, heat content
+- **Environmental factors**: Wind speed and terrain slope
+- **Physical processes**: Heat transfer, combustion chemistry, and energy balance
+
+The model outputs several key fire behavior metrics:
+
+| Output | Symbol | Units | Description |
+|--------|--------|-------|-------------|
+| Rate of Spread | $R$ | ft/min | Fire front velocity |
+| Reaction Intensity | $I_R$ | BTU/ft²/min | Heat release rate per unit area |
+| Heat per Unit Area | $H_A$ | BTU/ft² | Total heat released |
+| Fireline Intensity | $I$ | BTU/ft/s | Byram's fireline intensity |
+
+## The Rothermel Equation
+
+The fundamental equation for rate of spread is:
+
+$$
+R = \frac{I_R \xi (1 + \phi_w + \phi_s)}{\rho_b \varepsilon Q_{ig}}
+$$
+
+Where:
+
+| Symbol | Description |
+|--------|-------------|
+| $I_R$ | Reaction intensity (BTU/ft²/min) |
+| $\xi$ | Propagating flux ratio |
+| $\phi_w$ | Wind factor |
+| $\phi_s$ | Slope factor |
+| $\rho_b$ | Fuel bed bulk density (lb/ft³) |
+| $\varepsilon$ | Effective heating number |
+| $Q_{ig}$ | Heat of pre-ignition (BTU/lb) |
+
+### Reaction Intensity
+
+Reaction intensity represents the rate of heat release:
+
+$$
+I_R = \Gamma' w_n h \eta_M \eta_s
+$$
+
+Where:
+- $\Gamma'$ = optimum reaction velocity (1/min)
+- $w_n$ = net fuel loading (lb/ft²)
+- $h$ = heat of combustion (BTU/lb)
+- $\eta_M$ = moisture damping coefficient
+- $\eta_s$ = mineral damping coefficient
+
+### Moisture Damping
+
+The moisture damping coefficient reduces fire spread as fuel moisture increases:
+
+$$
+\eta_M = 1 - 2.59r + 5.11r^2 - 3.52r^3
+$$
+
+Where $r = M/M_{ex}$ is the ratio of fuel moisture to moisture of extinction.
+
+```{julia}
+# Visualize moisture damping
+r_values = 0:0.01:1
+eta_m = [Elmfire.moisture_damping(r) for r in r_values]
+
+plot(r_values, eta_m,
+    xlabel = "Moisture Ratio (M/Mₑₓ)",
+    ylabel = "Moisture Damping (ηₘ)",
+    title = "Rothermel Moisture Damping Coefficient",
+    linewidth = 2,
+    legend = false,
+    ylims = (0, 1.1)
+)
+```
+
+### Wind and Slope Factors
+
+Wind accelerates fire spread through convective heat transfer:
+
+$$
+\phi_w = C \left(\frac{\beta}{\beta_{op}}\right)^{-E} U^B
+$$
+
+Slope accelerates uphill spread through radiant heat transfer:
+
+$$
+\phi_s = 5.275 \beta^{-0.3} \tan^2\theta
+$$
+
+Where:
+- $\beta$ = packing ratio (fuel volume / bed volume)
+- $\beta_{op}$ = optimal packing ratio
+- $U$ = midflame wind speed (ft/min)
+- $\theta$ = slope angle
+- $B$, $C$, $E$ = empirical coefficients based on fuel SAV ratio
+
+## Implementation in Elmfire.jl
+
+### SpreadResult Type
+
+The `surface_spread_rate` function returns a `SpreadResult` struct:
+
+```julia
+struct SpreadResult{T<:AbstractFloat}
+    velocity::T       # Spread rate (ft/min)
+    vs0::T            # Base spread rate without wind/slope (ft/min)
+    ir::T             # Reaction intensity (kW/m²)
+    hpua::T           # Heat per unit area (kJ/m²)
+    flin::T           # Fireline intensity (kW/m)
+    phiw::T           # Wind factor
+    phis::T           # Slope factor
+end
+```
+
+### Computing Spread Rate
+
+```{julia}
+# Create fuel table and get fuel model
+fuel_table = create_standard_fuel_table(Float64)
+fm = get_fuel_model(fuel_table, 1, 60)  # Short grass at 60% live moisture
+
+# Define conditions
+M1 = 0.06    # 1-hour moisture (6%)
+M10 = 0.08   # 10-hour moisture (8%)
+M100 = 0.10  # 100-hour moisture (10%)
+MLH = 0.60   # Live herbaceous moisture (60%)
+MLW = 0.90   # Live woody moisture (90%)
+wind = 440.0 # Midflame wind speed (ft/min ≈ 5 mph)
+slope = 0.0  # tan²(slope angle)
+
+# Calculate spread rate
+result = Elmfire.surface_spread_rate(fm, M1, M10, M100, MLH, MLW, wind, slope)
+
+println("Fire Spread Results:")
+println("  Rate of spread: $(round(result.velocity, digits=1)) ft/min")
+println("  Base rate (no wind/slope): $(round(result.vs0, digits=1)) ft/min")
+println("  Reaction intensity: $(round(result.ir, digits=1)) kW/m²")
+println("  Heat per unit area: $(round(result.hpua, digits=0)) kJ/m²")
+println("  Fireline intensity: $(round(result.flin, digits=1)) kW/m")
+println("  Wind factor (φw): $(round(result.phiw, digits=2))")
+println("  Slope factor (φs): $(round(result.phis, digits=2))")
+```
+
+### Effect of Wind Speed
+
+```{julia}
+# Spread rate vs wind speed for different fuel models
+fuel_ids = [1, 3, 4, 8]  # Short grass, tall grass, chaparral, timber litter
+fuel_names = ["Short grass", "Tall grass", "Chaparral", "Timber litter"]
+wind_speeds = 0:50:1000  # ft/min
+
+p = plot(
+    xlabel = "Midflame Wind Speed (ft/min)",
+    ylabel = "Rate of Spread (ft/min)",
+    title = "Wind Speed Effect on Fire Spread",
+    legend = :topleft
+)
+
+for (i, fuel_id) in enumerate(fuel_ids)
+    fm = get_fuel_model(fuel_table, fuel_id, 60)
+    rates = [Elmfire.surface_spread_rate(fm, 0.06, 0.08, 0.10, 0.60, 0.90, w, 0.0).velocity
+             for w in wind_speeds]
+    plot!(p, wind_speeds, rates, label=fuel_names[i], linewidth=2)
+end
+p
+```
+
+### Effect of Fuel Moisture
+
+```{julia}
+# Spread rate vs 1-hour fuel moisture
+fm = get_fuel_model(fuel_table, 1, 60)  # Short grass
+moistures = 0.02:0.01:0.15  # 2% to 15%
+wind = 440.0
+
+rates = [Elmfire.surface_spread_rate(fm, m, m+0.02, m+0.04, 0.60, 0.90, wind, 0.0).velocity
+         for m in moistures]
+
+plot(moistures .* 100, rates,
+    xlabel = "1-Hour Fuel Moisture (%)",
+    ylabel = "Rate of Spread (ft/min)",
+    title = "Fuel Moisture Effect on Fire Spread (Short Grass)",
+    linewidth = 2,
+    legend = false
+)
+```
+
+### Effect of Slope
+
+```{julia}
+# Spread rate vs slope angle
+fm = get_fuel_model(fuel_table, 1, 60)
+slopes_deg = 0:5:45
+slopes_tan2 = tan.(deg2rad.(slopes_deg)).^2
+
+rates_no_wind = [Elmfire.surface_spread_rate(fm, 0.06, 0.08, 0.10, 0.60, 0.90, 0.0, s).velocity
+                 for s in slopes_tan2]
+rates_with_wind = [Elmfire.surface_spread_rate(fm, 0.06, 0.08, 0.10, 0.60, 0.90, 440.0, s).velocity
+                   for s in slopes_tan2]
+
+plot(slopes_deg, [rates_no_wind rates_with_wind],
+    xlabel = "Slope Angle (degrees)",
+    ylabel = "Rate of Spread (ft/min)",
+    title = "Slope Effect on Fire Spread",
+    label = ["No wind" "5 mph wind"],
+    linewidth = 2
+)
+```
+
+## Elliptical Fire Spread
+
+Real fires don't spread uniformly in all directions. Under the influence of wind or slope, fires spread in an elliptical pattern (Anderson 1982).
+
+### Length-to-Breadth Ratio
+
+The ellipse shape is characterized by the length-to-breadth ratio:
+
+$$
+\frac{L}{B} = 0.936 e^{0.2566U} + 0.461 e^{-0.1548U} - 0.397
+$$
+
+Where $U$ is the effective wind speed in mi/h.
+
+```{julia}
+# Length-to-breadth ratio vs wind speed
+wind_mph = 0:0.5:20
+lb_ratios = [Elmfire.elliptical_spread(100.0, w).length_to_breadth for w in wind_mph]
+
+plot(wind_mph, lb_ratios,
+    xlabel = "Effective Wind Speed (mi/h)",
+    ylabel = "Length-to-Breadth Ratio",
+    title = "Fire Shape vs Wind Speed",
+    linewidth = 2,
+    legend = false,
+    ylims = (0, 10)
+)
+```
+
+### EllipticalSpread Type
+
+```julia
+struct EllipticalSpread{T<:AbstractFloat}
+    head::T           # Head fire spread rate (ft/min)
+    back::T           # Backing fire spread rate (ft/min)
+    flank::T          # Flanking fire spread rate (ft/min)
+    eccentricity::T   # Ellipse eccentricity
+    length_to_breadth::T  # Length to breadth ratio
+end
+```
+
+### Computing Elliptical Spread
+
+```{julia}
+# Head fire velocity from Rothermel
+head_velocity = 50.0  # ft/min
+wind_mph = 10.0
+
+es = Elmfire.elliptical_spread(head_velocity, wind_mph)
+
+println("Elliptical Fire Spread:")
+println("  Head fire rate: $(round(es.head, digits=1)) ft/min")
+println("  Backing fire rate: $(round(es.back, digits=1)) ft/min")
+println("  Flanking fire rate: $(round(es.flank, digits=1)) ft/min")
+println("  Eccentricity: $(round(es.eccentricity, digits=3))")
+println("  Length/Breadth ratio: $(round(es.length_to_breadth, digits=2))")
+```
+
+### Visualizing Elliptical Spread
+
+```{julia}
+# Plot fire ellipse shape for different wind speeds
+wind_speeds = [0.0, 5.0, 10.0, 15.0]
+p = plot(aspect_ratio=:equal, xlabel="Distance (ft)", ylabel="Distance (ft)",
+         title="Fire Spread Ellipses (1 hour)", legend=:topright)
+
+for wind in wind_speeds
+    es = Elmfire.elliptical_spread(50.0, wind)
+
+    # Generate ellipse points (60 minutes of spread)
+    t = 60.0  # minutes
+    theta = range(0, 2π, length=100)
+
+    # Semi-axes from spread rates
+    a = (es.head + es.back) / 2 * t  # semi-major axis
+    c = (es.head - es.back) / 2 * t  # focus distance from center
+
+    if es.eccentricity > 0.001
+        b = a * sqrt(1 - es.eccentricity^2)  # semi-minor axis
+    else
+        b = a
+    end
+
+    # Ellipse centered at origin with focus at (c, 0)
+    x = a .* cos.(theta)
+    y = b .* sin.(theta)
+
+    # Shift so ignition point (focus) is at origin
+    x = x .- c
+
+    plot!(p, x, y, label="$(Int(wind)) mph", linewidth=2)
+end
+p
+```
+
+## Key Parameters
+
+### Fuel Model Coefficients
+
+The Rothermel model uses several empirically-derived coefficients:
+
+```{julia}
+fm = get_fuel_model(fuel_table, 1, 60)
+
+println("Rothermel Coefficients (Fuel Model 1):")
+println("  A = $(round(fm.A, digits=4))")
+println("  B = $(round(fm.B, digits=4))")
+println("  C = $(round(fm.C, digits=4))")
+println("  E = $(round(fm.E, digits=6))")
+println("")
+println("Derived Properties:")
+println("  Overall SAV (σ): $(round(fm.SIG_overall, digits=0)) 1/ft")
+println("  Bulk density (ρb): $(round(fm.rhob, digits=4)) lb/ft³")
+println("  Packing ratio (β): $(round(fm.beta, digits=5))")
+println("  Optimal packing (βop): $(round(fm.betaop, digits=5))")
+println("  Reaction velocity (Γ'): $(round(fm.gammaprime, digits=3)) 1/min")
+println("  Propagating flux (ξ): $(round(fm.xi, digits=4))")
+println("  Residence time (τr): $(round(fm.tr, digits=3)) min")
+```
+
+### Coefficient Formulas
+
+The empirical coefficients are computed from the characteristic surface-area-to-volume ratio ($\sigma$):
+
+| Coefficient | Formula |
+|-------------|---------|
+| $A$ | $133.0 / \sigma^{0.7913}$ |
+| $B$ | $0.02526 \times \sigma^{0.54}$ |
+| $C$ | $7.47 \times e^{-0.133 \times \sigma^{0.55}}$ |
+| $E$ | $0.715 \times e^{-0.000359 \times \sigma}$ |
+
+## References
+
+1. Rothermel, R.C. (1972). **A mathematical model for predicting fire spread in wildland fuels**. USDA Forest Service Research Paper INT-115.
+
+2. Anderson, H.E. (1982). **Aids to determining fuel models for estimating fire behavior**. USDA Forest Service General Technical Report INT-122.
+
+3. Andrews, P.L. (2018). **The Rothermel surface fire spread model and associated developments: A comprehensive explanation**. USDA Forest Service General Technical Report RMRS-GTR-371.
+
+## See Also
+
+- [Fuel Models](fuel-models.qmd) - Detailed fuel model documentation
+- [Simulation](simulation.qmd) - Running fire simulations
+- [Weather](weather.qmd) - Weather inputs to the model

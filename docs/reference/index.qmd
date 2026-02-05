@@ -7,6 +7,15 @@ This section provides comprehensive API documentation for Elmfire.jl.
 
 ## Core Modules
 
+### [Rothermel Fire Spread Model](rothermel.qmd)
+
+The mathematical foundation of fire behavior prediction:
+
+- `surface_spread_rate()` - Calculate spread rate from Rothermel model
+- `elliptical_spread()` - Compute elliptical fire shape (Anderson 1982)
+- `SpreadResult` - Fire behavior outputs (velocity, intensity, heat)
+- `EllipticalSpread` - Head, back, and flank fire rates
+
 ### [Fuel Models](fuel-models.qmd)
 
 Types and functions for managing fuel model data:

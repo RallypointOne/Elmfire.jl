@@ -29,6 +29,7 @@ book:
     - part: API Reference
       chapters:
         - reference/index.qmd
+        - reference/rothermel.qmd
         - reference/fuel-models.qmd
         - reference/simulation.qmd
         - reference/weather.qmd
