@@ -102,11 +102,11 @@ $$
 $$
 
 Where:
-- $\beta$ = packing ratio (fuel volume / bed volume)
-- $\beta_{op}$ = optimal packing ratio
+- $\beta$ = packing ratio (dimensionless, fuel volume / bed volume)
+- $\beta_{op}$ = optimal packing ratio (dimensionless)
 - $U$ = midflame wind speed (ft/min)
-- $\theta$ = slope angle
-- $B$, $C$, $E$ = empirical coefficients based on fuel SAV ratio
+- $\tan^2\theta$ = squared tangent of slope angle (dimensionless)
+- $B$, $C$, $E$ = empirical coefficients (dimensionless, functions of SAV ratio)
 
 ## Implementation in Elmfire.jl
 
@@ -327,8 +327,8 @@ These constants describe fundamental properties of wildland fuels (Rothermel 197
 | Constant | Value | Units | Description | Source |
 |----------|-------|-------|-------------|--------|
 | $\rho_p$ | 32 | lb/ft³ | Particle density (ovendry wood) | Rothermel (1972) |
-| $S_T$ | 0.055 | - | Total mineral content fraction | Rothermel (1972) |
-| $S_e$ | 0.01 | - | Effective (ite-free) mineral content | Rothermel (1972) |
+| $S_T$ | 0.055 | lb/lb (mass fraction) | Total mineral content (mass fraction) | Rothermel (1972) |
+| $S_e$ | 0.01 | lb/lb (mass fraction) | Effective (silica-free) mineral content | Rothermel (1972) |
 | $h$ | 8000 | BTU/lb | Low heat of combustion (typical) | Rothermel (1972) |
 
 The particle density of 32 lb/ft³ is representative of ovendry wood and was measured by Byram et al. (1952). The mineral content values are averages for forest fuels from laboratory analysis.
@@ -360,8 +360,10 @@ These were determined by regression analysis of 31 laboratory fires in ponderosa
 #### Optimal Packing Ratio
 
 $$
-\beta_{op} = 3.348 \times \sigma^{-0.8189}
+\beta_{op} = 3.348 \times \sigma^{-0.8189} \quad \text{(dimensionless)}
 $$
+
+Where $\sigma$ is the characteristic surface-area-to-volume ratio (ft⁻¹). The coefficient 3.348 has units of ft⁻⁰·⁸¹⁸⁹.
 
 Derived from the relationship between packing ratio and reaction velocity that maximizes heat release (Rothermel 1972, Eq. 37). The optimal packing provides the best balance between fuel availability and oxygen access.
 
@@ -390,8 +392,10 @@ The maximum reaction velocity equation (Rothermel 1972, Eq. 36) was fitted to da
 #### Residence Time
 
 $$
-\tau_r = \frac{384}{\sigma}
+\tau_r = \frac{384}{\sigma} \quad \text{(min)}
 $$
+
+Where $\sigma$ is in ft⁻¹ and the coefficient 384 has units of ft⁻¹·min.
 
 The residence time represents how long the flaming front persists at a given point. The coefficient 384 was derived from laboratory observations of flame duration vs. fuel particle size (Rothermel 1972, Eq. 77; Anderson 1969).
 
@@ -400,18 +404,20 @@ The residence time represents how long the flaming front persists at a given poi
 #### Moisture Damping
 
 $$
-\eta_M = 1 - 2.59r + 5.11r^2 - 3.52r^3
+\eta_M = 1 - 2.59r + 5.11r^2 - 3.52r^3 \quad \text{(dimensionless)}
 $$
 
-where $r = M/M_{ex}$ (moisture ratio to extinction moisture).
+where $r = M/M_{ex}$ is the ratio of fuel moisture content $M$ (lb water/lb dry fuel) to moisture of extinction $M_{ex}$ (lb water/lb dry fuel). Both are typically expressed as fractions (e.g., 0.06 = 6% moisture).
 
 This polynomial was fitted to laboratory data showing the reduction in reaction intensity as fuel moisture increases (Rothermel 1972, Eq. 29). The curve passes through (0, 1) at zero moisture and (1, 0) at extinction moisture.
 
 #### Mineral Damping
 
 $$
-\eta_s = 0.174 \times S_e^{-0.19}
+\eta_s = 0.174 \times S_e^{-0.19} \quad \text{(dimensionless)}
 $$
+
+where $S_e$ is the effective (silica-free) mineral content (lb mineral/lb fuel).
 
 Accounts for the heat-absorbing effect of fuel minerals. Derived from laboratory combustion experiments (Rothermel 1972, Eq. 30). With the standard effective mineral content of 0.01, this gives $\eta_s \approx 0.42$.
 
@@ -420,26 +426,32 @@ Accounts for the heat-absorbing effect of fuel minerals. Derived from laboratory
 #### Heat of Pre-ignition
 
 $$
-Q_{ig} = 250 + 1116M
+Q_{ig} = 250 + 1116M \quad \text{(BTU/lb)}
 $$
 
-The heat required to raise fuel to ignition temperature (BTU/lb). The constant 250 represents the sensible heat to raise dry fuel to ignition (~600°F), while 1116 accounts for the latent heat of vaporizing fuel moisture (Rothermel 1972, Eq. 12).
+Where $M$ is fuel moisture content (lb water/lb dry fuel, e.g., 0.06 for 6%).
+
+The heat required to raise fuel to ignition temperature. The constant 250 BTU/lb represents the sensible heat to raise dry fuel to ignition (~600°F), while the coefficient 1116 BTU/lb accounts for the latent heat of vaporizing fuel moisture (Rothermel 1972, Eq. 12).
 
 #### Effective Heating Number
 
 $$
-\varepsilon = \exp\left(\frac{-138}{\sigma}\right)
+\varepsilon = \exp\left(\frac{-138}{\sigma}\right) \quad \text{(dimensionless)}
 $$
 
-The fraction of a fuel particle that is heated to ignition temperature before the flame front passes. Smaller particles (higher SAV) heat more completely (Rothermel 1972, Eq. 14). The coefficient 138 was calibrated from experimental data.
+Where $\sigma$ is surface-area-to-volume ratio (ft⁻¹) and the coefficient 138 has units of ft⁻¹.
+
+The fraction of a fuel particle that is heated to ignition temperature before the flame front passes. Smaller particles (higher SAV) heat more completely (Rothermel 1972, Eq. 14). The coefficient 138 ft⁻¹ was calibrated from experimental data.
 
 ### Slope Factor
 
 $$
-\phi_s = 5.275 \times \beta^{-0.3} \times \tan^2\theta
+\phi_s = 5.275 \times \beta^{-0.3} \times \tan^2\theta \quad \text{(dimensionless)}
 $$
 
-The slope factor accounts for radiant heat transfer to upslope fuels. The coefficients 5.275 and -0.3 were derived from laboratory experiments on inclined fuel beds (Rothermel 1972, Eq. 52). The dependence on $\tan^2\theta$ reflects the geometric increase in view factor with slope angle.
+Where $\beta$ is packing ratio (dimensionless) and $\tan^2\theta$ is passed directly to the function (dimensionless).
+
+The slope factor accounts for radiant heat transfer to upslope fuels. The coefficients 5.275 and -0.3 are dimensionless and were derived from laboratory experiments on inclined fuel beds (Rothermel 1972, Eq. 52). The dependence on $\tan^2\theta$ reflects the geometric increase in view factor with slope angle.
 
 ### Elliptical Spread (Anderson 1982)
 
