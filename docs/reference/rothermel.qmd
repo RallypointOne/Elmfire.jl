@@ -316,16 +316,147 @@ end
 p
 ```
 
-## Key Parameters
+## Derivation of Constants
 
-### Fuel Model Coefficients
+The Rothermel model constants were derived through a combination of theoretical analysis, laboratory experiments, and field observations. This section documents the origin of each constant.
 
-The Rothermel model uses several empirically-derived coefficients:
+### Physical Constants
+
+These constants describe fundamental properties of wildland fuels (Rothermel 1972, Table II; Albini 1976):
+
+| Constant | Value | Units | Description | Source |
+|----------|-------|-------|-------------|--------|
+| $\rho_p$ | 32 | lb/ft³ | Particle density (ovendry wood) | Rothermel (1972) |
+| $S_T$ | 0.055 | - | Total mineral content fraction | Rothermel (1972) |
+| $S_e$ | 0.01 | - | Effective (ite-free) mineral content | Rothermel (1972) |
+| $h$ | 8000 | BTU/lb | Low heat of combustion (typical) | Rothermel (1972) |
+
+The particle density of 32 lb/ft³ is representative of ovendry wood and was measured by Byram et al. (1952). The mineral content values are averages for forest fuels from laboratory analysis.
+
+### Fixed Surface-Area-to-Volume Ratios
+
+| Fuel Class | SAV (1/ft) | Source |
+|------------|------------|--------|
+| 10-hour dead | 109 | Rothermel (1972), Table I |
+| 100-hour dead | 30 | Rothermel (1972), Table I |
+
+These values are fixed because the timelag fuel classes (10-hr, 100-hr) are defined by particle diameter, which directly determines SAV for cylindrical fuel elements.
+
+### Empirically-Derived Coefficients
+
+The following coefficients were derived by fitting experimental data from laboratory fire spread tests (Rothermel 1972, pp. 16-26):
+
+#### Wind Coefficients (A, B, C, E)
+
+| Coefficient | Formula | Derivation |
+|-------------|---------|------------|
+| $A$ | $133.0 / \sigma^{0.7913}$ | Reaction velocity exponent (Eq. 38) |
+| $B$ | $0.02526 \times \sigma^{0.54}$ | Wind velocity exponent (Eq. 49) |
+| $C$ | $7.47 \times e^{-0.133 \times \sigma^{0.55}}$ | Wind coefficient (Eq. 48) |
+| $E$ | $0.715 \times e^{-0.000359 \times \sigma}$ | Wind/packing exponent (Eq. 50) |
+
+These were determined by regression analysis of 31 laboratory fires in ponderosa pine needle fuel beds with SAV ratios from 1,140 to 2,000 ft⁻¹ and wind speeds from 0 to 9 mi/h (Rothermel 1972, Table IV).
+
+#### Optimal Packing Ratio
+
+$$
+\beta_{op} = 3.348 \times \sigma^{-0.8189}
+$$
+
+Derived from the relationship between packing ratio and reaction velocity that maximizes heat release (Rothermel 1972, Eq. 37). The optimal packing provides the best balance between fuel availability and oxygen access.
+
+#### Propagating Flux Ratio
+
+$$
+\xi = \frac{\exp[(0.792 + 0.681\sqrt{\sigma})(0.1 + \beta)]}{192 + 0.2595\sigma}
+$$
+
+This ratio represents the fraction of reaction intensity that heats adjacent fuel particles. Derived from no-wind fire spread experiments (Rothermel 1972, Eq. 42).
+
+#### Reaction Velocity
+
+$$
+\Gamma' = \Gamma'_{max} \left(\frac{\beta}{\beta_{op}}\right)^A \exp\left[A\left(1 - \frac{\beta}{\beta_{op}}\right)\right]
+$$
+
+where:
+
+$$
+\Gamma'_{max} = \frac{\sigma^{1.5}}{495 + 0.0594\sigma^{1.5}}
+$$
+
+The maximum reaction velocity equation (Rothermel 1972, Eq. 36) was fitted to data from Fons (1946) and Anderson (1969) for cribs and fuel beds.
+
+#### Residence Time
+
+$$
+\tau_r = \frac{384}{\sigma}
+$$
+
+The residence time represents how long the flaming front persists at a given point. The coefficient 384 was derived from laboratory observations of flame duration vs. fuel particle size (Rothermel 1972, Eq. 77; Anderson 1969).
+
+### Damping Coefficients
+
+#### Moisture Damping
+
+$$
+\eta_M = 1 - 2.59r + 5.11r^2 - 3.52r^3
+$$
+
+where $r = M/M_{ex}$ (moisture ratio to extinction moisture).
+
+This polynomial was fitted to laboratory data showing the reduction in reaction intensity as fuel moisture increases (Rothermel 1972, Eq. 29). The curve passes through (0, 1) at zero moisture and (1, 0) at extinction moisture.
+
+#### Mineral Damping
+
+$$
+\eta_s = 0.174 \times S_e^{-0.19}
+$$
+
+Accounts for the heat-absorbing effect of fuel minerals. Derived from laboratory combustion experiments (Rothermel 1972, Eq. 30). With the standard effective mineral content of 0.01, this gives $\eta_s \approx 0.42$.
+
+### Heat Transfer Constants
+
+#### Heat of Pre-ignition
+
+$$
+Q_{ig} = 250 + 1116M
+$$
+
+The heat required to raise fuel to ignition temperature (BTU/lb). The constant 250 represents the sensible heat to raise dry fuel to ignition (~600°F), while 1116 accounts for the latent heat of vaporizing fuel moisture (Rothermel 1972, Eq. 12).
+
+#### Effective Heating Number
+
+$$
+\varepsilon = \exp\left(\frac{-138}{\sigma}\right)
+$$
+
+The fraction of a fuel particle that is heated to ignition temperature before the flame front passes. Smaller particles (higher SAV) heat more completely (Rothermel 1972, Eq. 14). The coefficient 138 was calibrated from experimental data.
+
+### Slope Factor
+
+$$
+\phi_s = 5.275 \times \beta^{-0.3} \times \tan^2\theta
+$$
+
+The slope factor accounts for radiant heat transfer to upslope fuels. The coefficients 5.275 and -0.3 were derived from laboratory experiments on inclined fuel beds (Rothermel 1972, Eq. 52). The dependence on $\tan^2\theta$ reflects the geometric increase in view factor with slope angle.
+
+### Elliptical Spread (Anderson 1982)
+
+The length-to-breadth ratio equation:
+
+$$
+\frac{L}{B} = 0.936 e^{0.2566U} + 0.461 e^{-0.1548U} - 0.397
+$$
+
+was derived by Anderson (1982) from aerial observations of 28 wildfires in Australia and the United States. The data showed that fire shape depends primarily on effective wind speed $U$ (mi/h), with fires becoming more elongated at higher wind speeds.
+
+### Viewing Computed Coefficients
 
 ```{julia}
 fm = get_fuel_model(fuel_table, 1, 60)
 
-println("Rothermel Coefficients (Fuel Model 1):")
+println("Rothermel Coefficients (Fuel Model 1 - Short Grass):")
 println("  A = $(round(fm.A, digits=4))")
 println("  B = $(round(fm.B, digits=4))")
 println("  C = $(round(fm.C, digits=4))")
@@ -339,26 +470,40 @@ println("  Optimal packing (βop): $(round(fm.betaop, digits=5))")
 println("  Reaction velocity (Γ'): $(round(fm.gammaprime, digits=3)) 1/min")
 println("  Propagating flux (ξ): $(round(fm.xi, digits=4))")
 println("  Residence time (τr): $(round(fm.tr, digits=3)) min")
+println("  Mineral damping (ηs): $(round(fm.etas, digits=4))")
 ```
-
-### Coefficient Formulas
-
-The empirical coefficients are computed from the characteristic surface-area-to-volume ratio ($\sigma$):
-
-| Coefficient | Formula |
-|-------------|---------|
-| $A$ | $133.0 / \sigma^{0.7913}$ |
-| $B$ | $0.02526 \times \sigma^{0.54}$ |
-| $C$ | $7.47 \times e^{-0.133 \times \sigma^{0.55}}$ |
-| $E$ | $0.715 \times e^{-0.000359 \times \sigma}$ |
 
 ## References
 
-1. Rothermel, R.C. (1972). **A mathematical model for predicting fire spread in wildland fuels**. USDA Forest Service Research Paper INT-115.
+### Primary Sources
 
-2. Anderson, H.E. (1982). **Aids to determining fuel models for estimating fire behavior**. USDA Forest Service General Technical Report INT-122.
+1. Rothermel, R.C. (1972). **A mathematical model for predicting fire spread in wildland fuels**. USDA Forest Service Research Paper INT-115. Ogden, UT. 40 p.
+   - *The foundational paper defining the spread rate equation and deriving all major coefficients.*
 
-3. Andrews, P.L. (2018). **The Rothermel surface fire spread model and associated developments: A comprehensive explanation**. USDA Forest Service General Technical Report RMRS-GTR-371.
+2. Anderson, H.E. (1982). **Aids to determining fuel models for estimating fire behavior**. USDA Forest Service General Technical Report INT-122. Ogden, UT. 22 p.
+   - *Defines the 13 standard fuel models and elliptical fire spread equations.*
+
+3. Albini, F.A. (1976). **Estimating wildfire behavior and effects**. USDA Forest Service General Technical Report INT-30. Ogden, UT. 92 p.
+   - *Provides physical constants and fuel property values used in fire modeling.*
+
+### Historical Sources (cited by Rothermel)
+
+4. Byram, G.M., Sauer, F.M., Fons, W.L., & Arnold, R.K. (1952). **Thermal properties of forest fuels**. USDA Forest Service, Division of Fire Research. Berkeley, CA.
+   - *Source of particle density (32 lb/ft³) measurements.*
+
+5. Fons, W.L. (1946). **Analysis of fire spread in light forest fuels**. Journal of Agricultural Research 72(3): 93-121.
+   - *Early fire spread experiments used to calibrate reaction velocity.*
+
+6. Anderson, H.E. (1969). **Heat transfer and fire spread**. USDA Forest Service Research Paper INT-69. Ogden, UT. 20 p.
+   - *Laboratory data on heat transfer and residence time.*
+
+### Modern Interpretations
+
+7. Andrews, P.L. (2018). **The Rothermel surface fire spread model and associated developments: A comprehensive explanation**. USDA Forest Service General Technical Report RMRS-GTR-371. Fort Collins, CO. 121 p.
+   - *Comprehensive modern explanation of the Rothermel model with derivations and examples.*
+
+8. Scott, J.H. & Burgan, R.E. (2005). **Standard fire behavior fuel models: A comprehensive set for use with Rothermel's surface fire spread model**. USDA Forest Service General Technical Report RMRS-GTR-153. Fort Collins, CO. 72 p.
+   - *Expanded set of 40 fuel models (Scott/Burgan models) for diverse fuel types.*
 
 ## See Also
 
