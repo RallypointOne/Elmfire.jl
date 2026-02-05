@@ -26,7 +26,7 @@ book:
         - tutorials/ensemble.qmd
         - tutorials/wui.qmd
         - tutorials/suppression.qmd
-    - part: API Reference
+    - part: Reference
       chapters:
         - reference/index.qmd
         - reference/rothermel.qmd
