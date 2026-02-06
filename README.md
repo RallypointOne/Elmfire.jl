@@ -1,7 +1,8 @@
 # Elmfire.jl
 
 [![Build Status](https://github.com/RallypointOne/Elmfire.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/RallypointOne/Elmfire.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Documentation](https://github.com/RallypointOne/Elmfire.jl/actions/workflows/docs.yml/badge.svg)](https://rallypointone.github.io/Elmfire.jl/)
+[![Docs Workflow](https://github.com/RallypointOne/Elmfire.jl/actions/workflows/docs.yml/badge.svg)](https://github.com/RallypointOne/Elmfire.jl/actions/workflows/docs.yml)
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rallypointone.github.io/Elmfire.jl/)
 
 A Julia implementation of the ELMFIRE wildfire spread model. This package provides tools for simulating fire behavior including surface fire spread, crown fire, ember spotting, and more.
 
@@ -130,6 +131,21 @@ write_fire_perimeter(state, landscape.metadata, "perimeter.geojson")
 # Write output raster
 write_geotiff("burned.tif", state.burned, landscape.metadata)
 ```
+
+## Level Set PDE Solver
+
+Fire front propagation is computed by solving the level set equation:
+
+```
+∂φ/∂t + F|∇φ| = 0
+```
+
+Where φ is the signed distance function (φ < 0 inside fire, φ > 0 outside) and F is the local fire spread rate. The numerical scheme uses:
+
+- **2nd-order Runge-Kutta** time integration
+- **Superbee flux limiter** for gradient calculation (prevents oscillations)
+- **Narrow band method** for efficiency (only computes near the fire front)
+- **CFL-adaptive timestep** for numerical stability
 
 ## Examples
 

@@ -131,13 +131,13 @@
         @test es_nowind.head ≈ es_nowind.back atol=0.5
 
         # With wind - should be elongated
-        es_wind = Elmfire.elliptical_spread(10.0, 10.0)
+        es_wind = Elmfire.elliptical_spread(10.0, 5.0)
         @test es_wind.length_to_breadth > 1.0
         @test es_wind.head > es_wind.back
         @test es_wind.head > es_wind.flank
 
-        # Higher wind - more elongated
-        es_highwind = Elmfire.elliptical_spread(10.0, 20.0)
+        # Higher wind - more elongated (use values below L/B cap of 8.0)
+        es_highwind = Elmfire.elliptical_spread(10.0, 8.0)
         @test es_highwind.length_to_breadth > es_wind.length_to_breadth
     end
 
