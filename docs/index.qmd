@@ -89,18 +89,11 @@ Pkg.develop(path="path/to/Elmfire.jl")
 - **[Tutorials](tutorials/index.qmd)** - Step-by-step guides with examples
 - **[API Reference](reference/index.qmd)** - Complete function and type documentation
 
-## Citation
+## Funding
 
-If you use Elmfire.jl in your research, please cite:
+This work was funded by the **NSF CO-WY ASCEND Applied R&D Program**.
 
-```bibtex
-@software{elmfire_jl,
-  title = {Elmfire.jl: A Julia Implementation of ELMFIRE},
-  author = {Your Name},
-  year = {2024},
-  url = {https://github.com/your-org/Elmfire.jl}
-}
-```
+![](https://www.nsf.gov/policies/images/NSF_Official_logo_High_Res_1200ppi.png){width=100}
 
 ## License
 

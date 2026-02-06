@@ -12,6 +12,19 @@ book:
   description: "A Julia implementation of the ELMFIRE wildfire simulation model"
   repo-url: https://github.com/RallypointOne/Elmfire.jl
   repo-actions: [source]
+  navbar:
+    left:
+      - text: Home
+        href: index.qmd
+      - text: Getting Started
+        href: getting-started.qmd
+      - text: Tutorials
+        href: tutorials/index.qmd
+      - text: Reference
+        href: reference/index.qmd
+    right:
+      - icon: github
+        href: https://github.com/RallypointOne/Elmfire.jl
   chapters:
     - index.qmd
     - getting-started.qmd
