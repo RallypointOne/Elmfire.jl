@@ -93,7 +93,7 @@ Pkg.develop(path="path/to/Elmfire.jl")
 
 This work was funded by the **NSF CO-WY ASCEND Applied R&D Program**.
 
-![](https://www.nsf.gov/policies/images/NSF_Official_logo_High_Res_1200ppi.png){width=100}
+![](images/nsf-logo.png){width=100}
 
 ## License
 
