@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="A Julia implementation of the ELMFIRE wildfire simulation model">
+
+<title>Simulation – Elmfire.jl</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../reference/weather.html" rel="next">
+<link href="../reference/fuel-models.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-4d9afe2b8d18ee9fa5d0d57b5ed4214d.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-c58f986be3ff872790ab570c6d9e49f2.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-7c8ba9dac8feea6a77ed63b2e2898d0e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-c58f986be3ff872790ab570c6d9e49f2.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Elmfire.jl</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../getting-started.html"> 
+<span class="menu-text">Getting Started</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../tutorials/index.html"> 
+<span class="menu-text">Tutorials</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/RallypointOne/Elmfire.jl/stargazers"> <i class="bi bi-star" role="img">
+</i> 
+<span class="menu-text">Star</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/RallypointOne/Elmfire.jl"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+    <a href="https://github.com/RallypointOne/Elmfire.jl" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/simulation.html"><span class="chapter-title">Simulation</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Elmfire.jl</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../getting-started.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Getting Started</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tutorials</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Tutorials</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/basic-simulation.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Basic Simulation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/weather-effects.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Weather Effects</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/terrain-effects.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Terrain Effects</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/crown-fire.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Crown Fire</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/spotting.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Spotting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/ensemble.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Ensemble Simulations</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/wui.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">WUI Modeling</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/suppression.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Suppression</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">API Reference</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/rothermel.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Rothermel Fire Spread Model</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/fuel-models.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Fuel Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/simulation.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">Simulation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/weather.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Weather</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/geospatial.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Geospatial I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/ensemble.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Ensemble</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/wui-suppression.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">WUI &amp; Suppression</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">More</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../api.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">API</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../changelog.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Changelog</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../coverage.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Coverage</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#types" id="toc-types" class="nav-link active" data-scroll-target="#types">Types</a>
+  <ul class="collapse">
+  <li><a href="#firestate" id="toc-firestate" class="nav-link" data-scroll-target="#firestate">FireState</a></li>
+  <li><a href="#simulationconfig" id="toc-simulationconfig" class="nav-link" data-scroll-target="#simulationconfig">SimulationConfig</a></li>
+  <li><a href="#canopygrid" id="toc-canopygrid" class="nav-link" data-scroll-target="#canopygrid">CanopyGrid</a></li>
+  </ul></li>
+  <li><a href="#simulation-functions" id="toc-simulation-functions" class="nav-link" data-scroll-target="#simulation-functions">Simulation Functions</a>
+  <ul class="collapse">
+  <li><a href="#simulate" id="toc-simulate" class="nav-link" data-scroll-target="#simulate">simulate!</a></li>
+  <li><a href="#simulate_uniform" id="toc-simulate_uniform" class="nav-link" data-scroll-target="#simulate_uniform">simulate_uniform!</a></li>
+  <li><a href="#simulate_full" id="toc-simulate_full" class="nav-link" data-scroll-target="#simulate_full">simulate_full!</a></li>
+  </ul></li>
+  <li><a href="#ignition-functions" id="toc-ignition-functions" class="nav-link" data-scroll-target="#ignition-functions">Ignition Functions</a>
+  <ul class="collapse">
+  <li><a href="#ignite" id="toc-ignite" class="nav-link" data-scroll-target="#ignite">ignite!</a></li>
+  <li><a href="#ignite_point" id="toc-ignite_point" class="nav-link" data-scroll-target="#ignite_point">ignite_point!</a></li>
+  <li><a href="#ignite_circle" id="toc-ignite_circle" class="nav-link" data-scroll-target="#ignite_circle">ignite_circle!</a></li>
+  </ul></li>
+  <li><a href="#state-management" id="toc-state-management" class="nav-link" data-scroll-target="#state-management">State Management</a>
+  <ul class="collapse">
+  <li><a href="#reset" id="toc-reset" class="nav-link" data-scroll-target="#reset">reset!</a></li>
+  <li><a href="#copy" id="toc-copy" class="nav-link" data-scroll-target="#copy">copy</a></li>
+  </ul></li>
+  <li><a href="#output-functions" id="toc-output-functions" class="nav-link" data-scroll-target="#output-functions">Output Functions</a>
+  <ul class="collapse">
+  <li><a href="#get_fire_perimeter" id="toc-get_fire_perimeter" class="nav-link" data-scroll-target="#get_fire_perimeter">get_fire_perimeter</a></li>
+  <li><a href="#get_burned_area" id="toc-get_burned_area" class="nav-link" data-scroll-target="#get_burned_area">get_burned_area</a></li>
+  <li><a href="#get_burned_area_acres" id="toc-get_burned_area_acres" class="nav-link" data-scroll-target="#get_burned_area_acres">get_burned_area_acres</a></li>
+  </ul></li>
+  <li><a href="#helper-functions" id="toc-helper-functions" class="nav-link" data-scroll-target="#helper-functions">Helper Functions</a>
+  <ul class="collapse">
+  <li><a href="#wind_adjustment_factor" id="toc-wind_adjustment_factor" class="nav-link" data-scroll-target="#wind_adjustment_factor">wind_adjustment_factor</a></li>
+  <li><a href="#calculate_tanslp2" id="toc-calculate_tanslp2" class="nav-link" data-scroll-target="#calculate_tanslp2">calculate_tanslp2</a></li>
+  <li><a href="#coordinate-conversion" id="toc-coordinate-conversion" class="nav-link" data-scroll-target="#coordinate-conversion">Coordinate Conversion</a></li>
+  </ul></li>
+  <li><a href="#callbacks" id="toc-callbacks" class="nav-link" data-scroll-target="#callbacks">Callbacks</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/RallypointOne/Elmfire.jl/blob/main/reference/simulation.qmd" class="toc-action"><i class="bi bi-github"></i>View source</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/simulation.html"><span class="chapter-title">Simulation</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-title">Simulation</span></h1>
+<p class="subtitle lead">Fire state and simulation functions</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>This module provides the core fire simulation state and execution functions.</p>
+<div id="2" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Elmfire</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Plots</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="types" class="level2">
+<h2 class="anchored" data-anchor-id="types">Types</h2>
+<section id="firestate" class="level3">
+<h3 class="anchored" data-anchor-id="firestate">FireState</h3>
+<p>Complete state of a fire simulation, including the level set field, burned area, and fire behavior outputs.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">mutable struct</span> FireState{T<span class="op">&lt;:</span><span class="dt">AbstractFloat</span>}</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Level set field (with 2-cell padding for stencil operations)</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    phi<span class="op">::</span><span class="dt">Matrix{T}</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    phi_old<span class="op">::</span><span class="dt">Matrix{T}</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Output fields (no padding, matches grid dimensions)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    time_of_arrival<span class="op">::</span><span class="dt">Matrix{T}    </span><span class="co"># -1 if not burned</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    burned<span class="op">::</span><span class="dt">BitMatrix             </span><span class="co"># True if cell has burned</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    spread_rate<span class="op">::</span><span class="dt">Matrix{T}        </span><span class="co"># Final spread rate (ft/min)</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    fireline_intensity<span class="op">::</span><span class="dt">Matrix{T} </span><span class="co"># Fireline intensity (kW/m)</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    flame_length<span class="op">::</span><span class="dt">Matrix{T}       </span><span class="co"># Flame length (ft)</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Velocity components (with padding)</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    ux<span class="op">::</span><span class="dt">Matrix{T}</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    uy<span class="op">::</span><span class="dt">Matrix{T}</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Narrow band tracking</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    narrow_band<span class="op">::</span><span class="dt">NarrowBand</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Grid parameters</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    ncols<span class="op">::</span><span class="dt">Int           </span><span class="co"># Number of columns (without padding)</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>    nrows<span class="op">::</span><span class="dt">Int           </span><span class="co"># Number of rows (without padding)</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>    cellsize<span class="op">::</span><span class="dt">T          </span><span class="co"># Cell size (ft)</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>    xllcorner<span class="op">::</span><span class="dt">T         </span><span class="co"># X coordinate of lower-left corner</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    yllcorner<span class="op">::</span><span class="dt">T         </span><span class="co"># Y coordinate of lower-left corner</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    padding<span class="op">::</span><span class="dt">Int         </span><span class="co"># Padding for stencil operations</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Constructor:</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">FireState</span><span class="dt">{T}</span>(ncols, nrows, cellsize;</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    xllcorner <span class="op">=</span> <span class="fu">zero</span>(T),</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    yllcorner <span class="op">=</span> <span class="fu">zero</span>(T),</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    padding <span class="op">=</span> <span class="fl">2</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    band_thickness <span class="op">=</span> <span class="fl">5</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> FireState{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="4" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a 100x100 grid with 30ft cells</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Grid size: </span><span class="sc">$</span>(state.ncols)<span class="st"> x </span><span class="sc">$</span>(state.nrows)<span class="st">"</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Cell size: </span><span class="sc">$</span>(state.cellsize)<span class="st"> ft"</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Domain: </span><span class="sc">$</span>(state.ncols <span class="op">*</span> state.cellsize)<span class="st"> x </span><span class="sc">$</span>(state.nrows <span class="op">*</span> state.cellsize)<span class="st"> ft"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Grid size: 100 x 100
+Cell size: 30.0 ft
+Domain: 3000.0 x 3000.0 ft</code></pre>
+</div>
+</div>
+</section>
+<section id="simulationconfig" class="level3">
+<h3 class="anchored" data-anchor-id="simulationconfig">SimulationConfig</h3>
+<p>Configuration for full simulation with crown fire, spotting, and weather interpolation.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> SimulationConfig{T<span class="op">&lt;:</span><span class="dt">AbstractFloat</span>}</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    enable_crown_fire<span class="op">::</span><span class="dt">Bool        </span><span class="co"># Enable crown fire modeling</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    enable_spotting<span class="op">::</span><span class="dt">Bool          </span><span class="co"># Enable ember transport</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    crown_fire_adj<span class="op">::</span><span class="dt">T              </span><span class="co"># Crown fire adjustment factor</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    critical_canopy_cover<span class="op">::</span><span class="dt">T       </span><span class="co"># Minimum CC for active crown fire</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    foliar_moisture<span class="op">::</span><span class="dt">T             </span><span class="co"># Foliar moisture content (%)</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    spotting_params<span class="op">::</span><span class="dt">Union{Nothing, SpottingParameters{T}}</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    use_sardoy<span class="op">::</span><span class="dt">Bool               </span><span class="co"># Use Sardoy model for spotting</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Constructor:</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">SimulationConfig</span><span class="dt">{T}</span>(;</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    enable_crown_fire <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    enable_spotting <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    crown_fire_adj <span class="op">=</span> <span class="fl">1.0</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    critical_canopy_cover <span class="op">=</span> <span class="fl">0.4</span>,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    foliar_moisture <span class="op">=</span> <span class="fl">100.0</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    spotting_params <span class="op">=</span> <span class="cn">nothing</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    use_sardoy <span class="op">=</span> <span class="cn">false</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> SimulationConfig{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="6" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Basic configuration (surface fire only)</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>config_basic <span class="op">=</span> <span class="fu">SimulationConfig</span><span class="dt">{Float64}</span>()</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Crown fire enabled</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>config_crown <span class="op">=</span> <span class="fu">SimulationConfig</span><span class="dt">{Float64}</span>(</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    enable_crown_fire <span class="op">=</span> <span class="cn">true</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    foliar_moisture <span class="op">=</span> <span class="fl">100.0</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Full configuration with spotting</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>spotting <span class="op">=</span> <span class="fu">SpottingParameters</span><span class="dt">{Float64}</span>(</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    mean_distance <span class="op">=</span> <span class="fl">100.0</span>,</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    normalized_variance <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>    ws_exponent <span class="op">=</span> <span class="fl">1.0</span>,</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>    flin_exponent <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>    nembers_max <span class="op">=</span> <span class="fl">10</span>,</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    surface_spotting_percent <span class="op">=</span> <span class="fl">1.0</span>,</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    crown_spotting_percent <span class="op">=</span> <span class="fl">10.0</span>,</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>    pign <span class="op">=</span> <span class="fl">50.0</span>,</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    min_distance <span class="op">=</span> <span class="fl">10.0</span>,</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    max_distance <span class="op">=</span> <span class="fl">2000.0</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>config_full <span class="op">=</span> <span class="fu">SimulationConfig</span><span class="dt">{Float64}</span>(</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>    enable_crown_fire <span class="op">=</span> <span class="cn">true</span>,</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>    enable_spotting <span class="op">=</span> <span class="cn">true</span>,</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>    spotting_params <span class="op">=</span> spotting</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="1">
+<pre><code>SimulationConfig{Float64}(true, true, 1.0, 0.4, 100.0, SpottingParameters{Float64}(100.0, 0.5, 1.0, 0.5, 10, 1.0, 10.0, 50.0, 10.0, 2000.0), false)</code></pre>
+</div>
+</div>
+</section>
+<section id="canopygrid" class="level3">
+<h3 class="anchored" data-anchor-id="canopygrid">CanopyGrid</h3>
+<p>Grid of canopy properties for crown fire modeling.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> CanopyGrid{T<span class="op">&lt;:</span><span class="dt">AbstractFloat</span>}</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    cbd<span class="op">::</span><span class="dt">Matrix{T}      </span><span class="co"># Canopy bulk density (kg/m³)</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    cbh<span class="op">::</span><span class="dt">Matrix{T}      </span><span class="co"># Canopy base height (m)</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    cc<span class="op">::</span><span class="dt">Matrix{T}       </span><span class="co"># Canopy cover (fraction 0-1)</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>    ch<span class="op">::</span><span class="dt">Matrix{T}       </span><span class="co"># Canopy height (m)</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="8" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create uniform canopy</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>canopy <span class="op">=</span> <span class="fu">CanopyGrid</span><span class="dt">{Float64}</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fill</span>(<span class="fl">0.15</span>, <span class="fl">100</span>, <span class="fl">100</span>),  <span class="co"># CBD</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fill</span>(<span class="fl">2.0</span>, <span class="fl">100</span>, <span class="fl">100</span>),   <span class="co"># CBH</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fill</span>(<span class="fl">0.6</span>, <span class="fl">100</span>, <span class="fl">100</span>),   <span class="co"># CC</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fill</span>(<span class="fl">20.0</span>, <span class="fl">100</span>, <span class="fl">100</span>)   <span class="co"># CH</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Canopy bulk density: </span><span class="sc">$</span>(canopy.cbd[<span class="fl">1</span>,<span class="fl">1</span>])<span class="st"> kg/m³"</span>)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Canopy base height: </span><span class="sc">$</span>(canopy.cbh[<span class="fl">1</span>,<span class="fl">1</span>])<span class="st"> m"</span>)</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Canopy cover: </span><span class="sc">$</span>(canopy.cc[<span class="fl">1</span>,<span class="fl">1</span>] <span class="op">*</span> <span class="fl">100</span>)<span class="st">%"</span>)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Canopy height: </span><span class="sc">$</span>(canopy.ch[<span class="fl">1</span>,<span class="fl">1</span>])<span class="st"> m"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Canopy bulk density: 0.15 kg/m³
+Canopy base height: 2.0 m
+Canopy cover: 60.0%
+Canopy height: 20.0 m</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="simulation-functions" class="level2">
+<h2 class="anchored" data-anchor-id="simulation-functions">Simulation Functions</h2>
+<section id="simulate" class="level3">
+<h3 class="anchored" data-anchor-id="simulate">simulate!</h3>
+<p>Run fire simulation with spatially-varying conditions.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate!</span>(</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>    state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    fuel_ids<span class="op">::</span><span class="dt">AbstractMatrix{Int}</span>,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    fuel_table<span class="op">::</span><span class="dt">FuelModelTable{T}</span>,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    slope<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    aspect<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    t_start<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    t_stop<span class="op">::</span><span class="dt">T</span>;</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    dt_initial <span class="op">=</span> <span class="fl">1.0</span>,</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    target_cfl <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    dt_max <span class="op">=</span> <span class="fl">10.0</span>,</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>    callback <span class="op">=</span> <span class="cn">nothing</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Argument</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>state</code></td>
+<td>Fire state (modified in place)</td>
+</tr>
+<tr class="even">
+<td><code>fuel_ids</code></td>
+<td>Matrix of fuel model IDs</td>
+</tr>
+<tr class="odd">
+<td><code>fuel_table</code></td>
+<td>Fuel model lookup table</td>
+</tr>
+<tr class="even">
+<td><code>weather</code></td>
+<td>Constant weather conditions</td>
+</tr>
+<tr class="odd">
+<td><code>slope</code></td>
+<td>Slope in degrees for each cell</td>
+</tr>
+<tr class="even">
+<td><code>aspect</code></td>
+<td>Aspect direction in degrees</td>
+</tr>
+<tr class="odd">
+<td><code>t_start</code></td>
+<td>Start time (minutes)</td>
+</tr>
+<tr class="even">
+<td><code>t_stop</code></td>
+<td>Stop time (minutes)</td>
+</tr>
+</tbody>
+</table>
+<div id="10" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>fuel_table <span class="op">=</span> <span class="fu">create_standard_fuel_table</span>(<span class="dt">Float64</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>weather <span class="op">=</span> <span class="fu">ConstantWeather</span><span class="dt">{Float64}</span>(</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    wind_speed_mph <span class="op">=</span> <span class="fl">10.0</span>,</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    wind_direction <span class="op">=</span> <span class="fl">270.0</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    M1 <span class="op">=</span> <span class="fl">0.06</span>, M10 <span class="op">=</span> <span class="fl">0.08</span>, M100 <span class="op">=</span> <span class="fl">0.10</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    MLH <span class="op">=</span> <span class="fl">0.60</span>, MLW <span class="op">=</span> <span class="fl">0.90</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0</span>)</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>fuel_ids <span class="op">=</span> <span class="fu">fill</span>(<span class="fl">1</span>, <span class="fl">100</span>, <span class="fl">100</span>)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>slope <span class="op">=</span> <span class="fu">zeros</span>(<span class="dt">Float64</span>, <span class="fl">100</span>, <span class="fl">100</span>)</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>aspect <span class="op">=</span> <span class="fu">zeros</span>(<span class="dt">Float64</span>, <span class="fl">100</span>, <span class="fl">100</span>)</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">0.0</span>)</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate!</span>(state, fuel_ids, fuel_table, weather, slope, aspect, <span class="fl">0.0</span>, <span class="fl">30.0</span>)</span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Burned area: </span><span class="sc">$</span>(<span class="fu">round</span>(<span class="fu">get_burned_area_acres</span>(state), digits<span class="op">=</span><span class="fl">2</span>))<span class="st"> acres"</span>)</span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a><span class="fu">heatmap</span>(state.burned<span class="op">'</span>, title <span class="op">=</span> <span class="st">"Burned Area"</span>, color <span class="op">=</span> <span class="op">:</span>YlOrRd, aspect_ratio <span class="op">=</span> <span class="fl">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Burned area: 31.1 acres</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="1">
+<img src="data:image/png;base64,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">
+</div>
+</div>
+</section>
+<section id="simulate_uniform" class="level3">
+<h3 class="anchored" data-anchor-id="simulate_uniform">simulate_uniform!</h3>
+<p>Run simulation with uniform fuel, slope, and aspect across the entire domain.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>    fuel_id<span class="op">::</span><span class="dt">Int</span>,</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    fuel_table<span class="op">::</span><span class="dt">FuelModelTable{T}</span>,</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    slope_deg<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    aspect_deg<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    t_start<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    t_stop<span class="op">::</span><span class="dt">T</span>;</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>    kwargs<span class="op">...</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="12" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">0.0</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Uniform fuel model 1 (short grass), 10° slope facing east</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(state, <span class="fl">1</span>, fuel_table, weather, <span class="fl">10.0</span>, <span class="fl">90.0</span>, <span class="fl">0.0</span>, <span class="fl">30.0</span>)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Burned area: </span><span class="sc">$</span>(<span class="fu">round</span>(<span class="fu">get_burned_area_acres</span>(state), digits<span class="op">=</span><span class="fl">2</span>))<span class="st"> acres"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Burned area: 46.18 acres</code></pre>
+</div>
+</div>
+</section>
+<section id="simulate_full" class="level3">
+<h3 class="anchored" data-anchor-id="simulate_full">simulate_full!</h3>
+<p>Run full simulation with crown fire, spotting, and weather interpolation support.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_full!</span>(</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>    state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>    fuel_ids<span class="op">::</span><span class="dt">AbstractMatrix{Int}</span>,</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>    fuel_table<span class="op">::</span><span class="dt">FuelModelTable{T}</span>,</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    weather_interp<span class="op">::</span><span class="dt">WeatherInterpolator{T}</span>,</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    slope<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>    aspect<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    t_start<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    t_stop<span class="op">::</span><span class="dt">T</span>;</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    canopy <span class="op">=</span> <span class="cn">nothing</span>,</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    config <span class="op">=</span> <span class="fu">SimulationConfig</span><span class="dt">{T}</span>(),</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>    dt_initial <span class="op">=</span> <span class="fl">1.0</span>,</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>    target_cfl <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>    dt_max <span class="op">=</span> <span class="fl">10.0</span>,</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>    callback <span class="op">=</span> <span class="cn">nothing</span>,</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>    rng <span class="op">=</span> <span class="bu">Random</span>.<span class="fu">default_rng</span>()</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> SpotFireTracker</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="14" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Random</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0</span>)</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>fuel_ids <span class="op">=</span> <span class="fu">fill</span>(<span class="fl">10</span>, <span class="fl">100</span>, <span class="fl">100</span>)  <span class="co"># Timber understory</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>slope <span class="op">=</span> <span class="fu">zeros</span>(<span class="dt">Float64</span>, <span class="fl">100</span>, <span class="fl">100</span>)</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>aspect <span class="op">=</span> <span class="fu">zeros</span>(<span class="dt">Float64</span>, <span class="fl">100</span>, <span class="fl">100</span>)</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Create canopy</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>canopy <span class="op">=</span> <span class="fu">CanopyGrid</span><span class="dt">{Float64}</span>(</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fill</span>(<span class="fl">0.15</span>, <span class="fl">100</span>, <span class="fl">100</span>),</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fill</span>(<span class="fl">2.0</span>, <span class="fl">100</span>, <span class="fl">100</span>),</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fill</span>(<span class="fl">0.6</span>, <span class="fl">100</span>, <span class="fl">100</span>),</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fill</span>(<span class="fl">20.0</span>, <span class="fl">100</span>, <span class="fl">100</span>)</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Configuration with crown fire</span></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>config <span class="op">=</span> <span class="fu">SimulationConfig</span><span class="dt">{Float64}</span>(</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>    enable_crown_fire <span class="op">=</span> <span class="cn">true</span>,</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>    foliar_moisture <span class="op">=</span> <span class="fl">100.0</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>weather_interp <span class="op">=</span> <span class="fu">create_constant_interpolator</span>(weather, <span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0</span>)</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">0.0</span>)</span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_full!</span>(state, fuel_ids, fuel_table, weather_interp, slope, aspect,</span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>    <span class="fl">0.0</span>, <span class="fl">30.0</span>; canopy <span class="op">=</span> canopy, config <span class="op">=</span> config)</span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Burned area: </span><span class="sc">$</span>(<span class="fu">round</span>(<span class="fu">get_burned_area_acres</span>(state), digits<span class="op">=</span><span class="fl">2</span>))<span class="st"> acres"</span>)</span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Max fireline intensity: </span><span class="sc">$</span>(<span class="fu">round</span>(<span class="fu">maximum</span>(state.fireline_intensity), digits<span class="op">=</span><span class="fl">0</span>))<span class="st"> kW/m"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Burned area: 80.66 acres
+Max fireline intensity: 21165.0 kW/m</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="ignition-functions" class="level2">
+<h2 class="anchored" data-anchor-id="ignition-functions">Ignition Functions</h2>
+<section id="ignite" class="level3">
+<h3 class="anchored" data-anchor-id="ignite">ignite!</h3>
+<p>Ignite a cell at grid coordinates.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb22"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state<span class="op">::</span><span class="dt">FireState{T}</span>, ix<span class="op">::</span><span class="dt">Int</span>, iy<span class="op">::</span><span class="dt">Int</span>, t<span class="op">::</span><span class="dt">T</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Sets up the level set as a signed distance function near the ignition point.</p>
+<div id="16" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">30.0</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">25</span>, <span class="fl">25</span>, <span class="fl">0.0</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Cell (25,25) burned: </span><span class="sc">$</span>(state.burned[<span class="fl">25</span>, <span class="fl">25</span>])<span class="st">"</span>)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Time of arrival: </span><span class="sc">$</span>(state.time_of_arrival[<span class="fl">25</span>, <span class="fl">25</span>])<span class="st"> min"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cell (25,25) burned: true
+Time of arrival: 0.0 min</code></pre>
+</div>
+</div>
+</section>
+<section id="ignite_point" class="level3">
+<h3 class="anchored" data-anchor-id="ignite_point">ignite_point!</h3>
+<p>Ignite a cell at world coordinates.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb25"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite_point!</span>(state<span class="op">::</span><span class="dt">FireState{T}</span>, x<span class="op">::</span><span class="dt">T</span>, y<span class="op">::</span><span class="dt">T</span>, t<span class="op">::</span><span class="dt">T</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Converts world coordinates to grid indices and ignites the corresponding cell.</p>
+</section>
+<section id="ignite_circle" class="level3">
+<h3 class="anchored" data-anchor-id="ignite_circle">ignite_circle!</h3>
+<p>Ignite all cells within a circular area.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb26"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite_circle!</span>(state<span class="op">::</span><span class="dt">FireState{T}</span>, center_x<span class="op">::</span><span class="dt">Int</span>, center_y<span class="op">::</span><span class="dt">Int</span>, radius_cells<span class="op">::</span><span class="dt">T</span>, t<span class="op">::</span><span class="dt">T</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="18" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">30.0</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite_circle!</span>(state, <span class="fl">25</span>, <span class="fl">25</span>, <span class="fl">3.0</span>, <span class="fl">0.0</span>)  <span class="co"># 3-cell radius</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Burned cells: </span><span class="sc">$</span>(<span class="fu">count</span>(state.burned))<span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Burned cells: 29</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="state-management" class="level2">
+<h2 class="anchored" data-anchor-id="state-management">State Management</h2>
+<section id="reset" class="level3">
+<h3 class="anchored" data-anchor-id="reset">reset!</h3>
+<p>Reset a FireState to initial conditions for reuse in ensemble simulations.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb29"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">reset!</span>(state<span class="op">::</span><span class="dt">FireState{T}</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="20" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">30.0</span>)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">25</span>, <span class="fl">25</span>, <span class="fl">0.0</span>)</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(state, <span class="fl">1</span>, fuel_table, weather, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">10.0</span>)</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Before reset: </span><span class="sc">$</span>(<span class="fu">count</span>(state.burned))<span class="st"> burned cells"</span>)</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a><span class="fu">reset!</span>(state)</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"After reset: </span><span class="sc">$</span>(<span class="fu">count</span>(state.burned))<span class="st"> burned cells"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Before reset: 210 burned cells
+After reset: 0 burned cells</code></pre>
+</div>
+</div>
+</section>
+<section id="copy" class="level3">
+<h3 class="anchored" data-anchor-id="copy">copy</h3>
+<p>Create a deep copy of a FireState for thread-safe parallel execution.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb32"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="bu">Base</span>.<span class="fu">copy</span>(state<span class="op">::</span><span class="dt">FireState{T}</span>) <span class="op">-&gt;</span> FireState{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="output-functions" class="level2">
+<h2 class="anchored" data-anchor-id="output-functions">Output Functions</h2>
+<section id="get_fire_perimeter" class="level3">
+<h3 class="anchored" data-anchor-id="get_fire_perimeter">get_fire_perimeter</h3>
+<p>Get the grid coordinates of cells on the fire perimeter.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb33"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">get_fire_perimeter</span>(state<span class="op">::</span><span class="dt">FireState</span>) <span class="op">-&gt;</span> <span class="dt">Vector</span>{<span class="dt">Tuple</span>{<span class="dt">Int</span>, <span class="dt">Int</span>}}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Returns burned cells adjacent to unburned cells.</p>
+<div id="22" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">30.0</span>)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">25</span>, <span class="fl">25</span>, <span class="fl">0.0</span>)</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(state, <span class="fl">1</span>, fuel_table, weather, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">15.0</span>)</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>perimeter <span class="op">=</span> <span class="fu">get_fire_perimeter</span>(state)</span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Perimeter cells: </span><span class="sc">$</span>(<span class="fu">length</span>(perimeter))<span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Perimeter cells: 131</code></pre>
+</div>
+</div>
+</section>
+<section id="get_burned_area" class="level3">
+<h3 class="anchored" data-anchor-id="get_burned_area">get_burned_area</h3>
+<p>Get the total burned area in square feet.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb36"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="fu">get_burned_area</span>(state<span class="op">::</span><span class="dt">FireState{T}</span>) <span class="op">-&gt;</span> T</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="get_burned_area_acres" class="level3">
+<h3 class="anchored" data-anchor-id="get_burned_area_acres">get_burned_area_acres</h3>
+<p>Get the total burned area in acres.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb37"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">get_burned_area_acres</span>(state<span class="op">::</span><span class="dt">FireState{T}</span>) <span class="op">-&gt;</span> T</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="24" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0</span>)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">0.0</span>)</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(state, <span class="fl">1</span>, fuel_table, weather, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">30.0</span>)</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Burned area: </span><span class="sc">$</span>(<span class="fu">round</span>(<span class="fu">get_burned_area</span>(state), digits<span class="op">=</span><span class="fl">0</span>))<span class="st"> ft²"</span>)</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Burned area: </span><span class="sc">$</span>(<span class="fu">round</span>(<span class="fu">get_burned_area_acres</span>(state), digits<span class="op">=</span><span class="fl">2</span>))<span class="st"> acres"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Burned area: 1.3545e6 ft²
+Burned area: 31.1 acres</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="helper-functions" class="level2">
+<h2 class="anchored" data-anchor-id="helper-functions">Helper Functions</h2>
+<section id="wind_adjustment_factor" class="level3">
+<h3 class="anchored" data-anchor-id="wind_adjustment_factor">wind_adjustment_factor</h3>
+<p>Calculate wind adjustment factor (WAF) from 20-ft wind to mid-flame wind.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb40"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wind_adjustment_factor</span>(fuel_bed_depth<span class="op">::</span><span class="dt">T</span>) <span class="op">-&gt;</span> T</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Uses the unsheltered (no canopy) formula.</p>
+<div id="26" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>depths <span class="op">=</span> [<span class="fl">0.5</span>, <span class="fl">1.0</span>, <span class="fl">2.0</span>, <span class="fl">3.0</span>, <span class="fl">4.0</span>]</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>wafs <span class="op">=</span> [<span class="fu">wind_adjustment_factor</span>(d) for d <span class="kw">in</span> depths]</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (d, w) <span class="kw">in</span> <span class="fu">zip</span>(depths, wafs)</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">println</span>(<span class="st">"Depth </span><span class="sc">$</span>d<span class="st"> ft: WAF = </span><span class="sc">$</span>(<span class="fu">round</span>(w, digits<span class="op">=</span><span class="fl">3</span>))<span class="st">"</span>)</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Depth 0.5 ft: WAF = 0.319
+Depth 1.0 ft: WAF = 0.362
+Depth 2.0 ft: WAF = 0.418
+Depth 3.0 ft: WAF = 0.459
+Depth 4.0 ft: WAF = 0.492</code></pre>
+</div>
+</div>
+</section>
+<section id="calculate_tanslp2" class="level3">
+<h3 class="anchored" data-anchor-id="calculate_tanslp2">calculate_tanslp2</h3>
+<p>Calculate tan²(slope) from slope in degrees.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb43"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">calculate_tanslp2</span>(slope_degrees<span class="op">::</span><span class="dt">T</span>) <span class="op">-&gt;</span> T</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="28" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>slopes <span class="op">=</span> [<span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">45</span>]</span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> s <span class="kw">in</span> slopes</span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">println</span>(<span class="st">"Slope </span><span class="sc">$</span>(s)<span class="st">°: tan²(slope) = </span><span class="sc">$</span>(<span class="fu">round</span>(<span class="fu">calculate_tanslp2</span>(<span class="fu">Float64</span>(s)), digits<span class="op">=</span><span class="fl">4</span>))<span class="st">"</span>)</span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Slope 0°: tan²(slope) = 0.0
+Slope 10°: tan²(slope) = 0.0311
+Slope 20°: tan²(slope) = 0.1325
+Slope 30°: tan²(slope) = 0.3333
+Slope 45°: tan²(slope) = 1.0</code></pre>
+</div>
+</div>
+</section>
+<section id="coordinate-conversion" class="level3">
+<h3 class="anchored" data-anchor-id="coordinate-conversion">Coordinate Conversion</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb46"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">grid_to_padded</span>(state<span class="op">::</span><span class="dt">FireState</span>, ix<span class="op">::</span><span class="dt">Int</span>, iy<span class="op">::</span><span class="dt">Int</span>) <span class="op">-&gt;</span> <span class="dt">Tuple</span>{<span class="dt">Int</span>, <span class="dt">Int</span>}</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a><span class="fu">padded_to_grid</span>(state<span class="op">::</span><span class="dt">FireState</span>, px<span class="op">::</span><span class="dt">Int</span>, py<span class="op">::</span><span class="dt">Int</span>) <span class="op">-&gt;</span> <span class="dt">Tuple</span>{<span class="dt">Int</span>, <span class="dt">Int</span>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Convert between grid coordinates (1:ncols, 1:nrows) and padded array coordinates.</p>
+</section>
+</section>
+<section id="callbacks" class="level2">
+<h2 class="anchored" data-anchor-id="callbacks">Callbacks</h2>
+<p>The simulation functions accept an optional callback that is called after each timestep:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb47"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">callback</span>(state, t, dt, iteration)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div id="30" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb48"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">30.0</span>)</span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">25</span>, <span class="fl">25</span>, <span class="fl">0.0</span>)</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-4"><a href="#cb48-4" aria-hidden="true" tabindex="-1"></a>areas <span class="op">=</span> <span class="dt">Float64</span>[]</span>
+<span id="cb48-5"><a href="#cb48-5" aria-hidden="true" tabindex="-1"></a>times <span class="op">=</span> <span class="dt">Float64</span>[]</span>
+<span id="cb48-6"><a href="#cb48-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-7"><a href="#cb48-7" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">track_area</span>(state, t, dt, iter)</span>
+<span id="cb48-8"><a href="#cb48-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(times, t)</span>
+<span id="cb48-9"><a href="#cb48-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(areas, <span class="fu">get_burned_area_acres</span>(state))</span>
+<span id="cb48-10"><a href="#cb48-10" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
+<span id="cb48-11"><a href="#cb48-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-12"><a href="#cb48-12" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(state, <span class="fl">1</span>, fuel_table, weather, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">20.0</span>;</span>
+<span id="cb48-13"><a href="#cb48-13" aria-hidden="true" tabindex="-1"></a>    callback <span class="op">=</span> track_area)</span>
+<span id="cb48-14"><a href="#cb48-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb48-15"><a href="#cb48-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(times, areas,</span>
+<span id="cb48-16"><a href="#cb48-16" aria-hidden="true" tabindex="-1"></a>    xlabel <span class="op">=</span> <span class="st">"Time (min)"</span>,</span>
+<span id="cb48-17"><a href="#cb48-17" aria-hidden="true" tabindex="-1"></a>    ylabel <span class="op">=</span> <span class="st">"Burned Area (acres)"</span>,</span>
+<span id="cb48-18"><a href="#cb48-18" aria-hidden="true" tabindex="-1"></a>    title <span class="op">=</span> <span class="st">"Fire Growth Over Time"</span>,</span>
+<span id="cb48-19"><a href="#cb48-19" aria-hidden="true" tabindex="-1"></a>    linewidth <span class="op">=</span> <span class="fl">2</span>,</span>
+<span id="cb48-20"><a href="#cb48-20" aria-hidden="true" tabindex="-1"></a>    legend <span class="op">=</span> <span class="cn">false</span></span>
+<span id="cb48-21"><a href="#cb48-21" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="1">
+<img src="data:image/png;base64,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">
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../reference/fuel-models.html" class="pagination-link" aria-label="Fuel Models">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">Fuel Models</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../reference/weather.html" class="pagination-link" aria-label="Weather">
+        <span class="nav-page-text"><span class="chapter-title">Weather</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/RallypointOne/Elmfire.jl/blob/main/reference/simulation.qmd" class="toc-action"><i class="bi bi-github"></i>View source</a></li></ul></div></div></div></footer><script>
+(function() {
+    // Detect repo name and current version from URL path
+    // Deployed: /{repoName}/{version}/...
+    // Local preview: /page.html (no repo/version segments)
+    var pathParts = window.location.pathname.split('/').filter(Boolean);
+    var isLocal = pathParts.length < 2 || !pathParts[0].includes('.');
+    var currentVersion, basePath;
+
+    if (pathParts.length >= 2 && pathParts[1].match(/^(dev|stable|v\d)/)) {
+        currentVersion = pathParts[1];
+        basePath = '/' + pathParts[0] + '/';
+    } else {
+        currentVersion = 'dev';
+        basePath = '/';
+    }
+
+    // Build dropdown HTML
+    function buildDropdown(versions) {
+        var navbar = document.querySelector('.navbar-nav.navbar-nav-scroll.ms-auto');
+        if (!navbar) return;
+
+        var li = document.createElement('li');
+        li.className = 'nav-item dropdown';
+        li.innerHTML =
+            '<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">' +
+                currentVersion +
+            '</a>' +
+            '<ul class="dropdown-menu dropdown-menu-end"></ul>';
+
+        var menu = li.querySelector('.dropdown-menu');
+
+        // Always add dev and stable
+        var fixed = ['stable', 'dev'];
+        fixed.forEach(function(v) {
+            var a = document.createElement('a');
+            a.className = 'dropdown-item' + (v === currentVersion ? ' active' : '');
+            a.href = basePath + v + '/';
+            a.textContent = v;
+            var item = document.createElement('li');
+            item.appendChild(a);
+            menu.appendChild(item);
+        });
+
+        // Add release versions from versions.json
+        if (versions && versions.length > 0) {
+            var divider = document.createElement('li');
+            divider.innerHTML = '<hr class="dropdown-divider">';
+            menu.appendChild(divider);
+
+            versions.forEach(function(v) {
+                var a = document.createElement('a');
+                a.className = 'dropdown-item' + (v === currentVersion ? ' active' : '');
+                a.href = basePath + v + '/';
+                a.textContent = v;
+                var item = document.createElement('li');
+                item.appendChild(a);
+                menu.appendChild(item);
+            });
+        }
+
+        navbar.prepend(li);
+
+        // Show outdated version banner
+        if (versions && versions.length > 0 && currentVersion !== 'stable' && currentVersion !== 'dev') {
+            var latest = versions[0]; // versions.json is sorted descending
+            if (currentVersion !== latest) {
+                var banner = document.createElement('div');
+                banner.className = 'alert alert-warning text-center mb-0 rounded-0';
+                banner.setAttribute('role', 'alert');
+                banner.innerHTML = 'You are viewing docs for <strong>' + currentVersion + '</strong>. ' +
+                    'The latest stable release is <a href="' + basePath + 'stable/" class="alert-link">' + latest + '</a>.';
+                document.body.prepend(banner);
+            }
+        }
+    }
+
+    // Fetch versions.json, then build dropdown
+    fetch(basePath + 'versions.json')
+        .then(function(res) { return res.ok ? res.json() : []; })
+        .catch(function() { return []; })
+        .then(buildDropdown);
+
+    // Fetch star count from GitHub API
+    var starLink = document.querySelector('a.nav-link[href*="/stargazers"]');
+    if (starLink) {
+        var match = starLink.href.match(/github\.com\/([^/]+\/[^/]+)\/stargazers/);
+        if (match) {
+            fetch('https://api.github.com/repos/' + match[1])
+                .then(function(res) { return res.ok ? res.json() : null; })
+                .then(function(data) {
+                    if (!data) return;
+                    var text = starLink.querySelector('.menu-text');
+                    if (text) text.textContent = data.stargazers_count;
+                })
+                .catch(function() {});
+        }
+    }
+})();
+</script>
+
+
+
+
+</body></html>

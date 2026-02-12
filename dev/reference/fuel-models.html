@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="A Julia implementation of the ELMFIRE wildfire simulation model">
+
+<title>Fuel Models – Elmfire.jl</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../reference/simulation.html" rel="next">
+<link href="../reference/rothermel.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-4d9afe2b8d18ee9fa5d0d57b5ed4214d.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-c58f986be3ff872790ab570c6d9e49f2.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-7c8ba9dac8feea6a77ed63b2e2898d0e.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-c58f986be3ff872790ab570c6d9e49f2.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+<link rel="stylesheet" href="../styles.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../index.html">
+    <span class="navbar-title">Elmfire.jl</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
+<span class="menu-text">Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../getting-started.html"> 
+<span class="menu-text">Getting Started</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../tutorials/index.html"> 
+<span class="menu-text">Tutorials</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="../reference/index.html"> 
+<span class="menu-text">Reference</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/RallypointOne/Elmfire.jl/stargazers"> <i class="bi bi-star" role="img">
+</i> 
+<span class="menu-text">Star</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/RallypointOne/Elmfire.jl"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+    <a href="https://github.com/RallypointOne/Elmfire.jl" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/fuel-models.html"><span class="chapter-title">Fuel Models</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Elmfire.jl</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../getting-started.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Getting Started</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Tutorials</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Tutorials</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/basic-simulation.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Basic Simulation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/weather-effects.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Weather Effects</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/terrain-effects.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Terrain Effects</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/crown-fire.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Crown Fire</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/spotting.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Spotting</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/ensemble.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Ensemble Simulations</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/wui.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">WUI Modeling</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../tutorials/suppression.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Suppression</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Reference</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">API Reference</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/rothermel.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Rothermel Fire Spread Model</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/fuel-models.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">Fuel Models</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/simulation.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Simulation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/weather.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Weather</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/geospatial.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Geospatial I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/ensemble.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Ensemble</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/wui-suppression.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">WUI &amp; Suppression</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">More</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../api.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">API</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../changelog.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Changelog</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../coverage.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Coverage</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#types" id="toc-types" class="nav-link active" data-scroll-target="#types">Types</a>
+  <ul class="collapse">
+  <li><a href="#rawfuelmodel" id="toc-rawfuelmodel" class="nav-link" data-scroll-target="#rawfuelmodel">RawFuelModel</a></li>
+  <li><a href="#fuelmodel" id="toc-fuelmodel" class="nav-link" data-scroll-target="#fuelmodel">FuelModel</a></li>
+  <li><a href="#fuelmodeltable" id="toc-fuelmodeltable" class="nav-link" data-scroll-target="#fuelmodeltable">FuelModelTable</a></li>
+  </ul></li>
+  <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions">Functions</a>
+  <ul class="collapse">
+  <li><a href="#create_standard_fuel_table" id="toc-create_standard_fuel_table" class="nav-link" data-scroll-target="#create_standard_fuel_table">create_standard_fuel_table</a></li>
+  <li><a href="#compute_fuel_model" id="toc-compute_fuel_model" class="nav-link" data-scroll-target="#compute_fuel_model">compute_fuel_model</a></li>
+  <li><a href="#add_raw_model" id="toc-add_raw_model" class="nav-link" data-scroll-target="#add_raw_model">add_raw_model!</a></li>
+  <li><a href="#get_fuel_model" id="toc-get_fuel_model" class="nav-link" data-scroll-target="#get_fuel_model">get_fuel_model</a></li>
+  <li><a href="#isnonburnable" id="toc-isnonburnable" class="nav-link" data-scroll-target="#isnonburnable">isnonburnable</a></li>
+  </ul></li>
+  <li><a href="#standard-fuel-models" id="toc-standard-fuel-models" class="nav-link" data-scroll-target="#standard-fuel-models">Standard Fuel Models</a></li>
+  <li><a href="#dynamic-fuel-models" id="toc-dynamic-fuel-models" class="nav-link" data-scroll-target="#dynamic-fuel-models">Dynamic Fuel Models</a></li>
+  <li><a href="#rothermel-coefficients" id="toc-rothermel-coefficients" class="nav-link" data-scroll-target="#rothermel-coefficients">Rothermel Coefficients</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/RallypointOne/Elmfire.jl/blob/main/reference/fuel-models.qmd" class="toc-action"><i class="bi bi-github"></i>View source</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/fuel-models.html"><span class="chapter-title">Fuel Models</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-title">Fuel Models</span></h1>
+<p class="subtitle lead">Fuel model types and functions</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Fuel models describe the physical characteristics of wildland fuels and are essential inputs to the Rothermel fire spread model.</p>
+<div id="2" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Elmfire</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="types" class="level2">
+<h2 class="anchored" data-anchor-id="types">Types</h2>
+<section id="rawfuelmodel" class="level3">
+<h3 class="anchored" data-anchor-id="rawfuelmodel">RawFuelModel</h3>
+<p>Raw fuel model parameters as read from CSV files before coefficient calculation.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> RawFuelModel{T<span class="op">&lt;:</span><span class="dt">AbstractFloat</span>}</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    id<span class="op">::</span><span class="dt">Int              </span><span class="co"># Fuel model ID</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    name<span class="op">::</span><span class="dt">String         </span><span class="co"># Descriptive name</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    dynamic<span class="op">::</span><span class="dt">Bool        </span><span class="co"># Whether herbaceous fuel transfers based on moisture</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Fuel loadings (lb/ft²)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    W0_1hr<span class="op">::</span><span class="dt">T            </span><span class="co"># 1-hour dead fuel</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    W0_10hr<span class="op">::</span><span class="dt">T           </span><span class="co"># 10-hour dead fuel</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    W0_100hr<span class="op">::</span><span class="dt">T          </span><span class="co"># 100-hour dead fuel</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    W0_herb<span class="op">::</span><span class="dt">T           </span><span class="co"># Live herbaceous</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    W0_woody<span class="op">::</span><span class="dt">T          </span><span class="co"># Live woody</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Surface area to volume ratios (1/ft)</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    SIG_1hr<span class="op">::</span><span class="dt">T           </span><span class="co"># 1-hour SAV</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    SIG_live_herb<span class="op">::</span><span class="dt">T     </span><span class="co"># Live herbaceous SAV</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>    SIG_live_woody<span class="op">::</span><span class="dt">T    </span><span class="co"># Live woody SAV</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Fuel bed properties</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>    delta<span class="op">::</span><span class="dt">T             </span><span class="co"># Fuel bed thickness (ft)</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>    mex_dead<span class="op">::</span><span class="dt">T          </span><span class="co"># Dead fuel moisture of extinction (fraction)</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    hoc<span class="op">::</span><span class="dt">T               </span><span class="co"># Heat of combustion (Btu/lb)</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="fuelmodel" class="level3">
+<h3 class="anchored" data-anchor-id="fuelmodel">FuelModel</h3>
+<p>Complete fuel model with all computed Rothermel coefficients. Created from <code>RawFuelModel</code> via <code>compute_fuel_model()</code>.</p>
+<p><strong>Fields (selected):</strong></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td><code>Int</code></td>
+<td>Fuel model identifier</td>
+</tr>
+<tr class="even">
+<td><code>name</code></td>
+<td><code>String</code></td>
+<td>Descriptive name</td>
+</tr>
+<tr class="odd">
+<td><code>dynamic</code></td>
+<td><code>Bool</code></td>
+<td>Dynamic fuel transfer flag</td>
+</tr>
+<tr class="even">
+<td><code>W0</code></td>
+<td><code>NTuple{6,T}</code></td>
+<td>Fuel loadings for 6 size classes</td>
+</tr>
+<tr class="odd">
+<td><code>SIG</code></td>
+<td><code>NTuple{6,T}</code></td>
+<td>SAV ratios for 6 size classes</td>
+</tr>
+<tr class="even">
+<td><code>delta</code></td>
+<td><code>T</code></td>
+<td>Fuel bed depth (ft)</td>
+</tr>
+<tr class="odd">
+<td><code>mex_dead</code></td>
+<td><code>T</code></td>
+<td>Dead fuel moisture of extinction</td>
+</tr>
+<tr class="even">
+<td><code>rhob</code></td>
+<td><code>T</code></td>
+<td>Bulk density (lb/ft³)</td>
+</tr>
+<tr class="odd">
+<td><code>beta</code></td>
+<td><code>T</code></td>
+<td>Packing ratio</td>
+</tr>
+<tr class="even">
+<td><code>betaop</code></td>
+<td><code>T</code></td>
+<td>Optimal packing ratio</td>
+</tr>
+<tr class="odd">
+<td><code>gammaprime</code></td>
+<td><code>T</code></td>
+<td>Reaction velocity (1/min)</td>
+</tr>
+<tr class="even">
+<td><code>tr</code></td>
+<td><code>T</code></td>
+<td>Residence time (min)</td>
+</tr>
+</tbody>
+</table>
+<p>The 6 size classes are:</p>
+<ol type="1">
+<li>1-hour dead</li>
+<li>10-hour dead</li>
+<li>100-hour dead</li>
+<li>Dynamic dead (transferred herbaceous)</li>
+<li>Live herbaceous</li>
+<li>Live woody</li>
+</ol>
+</section>
+<section id="fuelmodeltable" class="level3">
+<h3 class="anchored" data-anchor-id="fuelmodeltable">FuelModelTable</h3>
+<p>Collection of fuel models indexed by <code>(fuel_id, live_moisture_class)</code>.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">struct</span> FuelModelTable{T<span class="op">&lt;:</span><span class="dt">AbstractFloat</span>}</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    models<span class="op">::</span><span class="dt">Dict{Tuple{Int,Int}, FuelModel{T}}</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    raw_models<span class="op">::</span><span class="dt">Dict{Int, RawFuelModel{T}}</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+</section>
+<section id="functions" class="level2">
+<h2 class="anchored" data-anchor-id="functions">Functions</h2>
+<section id="create_standard_fuel_table" class="level3">
+<h3 class="anchored" data-anchor-id="create_standard_fuel_table">create_standard_fuel_table</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">create_standard_fuel_table</span>(<span class="op">::</span><span class="dt">Type{T}</span>) <span class="op">-&gt;</span> FuelModelTable{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Create a fuel model table with the standard 13 Anderson (1982) fuel models.</p>
+<div id="4" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>fuel_table <span class="op">=</span> <span class="fu">create_standard_fuel_table</span>(<span class="dt">Float64</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Loaded </span><span class="sc">$</span>(<span class="fu">length</span>(fuel_table.raw_models))<span class="st"> fuel models"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Loaded 14 fuel models</code></pre>
+</div>
+</div>
+</section>
+<section id="compute_fuel_model" class="level3">
+<h3 class="anchored" data-anchor-id="compute_fuel_model">compute_fuel_model</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">compute_fuel_model</span>(raw<span class="op">::</span><span class="dt">RawFuelModel{T}</span>, live_moisture_class<span class="op">::</span><span class="dt">Int</span>=<span class="fl">30</span>) <span class="op">-&gt;</span> FuelModel{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Compute all Rothermel coefficients from raw fuel model data.</p>
+<p>For dynamic fuel models, live herbaceous fuel is partitioned between dead and live classes based on the live moisture class (30-120, representing 30% to 120% moisture content).</p>
+<div id="6" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Get raw fuel model 1 (short grass)</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>raw <span class="op">=</span> fuel_table.raw_models[<span class="fl">1</span>]</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute fuel model at different moisture levels</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>fm_dry <span class="op">=</span> <span class="fu">compute_fuel_model</span>(raw, <span class="fl">30</span>)   <span class="co"># Very dry</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>fm_wet <span class="op">=</span> <span class="fu">compute_fuel_model</span>(raw, <span class="fl">120</span>)  <span class="co"># Green</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Fuel model: </span><span class="sc">$</span>(fm_dry.name)<span class="st">"</span>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Dynamic: </span><span class="sc">$</span>(fm_dry.dynamic)<span class="st">"</span>)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Reaction velocity: </span><span class="sc">$</span>(<span class="fu">round</span>(fm_dry.gammaprime, digits<span class="op">=</span><span class="fl">2</span>))<span class="st"> 1/min"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Fuel model: FBFM01
+Dynamic: false
+Reaction velocity: 14.2 1/min</code></pre>
+</div>
+</div>
+</section>
+<section id="add_raw_model" class="level3">
+<h3 class="anchored" data-anchor-id="add_raw_model">add_raw_model!</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">add_raw_model!</span>(table<span class="op">::</span><span class="dt">FuelModelTable{T}</span>, raw<span class="op">::</span><span class="dt">RawFuelModel</span>) <span class="op">-&gt;</span> FuelModelTable</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Add a raw fuel model to the table and compute coefficients for all live moisture classes (30-120).</p>
+<div id="8" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create custom fuel model</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>custom <span class="op">=</span> <span class="fu">RawFuelModel</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="fl">100</span>,                    <span class="co"># id</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">"Custom tall grass"</span>,    <span class="co"># name</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="cn">true</span>,                   <span class="co"># dynamic</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="fl">0.20</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>,        <span class="co"># 1hr, 10hr, 100hr loading</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="fl">0.30</span>, <span class="fl">0.0</span>,             <span class="co"># herb, woody loading</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="fl">2000.0</span>, <span class="fl">1500.0</span>, <span class="fl">1500.0</span>, <span class="co"># SAV ratios</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    <span class="fl">3.0</span>,                    <span class="co"># depth (ft)</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    <span class="fl">0.15</span>,                   <span class="co"># moisture of extinction</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    <span class="fl">8000.0</span>                  <span class="co"># heat of combustion</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="fu">add_raw_model!</span>(fuel_table, custom)</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Added fuel model </span><span class="sc">$</span>(custom.id)<span class="st">: </span><span class="sc">$</span>(custom.name)<span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Added fuel model 100: Custom tall grass</code></pre>
+</div>
+</div>
+</section>
+<section id="get_fuel_model" class="level3">
+<h3 class="anchored" data-anchor-id="get_fuel_model">get_fuel_model</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">get_fuel_model</span>(table<span class="op">::</span><span class="dt">FuelModelTable</span>, fuel_id<span class="op">::</span><span class="dt">Int</span>, live_moisture) <span class="op">-&gt;</span> FuelModel</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Get the fuel model for the given fuel ID and live moisture content. Live moisture can be specified as a fraction (0.3 to 1.2) or as an integer class (30 to 120).</p>
+<div id="10" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># By moisture fraction</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>fm <span class="op">=</span> <span class="fu">get_fuel_model</span>(fuel_table, <span class="fl">1</span>, <span class="fl">0.6</span>)  <span class="co"># 60% live moisture</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Fuel: </span><span class="sc">$</span>(fm.name)<span class="st">, SAV: </span><span class="sc">$</span>(<span class="fu">round</span>(fm.SIG_overall, digits<span class="op">=</span><span class="fl">0</span>))<span class="st"> 1/ft"</span>)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="co"># By moisture class</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>fm2 <span class="op">=</span> <span class="fu">get_fuel_model</span>(fuel_table, <span class="fl">1</span>, <span class="fl">60</span>)</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Same model: </span><span class="sc">$</span>(fm.SIG_overall <span class="op">==</span> fm2.SIG_overall)<span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Fuel: FBFM01, SAV: 3500.0 1/ft
+Same model: true</code></pre>
+</div>
+</div>
+</section>
+<section id="isnonburnable" class="level3">
+<h3 class="anchored" data-anchor-id="isnonburnable">isnonburnable</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">isnonburnable</span>(fm<span class="op">::</span><span class="dt">FuelModel</span>) <span class="op">-&gt;</span> <span class="dt">Bool</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Check if a fuel model is non-burnable (ID 256 or zero fuel loading).</p>
+<div id="12" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>fm1 <span class="op">=</span> <span class="fu">get_fuel_model</span>(fuel_table, <span class="fl">1</span>, <span class="fl">60</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Fuel 1 burnable: </span><span class="sc">$</span>(! <span class="fu">isnonburnable</span>(fm1))<span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Fuel 1 burnable: true</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="standard-fuel-models" class="level2">
+<h2 class="anchored" data-anchor-id="standard-fuel-models">Standard Fuel Models</h2>
+<p>The 13 standard Anderson (1982) fuel models:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>ID</th>
+<th>Name</th>
+<th>Fuel Type</th>
+<th>Spread Rate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Short grass</td>
+<td>Grass</td>
+<td>Fast</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Timber grass/understory</td>
+<td>Grass</td>
+<td>Fast</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Tall grass</td>
+<td>Grass</td>
+<td>Very fast</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Chaparral</td>
+<td>Brush</td>
+<td>Fast</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Brush</td>
+<td>Brush</td>
+<td>Moderate</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Dormant brush</td>
+<td>Brush</td>
+<td>Moderate</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Southern rough</td>
+<td>Brush</td>
+<td>Slow</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Compact timber litter</td>
+<td>Timber</td>
+<td>Slow</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>Hardwood litter</td>
+<td>Timber</td>
+<td>Moderate</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>Timber understory</td>
+<td>Timber</td>
+<td>Moderate</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>Light slash</td>
+<td>Slash</td>
+<td>Moderate</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>Medium slash</td>
+<td>Slash</td>
+<td>Fast</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>Heavy slash</td>
+<td>Slash</td>
+<td>Fast</td>
+</tr>
+</tbody>
+</table>
+<div id="14" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">Plots</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Compare spread rates across fuel models</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>fuel_table <span class="op">=</span> <span class="fu">create_standard_fuel_table</span>(<span class="dt">Float64</span>)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>fm_ids <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">13</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>rates <span class="op">=</span> <span class="dt">Float64</span>[]</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> id <span class="kw">in</span> fm_ids</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    fm <span class="op">=</span> <span class="fu">get_fuel_model</span>(fuel_table, id, <span class="fl">60</span>)</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Approximate no-wind, no-slope rate of spread</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(rates, fm.gammaprime <span class="op">*</span> fm.xi <span class="op">*</span> <span class="fl">10</span>)  <span class="co"># Scaled for visualization</span></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a><span class="fu">bar</span>(fm_ids, rates,</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>    xlabel <span class="op">=</span> <span class="st">"Fuel Model ID"</span>,</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>    ylabel <span class="op">=</span> <span class="st">"Relative Spread Rate"</span>,</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>    title <span class="op">=</span> <span class="st">"Comparison of 13 Standard Fuel Models"</span>,</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>    legend <span class="op">=</span> <span class="cn">false</span>,</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>    xticks <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">13</span></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="1">
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoQAAAHMCAIAAADDNi6EAAAABmJLR0QA/wD/AP+gvaeTAAAgAElEQVR4nOzdZ0AU194G8DNb6FVBmgiICIgIil0UjQ2NHUuwxRKMMZoYNTFqYkk0ifH6aq4xqBgLGhtq1GgsiA0RRcAughSliID0tmyb98PkrptlRUBmRuH5fdqdPcz/zO6yz5QzMxRN0wQAAAD4I+C7AwAAAE2diO8OQJ0pFIr4+PisrCyZTGZjY+Pt7W1kZMR3pxrSnDlznj17duzYMb47UgdFRUXbtm27f/9+dnZ227ZtN2/eXHP7rKysqqqqFi1aaP3sqqqqmFnJZLKWLVu6ubkZGxvXsifFxcU3btwoLi7W19e3trb28PDQ19ev8/I0tKNHjwYHBy9durRfv34slfj444+zsrJOnjxZQ5vnz58rlcrq083NzRv2XZo5c2Z5efmBAwdqaPPkyROmM61bt67+al5eXmlpKSHEysrK0NDwDfsTHBx89OjRX375pV27drX/qxkzZlRWVu7fv/8Nq0Ot0PDuKC8vX758ebNmzdQ/QV1d3cDAwKSkJL5712A8PT319PT47kUdyGSyDh06EELatGnj4+MzefJkrc0qKyuXLVs2ePBgCwsL5rPbt29f9WZffvmlrq6u+kdsYGCwdOlSuVxeczcqKyvnzp2r8be6urrvvfeeqk1WVtbixYuPHDnyJstbDxs2bHjV8jaUDh066Ovr19zmVYm7e/fuhu1M69atmzdvXnMbExMTpnpcXFz1Vz09PZlX//zzzzfvz/z58wkh165dq9NfOTk5WVhYvHl1qA1sGb8zCgsLhwwZcuPGDXt7+3nz5nXq1ElXVzczM/PUqVMHDx7Mzc09f/48331sGNOmTcvLy+O7F3UQHR199+7djz76KCQkpIZmZWVla9asIYS0bt1aX18/IyNDa7PCwkJ/f39fX187OzuRSHTv3r3ffvvthx9+kMlkP//8cw3znz59+oEDB1xcXObOnevq6iqTyZKTk8+cOXPx4kVVm5ycnLVr1wYFBY0ZM6Zey9oYLFy4UGOKh4cHLz0RCoU0Te/atatTp07q02NiYu7duycWi2UyGS8dAx7wvTYAtTVy5EhCyNChQ8vLyzVeun379qeffspLr4Cm6Z07dxJCtm7dWnOzysrK8PDwgoICmqZnz55Nar2lGB8fTwgxMjKSyWSvapOYmEgIsba2fvHihcZLmZmZGrMKCgqqTd0G9FZtGbPXB5VabhkbGhoOHDiwefPmEolE/aXZs2eLRKJhw4YRbBk3GdgyfjdERUUdP37cxsZm3759BgYGGq96eXlt2rRJfUpcXNyePXuSk5OFQqG3t/dHH31kb2+vevXZs2d79uzp1KmTr6/vli1brly5Qgjp37//rFmzdHR0Kisrd+zYcenSpcrKSj8/v3nz5unp6an+dtu2bRUVFfPnzz958mRYWFhOTk6bNm1mz57dvn179Q4kJSWdOnXq7t27z58/NzAw8PHxmTlzppWVlapBVVXVxo0bHR0dx40bt2/fvtOnT7948eKHH37w8fHZvn17QUHBV199pWqcmpq6ffv25OTksrIyCwsLDw+PkSNHurm5qRoUFhb+/vvv169fLy8vd3BwGDt27IABA9T7ExISUl5ePn/+/MuXL4eGhmZmZrZq1WratGm9evV67ZtfVla2Y8eOqKio4uLili1bjhw5cvjw4cxLJSUlwcHB169fJ4SEh4cXFhYSQkaNGuXq6lp9Pnp6ehq9qqWOHTva2NhkZ2eXl5ebmppqbfPw4UNCSI8ePZo3b67xkp2dHfPg6tWrYWFhhJA7d+6sXbuWmTh+/HgnJyelUhkbG3v69Onk5OScnBxLS8vevXtPmTJF/Wjl06dPDxw40K1bt27dum3btu3SpUsymaxLly7z5s3TOHQik8lCQkLOnz8vl8s7deo0Z86c6h3Ozs4+derUzZs3nz17RlFUu3btpk2bpv6ZEkK2bt0qkUg+//zz8+fP79+/Pysra8aMGePHjyeEpKWl/frrrwkJCWZmZsOGDQsMDKzLO6rdli1b5HL53Llz1SdeuHDh5s2bkydPVr2NhJDy8vLQ0NArV67k5+fb2dkNHz589OjRFEXVo+iHH34YHh5+6tQp1b4KiURy8ODBwYMH29raVm9fVlb2+++/R0VFlZSUtGzZctSoUUxma7TZvHlzVFSUQCDo1asXs+ZXXT2WIikp6ffff09JSamsrGzevHmHDh1GjRrVpk2beiw4aOJ7bQBq5ZNPPiGEfPPNN7Vp/OOPP1IUJRAIPD09XVxcCCEGBganTp1SNYiOjiaETJs2rVOnTmKx2MXFhYnbsWPHlpSUdOnSRSQSubi4MJsR/v7+SqVS9bcuLi5mZmaLFy8WCATe3t6enp4URYnF4qNHj6raFBcXE0KEQmHLli07derUokULQkjz5s3Vj40VFRURQt57770RI0YQQiwsLJo1a3b8+HG62jHjsLAwkUgkEAjat2/fo0ePVq1aCQSCqVOnqhrcvn2biXl7e/uOHTsyB01nzpyp3m1XV1cTE5N169ZRFGVtbc2smgiFQvVua/X48WMHBwdCiI2NTadOnZg1oYCAAKlUStN0enq6ubk5M9HAwMDc3Nzc3PzEiROv/YzqtGWcmZkpFAodHR1raHPt2jVCiLu7ew1bzz/99BNznFJXV9f8f86fP0/T9IULFwghOjo6zs7OXl5eTOS7ubnl5uaq/jwiIoIQMnv27I4dOzLfEGb0Wdu2bUtKSlTNysrKmFUcCwuL7t27W1pa2tjYfP755xrLy/yCW1lZdezYkXmHxWLxgQMH1Dvs7Oxsbm6+fPlyQoiJiYmNjc2KFStomr5y5QqzluDq6sp8XSdNmuTp6fmGW8aOjo5WVlYaE7/44gtCSFRUlGrK/fv3W7VqxXylvby8mLF1I0eOZL4SjNpvGVdUVJiZmQ0fPlw1fd++fYSQQ4cOzZo1i/x7yzgpKYkpbWtr26lTJ2Zxxo0bp/6hP3/+nFkXtLW17d69u4mJibu7+4cffkj+vWV87949rUuhPiuNLePdu3cLhUKhUOjp6dmjR4+WLVtSFIV9cg0FYfxu6NixIyHk3Llzr215/vx5iqJatWr18OFDZsqpU6f09PRMTU2zsrKYKUwYi0SiMWPGFBcX0zSdl5fn5eVFCOnevfvw4cMLCwtpmi4sLOzSpYtGXRcXF4FA0Lx589jYWGZKZGSksbGxiYnJs2fPmCkVFRX/93//l5eXxzxVKpV79+4VCoUdO3ZUzYcJY5FI5OXllZiYSNO0QqFg9sBrhLGnp6eZmdmDBw9UU9LT0yMiIpjHEonE2dmZoqjNmzcz6Zudnc10e/Pmzao/cXV1FQgEdnZ2kZGRzJRjx45RFMVsFL7qzVQoFMw7v3r1aoVCQdN0fn4+Mx74u+++UzVjxk7//vvvr/twXnptGOfl5aWkpNy8eTM0NNTd3V1PT++vv/6qYYbl5eWWlpaEkB49euzcuTMtLU1rs1ftpk5ISAgNDa2oqGCeSiSSZcuWMes0qjZMGItEooCAgKKiIpqmKysrme25n376SdWMSa8pU6Ywu16rqqqmT58uFAo1lnfTpk0pKSmqp1FRURYWFsbGxsycGc7OzkKh0MrK6vLly8zHVFpaWlZWZmdnJxaLmVU3mqaTkpIcHByEQmEtw/j2vyUnJzOv1iaMS0tLnZycdHR0QkNDmS5VVFQwUbd69WrVX9U+jGmaDgoKEolE2dnZzPRBgwY1a9ZMIpFohLFCofD29iaE/PDDD6pvY9++fTVKM5/I4sWLmTYlJSVDhgxh3n9VGJeUlDg6Ourq6u7Zs0djKdasWaOalUYYOzo6tmjRQvV20TSdmpp6+fLlmhcTaglh/G6wsbEhhCQkJLy25ZAhQwghGlsYzBGj5cuXM0+ZMG7RooX6Bs3u3bsJIebm5kwSMw4dOkQIWbVqlWoKs6n9888/q8//m2++IYR8//33NXRsypQphBDVfzITxoSQGzduaLTUCGM9Pb1evXq9arbM2SNDhw5VnxgfH88ErWoKs62g8bb079+fEPL8+fNXzZwZE9etWzf1iampqSKRqFmzZqotITbC+OOPP1btvmrVqlX1d6m6qKgo9ZNkrK2tp0+fHh4ert6mTseMPTw8zMzMVCsrTBjb2dmpj1pISkoihIwaNYp5Wl5ebmRkZGpqyqzkMcrKypid5zXvCWCOKx88eFA1xdnZmVQ7GL9r1y5CyIwZM9QnMluT9RtN3bdvX+bV2oTxf//7X43/CJqmKysrW7ZsaWNjo3qv6hTGUVFRhJD//Oc/9P/2gsydO5emaY0wPnv2LLOypT4T5lCUhYUFs0X75MkTgUDg7OysPvY+IyNDLBarh/Evv/yisUKpdSnUw7iqqoqiqMGDB9e8UFBvOGb8bpDL5YQQZvW2BjRNR0ZG6uvrjx07Vn361KlTN27cePnyZfWJvXr1Uj97lUnZbt26mZmZqSa2bduWEFJ93K/GIbrAwMDVq1czx55VMjIybt26lZGRUVZWRgjJzc0lhDx+/Jj5hWU4Ojp27dq15oVyd3ePjo5euXLl1KlTq5+RySwUk/QqHTt29PT0vHv3bnp6OrMvjjF06FCNOUdERDx9+lT9YHb1mU+ePFl9opOTU+/evS9evHjv3j2NQbANaPTo0U5OTpWVlffv3z9+/PiAAQMOHDig0X8NPXv2vHfv3l9//XXq1KmoqKjU1NSdO3fu3Llz2rRpISEhItHr/9kfPnz48OHDrKwsiURCCKEoqqioKC8vjznQwOjbt6/6qAVnZ2cdHZ309HTmaVxcXFlZWWBgoOq8HUKIoaHhyJEjd+zYoVGuqKjo2rVrz549y8/PJ4Qwuf748WONZhpfZuZD0fgGjh07ltmwq40ff/xR/Smzk7yWTp8+TQgJCAhQn6inp9ezZ89Dhw6lp6fXaW6Mnj17urm57dy5c+HChbt371YoFFqXRetX3dnZ2dfX9/Llyw8ePPDy8oqMjFQqlePHj1f/rWjZsmXv3r2ZIxE1L0WPHj3CwsIyMjLU/2sYzCGMiIiIH3/8ceLEifVYTKgZwvjd0KxZs7y8vBcvXjCR+SolJSVlZWWurq4asc1kWFZWlvpEjeEhzC+s1okVFRXqE8VisUYzR0dH9fnLZLJ58+aFhIQw1zQwMTERCoXM73t5ebn6H6oPK3uV4ODggICAVatWrVq1ysHBwd/ff+rUqT179mReffbsmaoD6pycnO7evZuVlaX6WTE2Nta4dAZzyFOjS+pqmPnFixezsrLYC+PBgwcPHjyYeRwTE9O3b99JkyY9fvxYdY6yVgYGBhMmTJgwYQIhJDMzc/fu3atXr961a5e3tzdz1PZV8vPzAwMDw8PDCSEURTErZMw7U1ZWph7GzE4aFYFAYGBgoHoPmXes+i919SkbNmxYtmxZZWUlIcTQ0FBHR4dZ49T4OAwMDDRGh2ktIRaL7ezscnJyalhGla+//ro2zbRiVjs0hiuqFBQU1C+lpkyZsmzZMmbcpYeHR+fOnau3qeHbePny5aysLC8vL+Z/sHofNP6KWYpXndBVUFBQPYwJIdu3b58wYcLSpUuXLl3q7Ozs7+8/bdo0rV2FekAYvxuYA6vx8fE9evSooRkzErL6NYYUCgWptmGtddhkbUaEKpVKpVIpEAjUpxBCVFM2bty4devW4cOHf/fddx06dGCmf//998x+cvVZaVyhQqtu3bolJSWdPn2aOWV269at27Zt++6775h948zMX7XI6p2sx2DX2s+cVV27dh09evS+ffsuXrw4bty4Wv5Vy5Ytly1bJhaLFy9efO7cuZrDeO7cueHh4fPnz583b55q98Po0aOrXwet5qV+1TumMeXChQsLFizo0KHDf//73x49eujo6BBC/v777/fff1/jD6t/Q2r+kjc4jULMF3jjxo1a93i3bNmyflWmTp26fPnyTz/99NGjR+vWrdPapjbfxprbaCzFL7/8on6ixGuXws/P7/Hjx6r/xM2bNwcHB69fv545CgZvCGH8bhg2bNihQ4d27949Z86cGkLF2NjY1NQ0IyNDJpMxR4kYKSkp5A1+KTQoFIrMzEz1de20tDSitpn7559/UhQVGhqqvsc7OTm53hUNDAwCAgKYvWrR0dHDhw9fuXLl3LlzzczMmIVKS0tTbSszUlNTSe22vGugmrnG9AaZeZ0w72RBQUFd/5BZe1PtRma+PBqrRDRNHz9+3NnZmTlqq1KPj+xV75jGlD///JMQsnHjRj8/v7qWY972tLQ09fPHqqqqsrOz1b/z9WBkZMQcTFGncYzGwcHh4cOHXbt2rXm1uK5atmzZv3//c+fOMSPDX9WGvO7bqHpzNNpoTHFwcEhISOjatWv37t3r1E9jY+Px48czZ5ddvHhx5MiRX3/99SeffFKbtWqoGW4U8W6YMGGCs7PzzZs3169fX/1VqVS6d+9eQghFUe+9955EItG4nCxzVQpmvFKD2LNnj/rT0NBQQsh7773HPJXJZCKRSP3I4osXL44fP94gpXv06NG3b1+FQsEEDFOUWUCV69evP3z40M3NTeuZmrWnmrl6eiUmJkZFRTGXfX6TmddeRUUFM5TM3d39VW2Ki4ulUmn16bGxsURtvYEZSFVSUqLeRqFQKBQKjX34N27cePDgQV272rFjRzMzs7///lt9vaGkpERjC5vpqnpFpVKp8SG+CvOhaHwD9+3bx+zlfhMODg4VFRXMmiujoKDg0qVL6m2Yk3qZ0Y4N6+uvv541a9bq1as1DgSoaP2qJyQkREdH29raMt+NPn36CIXCAwcOqF+6KzU1lRkj1rBL0a9fv549e1ZVVTH7z+FN8Td2DOomNjaW+fH68MMPY2NjmdGSz58/37Fjh6ura//+/Zlm0dHRzNkg0dHRNE0rlcrQ0FCxWGxpaak614gZTc2M2FS5ffs2+fepLPT/xspOnDhRNcXFxUUoFJqamqqG6R4/flxfX9/CwkJ17SdmFOjixYuZEZ5Pnz7t3bs3s+4cFhbGtGFGUw8YMKD6kqqPps7Ly5s+ffq1a9dUo0NjYmKaN29uYmLCjOmVyWTMVXzXrFnDDG9OSkpiYjI0NFQ1T+Y8Y41CzLHDCxcu1PC29+7dmxCyaNEi5kSdp0+fduvWjRCyYcMGVZvaj6a+ceNGeHh4eHg482u4dOlS5qnq0uLZ2dnDhw8/duxYWlqaVCrNz8+PiIhgNh87d+7MnKyi1d9//21tbb1ixYoHDx4wzQoLC4ODg5m9qYcOHWKayWQyQ0NDCwuLiIiIlJSUlJQU5m3s3LkzRVF79+5VvcmtW7dmPjLVCUjMaOqvvvpKo7SZmZmrq6vq6bfffksIGTlyJHOSUnFxcUBAALMjWjWaeuvWrYSQESNGMOP5i4uLP/zwQ6bckiVLVLNizjPWKCeRSNq0aSMUCnfu3MmM+71586a1tbWOjs4bnmf8008/EUKGDh3KnFCQnJzct29fZkeuajR1RUVFu3btKIpaunQpczE1mqZLSkr27du3cOFC1azqNJr6VTRGUyuVSuYE7sWLFzPfxidPnjBn8f3yyy+qv5o6dSoh5OOPP66srKRp+vnz571792bef9VoatVSLFu2rIalUB9N/fTp01mzZsXExKi+hJGRkSYmJi1atFA/wRrqDWH8Lrl9+7ZqxBBFUaqjVi1atFD9jNI0vW3bNuZ/z87OjhnvY2FhoTq/ln7jMDYzM1u7di1FUfb29sxliYyMjJhrRzCysrKYTVIzMzNmm8zLy2vJkiX1COPs7GxmGcVisZOTE7PRYGRkpH6rg8ePHzNXkDAxMXFwcBAIBBRFLV68WH2e9Q7jzMxMJuyNjIwcHR2Z4+6zZ89Wz8Xah/GrRruofgFftZHRo0cP1WniWl27dk21oSkSiVQ3gxKLxRqnnK1fv179uO/p06dpmr569SqzJ8PKyooZWx4QEMDsjaxrGEskEubQr76+vouLi4GBgbOz8+LFi9XDWCqVMrt5DQwMnJychEKhtbU1c77Na8OYpun4+Hjmi92iRQvmCPe8efPe/HKYZWVlzNn2AoGAOS4wcOBA5vJh6hf9SE9PV50CYG1trRpS169fP1UbNsKYpumMjAxm7Jj6t/GTTz5R/zaqLg9gbGzs4uKio6PTtWvXoKAg8u+Lfjx9+pRpxiyF6sJt6rcVUQ9j1Sh3HR2d1q1bM18SU1PTv//+u+bFhFqi6H8fPYK3HE3TV65cuXjxYnp6ukwms7a27tWr15AhQzSO2aSmpu7fvz8pKUkoFPr4+EycONHc3Fz1am5u7rFjxzw8PNQvBpmfn3/kyBFXV1f1w3jFxcUHDx5s06aNahd027Zt8/LyCgsLr169euTIkby8PGdn5xkzZmgM4CwuLt6+ffuDBw/EYnH37t0DAwMTExNv3LgxcOBAJycnQohUKt21a5ednV31MTt//vlnSUmJ6uyO5OTkS5cuPXz4MDc3t1mzZi4uLpMmTdIYYctcQTA6OrqsrMzR0XHs2LHM5RFUDh06VFFRMW3aNPWJMTExt2/fHjZsWM17s2Uy2ZEjRyIjI4uKiuzt7UeNGqVxpO3hw4dXr1718/PTehVMjUXTeg+MDh06qOaZkZERERFx//79nJwckUjk4ODQr1+/Pn36vHYAmlQqjYyMvHHjRnZ2dm5uroWFhbu7+8iRI6sf287MzFTdonHIkCFMg/T09J07dyYnJ5ubmw8YMGD48OEXLlxISUn54IMPmPOUnj17dvLkSS8vL2bfgMquXbsMDAyY5GbQNB0WFhYeHi6TyXx8fKZOnZqenh4dHd2/f3/ViW1yuXz37t2xsbESicTLy2vSpEkymezkyZPe3t6qqDtw4EBVVZXW83zy8vKYL5i5ufnQoUOHDBly+PDhkpKSGTNm1PAW7d69Wy6Xz5w581UNKioqduzYcfPmTV1dXT8/vw8++IC5Z8PIkSPVz3+jafrcuXPnz5/Pzs42Nja2s7Pr06dPr169VGMkw8LCpFLpq47+qt43pVJZQ4cjIyMTEhIGDRqkPj5DJpMdPnw4MjKyuLjY3t5+9OjRGh8H02bPnj2RkZFCobBHjx6TJ0+Oj4+veSlMTExsbW39/Px69uypvhQymWzixInM08TExIsXLyYmJubl5TVv3tzNzW3SpEnq57DBm0AYQ92owpjvjgAANB4YwAUAAMAzhDEAAADPcJ4x1M2sWbOYy1sCAEBDwTFjAAAAnmE3NQAAAM8QxgAAADxDGAMAAPAMYQwAAMAzhDEAAADPEMYAAAA8QxgDAADwjP+LfgwbNuzEiRPqt5HhXVVVVYPcK/vn/9u4buOmuv0NTZPX3Q9AnZ5YFHvtivrF3+utoZa6HqRSKXObKY7RNC2TyfgqLZfLxWIx96WVSqVCoeCrtFKpFIl4+Nlh7mvEV2lCiOruC1ySy+UURfFVWiAQ8PLDLpPJhELhW5UptcF/GEdGRiqVyrfqjZPJZA0SS0nJqS9855HuE998Vq9i+suAwsLCBgnjhlrq+pXmJREJIXK5nMf1AF4Skd/1ALlczksi8rseQHgKY4VCIRAI+ApjkUjEyw87sx7Afd03xH8YN3I6BsTA/PXN6osS4hMEAHjn4accAN49fQcPi7l+jdUSbu3ax0dfYbUEgArCGADePalPnlZ+fpZYOLBVoLI0ZX1vtmYOUA3CGADeTfqmLB4Dot69g47wTsMXDgAAgGcIYwAAAJ4hjAEAAHiGMAYAAOAZwhgAAIBnjX809dmz53YdPFKnP6nrRYJ0hIINa9c0a9asjl0DAAAgpCmE8enwiAOPpcRjcB3+po6XRzQ8tWL+nKcIYwAAqJ/GH8aEEGLvTToHsDd7nat1vBsEAACAGhwzBgAA4BnCGAAAgGds7aaWyWQJCQkKhcLd3V1PT4+lKgAAAI0AK2Gcnp4+YMAAe3t7kUj06NGjM2fOuLu7s1EIAACgEWBlN3VwcHDXrl0jIiLOnj07evToDRs2sFEFAACgcWAljI2NjSmKUj01MTFhowoAAEDjwMpu6s8//3z69OnvvfeeWCwWCoX79u2robFMJvvpp58Egn9WC4YMGdK+ffsG7IxSqWzAuWlHE7lcLpPJ3p7S9SCTyRpkPu9QaZqm+SqtVCr5Kq1QKGQyWZ0ua9NQ5HK5XC4XCoVvPiuapt98Jq/VUP9ZhBD17RPOyGQy1U8r96VpmubmY6pemqIoLn5+a42iqNf+x7HyD3n58uU7d+6sXLlSLBavWrXq9OnTgYGBr2pM03RhYSHzjaEoqry8vGHfRG6+DUqlsnq3acJbaR7n8w6Vpmmar9LK/0HptxdNN9R/FuFm1fwtK83v14yXtZ9XqU1nWAnj9evXf/nll0wAC4XCVatW1RDGOjo6a9euZW89vUFWw1+DIjo6Orq6upqlBbyVrgeZTNYg86kHuVzOS2kmjHkprVQqaZrmpbRCoaAoipfSQqFQKBQ2SGkufmob6F1iuqqjU8cL+zUQgUAgFou5r0vTtEgk4mUHjFKp1NHR4eKXv0Gxdcw4OzubeZydnW1sbMxGFQAAgMaBldWWxYsXjxo1KiEhQSwWnz59eu/evWxUAQAAaBxYCeMePXokJibGxsYqFIr169dbWFiwUQUAAKBxYGuHvpmZ2YABA1iaOQAAQGOCa1MDAADwDGEMAADAM4QxAAAAzxDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAADxDGAMAAPAMYQwAAMAzhDEAAADPEMYAAAA8QxgDAADwDGEMAADAM4QxAAAAzxDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAADxDGAMAAPAMYQwAAMAzhDEAAADPEMYAAAA8QxgDAADwDGEMAADAM4QxAAAAzxDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAADxDGAMAAPAMYQwAAMAzhDEAAADPEMYAAAA8QxgDAADwDGEMAADAM4QxAAAAz+1xSs0AACAASURBVBDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAADxDGAMAAPAMYQwAAMAzhDEAAADPEMYAAAA8QxgDAADwDGEMAADAM4QxAAAAzxDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAADxDGAMAAPAMYQwAAMAzhDEAAADPEMYAAAA8QxgDAADwDGEMAADAM4QxAAAAzxDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAADxDGAMAAPAMYQwAAMAzhDEAAADPEMYAAAA8QxgDAADwDGEMAADAM4QxAAAAzxDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAddC+YxeqLnR1dXV1dev0J54+3fheSuCaiL1Zy2SyrKysFi1aGBgYsFcFAIBLufkF5D/pxNSarQLFz3N+6cvWzOFtxdaWcWhoaMuWLYcMGeLk5PT333+zVAUAAKARYGXL+OHDh1999dXly5fd3NwUCkVFRQUbVQAAABoHVraMf/nll6CgIHt7+7S0NIqijI2N2agCAADQOLCyZfzo0aPs7Oxu3boZGBiUl5efPHnSycnpVY3lcnlYWJhQKGSe+vj41NC4HmiabsC5vaIGUSqVSqWSh9JEe2ke5/MOlaZpmq/Syv9B6fqhCUf/XBxUYa80M5N3/bOuX2mKorgv/SrMuLya22gP44qKiiNHjty/f9/AwGDFihWEkGPHjnl7ezs6OtamcFlZmVwuv337tkgk+uKLL5YuXbp///5XNVYoFOfOnRMI/tlG19fXt7GxqU2VWlIoFA04N61oQkulUolEwn1pQhOtpetBIpGIRCwO6Ku5tGptjEs0TUskEtV3j0tKpZKv0gqFQiqV8vJTJZfL5XJ5g8yKk5VsWut/Fgel6VeUrquqqiqBQMDFD1E1zO8JLz8pEolEqVTy8pPyKhRF6evr19xGyzuVlZXVv3//J0+e2NjYGBoaMmG8d+/e8PDwzZs316awra2tt7c38zEMGjRo0aJFNTTW1dUNCQlh7zPj4NtAUZSenl71QeMikYhI2a5NtJauB6VSyde4d5qmeSlN0zRFUbyUViqVAoGAl9IKhUIkEr32p4ENTBjr6em9+awEFPvrMa/4bnCwHtNQX0uhUCgQCMRi8ZvPqq4EAgFfYUxRlI6OzlsVxrWh5Qu9aNEiPT29lJSUkJAQ1cSRI0devHixljPt379/UlIS8zgxMbFVq1Zv3lEAAIDGSstqS3h4+LZt2+zs7B49eqSa6OjomJmZWcuZTp8+PTg4OCgoyMLCYteuXYcPH26YzgIAADRGWsJYJpMZGhpqTMzPz6/9DgdTU9PY2NgTJ05IpdKYmBh7e/s37SYAvH0GDR9z9colVkvYtbR//OAOqyUA3gZa8tXLy+vo0aODBw9WPzSya9eurl271n6+xsbGkyZNaoAOAsDbKi0js3LhRWLbjq0CcmnWVy3ZmjnA20RLGC9btuz999+vqqpq3bp1ZWXl0aNHd+zYcfr06QsXLnDfPwAAgEZPSxgPHjz4wIEDCxYs2L17NyEkICDA1tb24MGDfn5+nHcPAACg8dN+GHjs2LFjxoxJSEjIzs62tLRs3779OzdMHAAA4F2h5dSmvXv3JiUlCQQCDw+PAQMGeHl5CYXC27dv//HHH9z3DwAAoNHTEsbBwcEPHjzQmHj9+vUtW7Zw0iUAAICmpbZXscnPzzc1NWW1KwAAAE3Ty2PG6enpa9asIYSkpKRs2bLlzJkzqpeYmz3Mnz+fhw4CAAA0di/DuLy8PC4ujnmQkpKSn5+vesnQ0HD27NkLFy7koYMAAACN3cswdnd3j42NJYSMGzcuKCho0KBB/PUKAACgCdFyalNYWBj3/QAAAGiyXnm56bS0tNTU1IKCAtUUCwuLfv36cdIrAACAJkRLGOfn5wcEBFy+fFljuq+vb2RkJCe9AgAAaEK0hPHixYtTU1PDw8NDQkJcXFwCAgLCwsIOHTq0detW7vsHAADQ6Gk5zzgyMnLFihUDBgwwMDDQ19fv2LHjDz/88MEHH3z77bfc9w8AAKDR0xLG2dnZLi4uhBAjI6Pi4mJm4uDBg3HXJgAAADZoCWNra+ucnBxCSKtWraKjo5mJycnJYrGY064BAAA0DVrCuE+fPufOnSOEfPDBBzExMSNGjJg3b978+fPff/99zrsHAADQ+GkJ4xUrVkyfPp0QYm9vf/jw4dLS0vPnzwcGBm7cuJHz7gEAADR+WkZT29vb29vbM4+HDx8+fPhw5jFN09z1CwAAoMmo1V2bpFLptm3bAgMD2e4NAABAE/SvMJZIJIcOHVq5cmVwcHBRUREhhKbp33//vU2bNh9//LGJiQlPnQQAAGjMXu6mViqV/fr1u379OvN0/fr1Z8+enT59emRk5MCBA/fv39+rVy+eOgkAANCYvdwyPnbs2PXr19evX5+SknL27FmJRNKjR4+MjIyIiIhz584hiQEAAFjycss4Pj6+e/fuCxYsIIS0bt164cKFCxYsCA8P9/Ly4q97AAAAjd/LLePnz587Ojqqnjo6Ourq6nbo0IGHTgEAADQlL8OYpmmB4OVTgUAgEokoiuKjVwAAAE3Iv84zvnDhwsCBA5nHeXl5EolE9ZQQ0r59+w0bNnDaOwAAgCbgZRg7ODjY2dkVFhb+84JI5O3trXpKCCktLeW6dwAAAE3AyzBevnz58uXLeewKAABA01SrK3ABAAAAexDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAADz759SmqqqqyMjImpuamZl17tyZ/S4BAAA0Lf+EcUFBgfrFtrTy9fV9bWADAABAXf0Txi1atEhJSWEeZ2RkTJ48edSoUePGjWvRokVubu6RI0eOHDmybt06/voJAADQaP0TxkKhsHXr1szjBQsWzJgxY9WqVcxTNze3Pn36mJubr1mz5q+//uKnmwAAAI2XlgFcly5d6tevn8bE99577/Lly5x0CQAAoGnREsaGhoZRUVEaE69evWpsbMxJlwAAAJoWUfVJM2fOXLlyZWlpaUBAAHPM+OjRo+vXr//666+57x8AAECjpyWMV6xYIZVKf/nll7Vr1zJT9PT0vvjiixUrVnDbNwAAgCZBSxgLhcKffvppyZIlDx48yM7OtrGx8fDwMDU15b5zAAAATYGWMGaYmpr27NmTy64AAAA0TdrDmKbphw8fpqamSiQS1UQLC4vqo6wBAADgDWkJ45ycnGHDhsXGxmpMxxW4AAAA2KDl1KavvvqqoKAgOjo6MDBw+fLlSUlJq1evdnBw+PXXX7nvHwAAQKOnJYyvXbu2fPny7t276+rq6ujouLi4LFu2bPr06d9++y33/QMAAGj0tIRxTk6Ok5MTIcTY2LioqIiZ2L9//ytXrnDaNQAAgKZBSxjb2tpmZ2cTQhwdHa9evUrTNCEkISFBT0+P694BAAA0AVrC2M/P7/Tp04SQwMDA27dvDxgwYObMmZ9//vmIESM47x4AAEDjpyWMv//++0WLFhFCbGxsTpw4oa+vf+fOnTlz5vzf//0f590DAABo/LSc2tSiRYsWLVowjwcOHDhw4EBuuwQAANC0vPIKXJmZmQ8ePCgrKwsICCCEFBYWGhoa6ujocNg3AACAJkHLbmqpVDpt2rRWrVr5+/urbg7x/vvvr1mzhtu+AQAANAlawnjFihUnT548ePBgWFiYauLEiROZUV0AAADQsLSE8R9//LFmzZpx48aZm5urJrq5uaWmpnLYMQAAgKZCSxgXFBS0bdtWY6JSqVS/aQQAAAA0FC0DuBwdHa9fv65xg6Zz5865ublx1St4h/0avHXPwcN1+hOlQiEQCmvf3tzE+HjYfl1d3Tp2DQDgLaUljIOCgr755hs7OzszMzNCSGFh4c6dOzdt2rRp0ybOuwfvnjMXrsSY9iRterBXQn/XtJKSEktLS/ZKAABwSUsYz5s3Lzk5edq0aTRNC4XCZs2aURQ1d+7coKAg7vsH76SWHYh7f/ZmL9TBlVkBoFHREsYCgWDTpk1z5syJiIjIysqysrIaMGBA+/btue8cAABAU6AljO3t7X/66adJkya5u7tz3yEAAICmRstoaqVSiSttAQAAcEZLGAcGBh44cID7rgAAADRNWnZT9+/ff86cOX5+fiNHjrS1tRX+75wTCwsLjfOdAACAM3l5eaWlpbVvL5VKBQKBSPTKexBUZ2pq2rx587p3Dd6Ulg9p9erVT548efLkyZUrV9Sn+/r6RkZGctUxAAD4l/adupTLKUJp2aP5CjQhhBCqtq3lspbWlol34+rRN3hDWsL4zJkzcrlcS9O6rF4BAEDDklRJy7+9S/RN2SqQl1a5K4CtmUONtOSrsbEx9/0AAIC3VlxcXGFhYe3bS6VSoVAorMuV9ezs7JryKTzaN3alUunRo0dv3bqVnZ1tY2PTsWPHMWPGYIg1AEDT5Nd/kE67vrXfQ04TmiKk9nvIFZUldlTxw7jr9eteI6AljLOzs4cMGXLnzh1ra2srK6vw8PCff/65Q4cOp0+ftrW15b6LAADAL6VSWTg1lIhY2yR79rDF0SZ9kUftl8PMy8uLjIz09fVlply7dm3ChAmfffbZ4cN1uwEAAADAmzh37lxxcXHt20ulUpFIJBDUfpgbcXJy6ty5c9271pC0hHF4eHhwcLAqiQkhPXv2XLdu3axZszjsGAAAABk2YpS+76Tat6drv3OcEEKIouRFG2HB7ejLde1Yw9ISxkZGRtXvh2NhYWFoaMhJlwAAAP6Hoko++I3F+T+JU55fzOL8a0fLhvzUqVM3bdqkfnaTQqHYtGnTlClTOOwYAABAU6Fly9jV1XXHjh2urq4jRoywtrbOyck5ceJEaWlply5d1q5dy7T58ssv67RHHgAAAF5FSxiHhITk5ubm5uZu3LhRffq3336rerxw4UKEMQAAQIPQEsZRUVHc9wMAAKDJwtYtAAAAz16GsVwuLywsVB+3VVhY+M033wwbNmz69OkxMTF8dA8AAKDxexnGoaGhNjY2qnOrJRKJr6/vmjVrrl+/vmfPnj59+tQ1jwsLCzt27IizkwEAAGr2MowvX77s7++vupPlrl27Hj58+Ouvv7548SIjI8PBwUE1lLqWFixYYGFhkZOT05D9BQAAaHRehvGTJ086dOigenrq1KlWrVrNmTOHEGJjYzNv3ry7d+/Wfr7nz58vLS0dNWpUA/YVAACgUXo5mloikRgYGDCPaZqOjo4eOnQoRf1zWTEnJ6fs7OxazrSkpOSLL744c+bMsWPHXttYqVTGx8er7rTl5OTUrFmzOiwBAADAO+5lGDs4OKiOCsfFxeXn5/v5+alezc7ONjMzq+VMv/rqq3nz5tnZ2dWmcVVV1eLFi1WpP3369NGjR9eyUG3IZLIGnJtWNE1XVFSUlZXxUZpoLV0P5eXlbz4TQoj6GEC20HR5ebm+vv4bz4aurKxUKpUN0qk6USqVEomEl9IKhUIqlSoUijefFc1+/2lCa/16K2n23zpae2maptmvrL00Yb+0klZqX2rC/lIrtZfmgJLl0gKBQLWt+yovw/iDDz4YN27c0qVLfXx8fv75ZwMDg2HDhqlejY2NdXFxqU3V9PT0AwcOODo6rl27Njo6+vHjx8HBwZ988smr2uvr64eHh4tE2u+s/ObEYjFLc1ahKMrAwMDIyEhLaZbjmKKI1tL10yDzYe+jfImiDA0N37y3NE0LhcLX/pOwQalUikQiXkozYfzmqzKEEIr9K/9QhNL6QQtqfWPdN6itvbRqy4HNytpLE/ZLCyiB9qWu280X6oMSaC/NAQF/pVVe/m6OHj16+vTpP/74IyFEV1c3ODjYysqKeamkpGTfvn1LliypzRwNDQ1r2RIAAACIehhTFLV9+/bVq1enpKS0bdtW/cZNFEVdvHixTZs2tZlj8+bNFy/+5w4Ymzdvpmm6hs1igMahqKiooKCg9u2VSmVVVVWdNk/19PRsbW3r3jUAeAdo7lG0tra2trbWmGhsbOzj41OPufft27eWEQ7wThs1YXJ8QrJIv9a3GaUJXcedjqVp96sklbgmPECjxO7hPQ8PDw8PD1ZLALwNKqXy0sBg4uLLXgmdz5tzMHQIAHjB/lgbAK78umXb8dPn6/IXtEKpFAqEtf8DM2ODA7t/V52JBwDQIBDG0HgcOXnmkq4PcazPIZVa0t0WWFn5K+8DLwGgkUEYQ+PSypu492dv9kKxDnszB4AmC4NBAAAAeKY9jO/cufPhhx/6+Pj4+/szU77++utLly5x1y8AAIAmQ0sYR0VFde/e/f79+w4ODpmZmczEioqKzZs3c9s3AACAJkFLGC9ZsmTkyJE3b9789NNPVRP9/PxiY2M57BgAAEBToSWMb926NWPGDI1rC1hZWeHOxAAAAGzQEsb6+vrV71+RkpJibm7OSZcAAACaFi2nNvXr12/jxo1DhgxR3ZykqKho3bp1AwcO5LZvAPB6VVVVFRUVtW+vUChkMplEIqn9n+jo6Bga1vpKnwBQd1rCeM2aNd27d/f09PTw8Hjx4sWcOXP+/PNPuVy+cuVKzrsHAK/R//2Rt+/eF4p1a9meJjSh63YfQEVZQVlxYb16BwC1oiWM27Rpc/PmzZUrV4aHh+fk5ISFhQ0ePPj77793dHTkvHsA8BolZZXlsw6zet0x8Twz9mYOAORVV+BycnLavXs3x10BAABomrQM4AoJCbl37x73XQEAAGiatITxoUOHOnTo4OPjs2nTphcvXnDfJwAAgCZFSxifOXMmPDzcw8Nj8eLFdnZ2w4cPDwsLk8lk3HcOAACgKdASxkKhcMCAAaGhoZmZmevXr8/JyRk/fry9vf26deu47x8AAECjV9Ndm5o1azZ37tyYmJhDhw5JJJITJ05w1i0AAICmo6Ywzs/P//XXX7t06TJ+/Hg9Pb0RI0Zw1i0AAICmQ8upTQqF4uLFi6GhoYcPH1YoFIMGDTp06NCoUaPEYjH3/QMAAGj0tITx4MGDIyIiOnXqtHbt2sDAQAsLC+67BQAA0HRoCeMJEyZs2LDB09OT+94AAAA0QVrCOCgoiPt+AAAANFn/hHFFRcXOnTudnZ39/f2PHj2anZ1dvamtre3o0aO57R4AAEDj908Yl5SUfPbZZ2PGjPH399+wYcO1a9eqN/X19UUYAwAANLh/wtja2lqhUDCPIyMj+esPAABAk6PlPOPExMSioiKNiXl5eYmJiZx0CQAAoGnREsYzZsy4ePGixsQjR4589NFHnHQJAACgaanpClzqqqqqdHV1We0KAABA0/Ty1KaSkpKYmBhCSFFR0d27d42NjVUvFRUVhYaG+vj48NBBAACAxu5lGD9+/HjgwIHM45UrV2q0a9u27RdffMFZtwAAAJqOl2Hcvn37lJQUQsi4ceOCgoIGDRqkesnc3Nzc3JyH3gEAADQBL8NYV1e3devWhJC//vrL1NTU0NCQv14BAAA0IVouh2lra8t9PwAAAJosLaOpaZreuHFjx44dTUxMKDW9e/fmvn8AAACNnpYt440bN3711VezZ8/W09OzsbHx9PQ8cuRISUnJ/Pnzue8fAABAo6dly3jv3r1LlizZtGmTm5tbly5dVq1adefOnfbt29+6dYv7/gEAADR6WsI4JSWlX79+hBCxWFxWVkYIEQqFn332WWhoKNe9AwAAaAK0hLGRkVFFRQUhxMbGJjk5mZlIUVT1C1YDAADAm9MSxt7e3nFxcYSQgQMH/vXXXzt27Lh48eKyZcu8vb057x4AAEDjp2UA19y5c+Pj4wkhvr6+U6dOnTlzJiGkZcuWx48f57p3AAAATYCWMPb39/f392ceb9my5ccff8zOznZxcRGLxdz2DQAAoEnQEsYacC1MAAAAVv0TxpWVlfv376+5qZWV1fvvv89+l6AB7Ard+8eRE3X6E4VCLhS+fuVMRV9HtG/nNiMjozp2DQAANP3z41tUVMQcG65Br169EMbvitMRl87LnYmbH3slDPd+nJ+fjzAGAHhz/4SxjY2NVCqtualAoGXoNby97DyIe3/2Zi/Sx61EAAAaxsvdkhifBQAAwAvtxwhLSkr++OOPe/fu6evrr1+/nhBy4sQJT09PJycnbrsHAADQ+GkJ46dPn/bt2zc/P9/Ozk4oFDJhvG/fPlNT061bt3LeQwAAgEZOy2HgRYsWWVpapqSkbNq0STVx+PDhly9f5rBjAAAATYWWLeOIiIidO3daWlpSFKWa2KpVq6ysLA47BgAA0FRo2TJWKBS6uroaE/Py8nR0dDjpEgAAQNOiJYx9fHwOHDhACFFtGdM0HRIS0qNHD067BgAA0DRo2U29fPnygQMHlpWVtW3btry8fM+ePTt37oyMjLxy5Qr3/QMAAGj0tIRx3759jx8/Pn/+/CNHjhBCpk6d2rp16+PHj2PLGAAAgA3azzMeOnTo0KFDU1JSCgoKTE1N27ZtSwiRSqU4bAwAANDgaroxgLOzs7OzMyGkpKQkODg4MjLy5MmTXHUMAACgqfhXGBcUFOzZsycxMbF58+azZs2yt7evqqpat27dunXrysvLFy1axFcvAQAAGrGXYSyTyXx9fRMSEpinISEhf//995QpU5KSkiZOnLhs2TJmZzUAAAA0rJenNh06dCgxMfGPP/6QSCR37twxNjbu27evUCi8devW7t27kcQAAAAseRnG9+/f9/X1nThxoq6ubocOHebPn19aWnrkyJH27dvz2D8AAIBG72UY5+bm2tnZqZ7a2dnp6em5uLjw0SsAAIAm5F9X4FK/GDVFUUKhkPP+AAAANDn/Gk195syZzp07M4+LiooqKytVTwkh3t7e27dv57R3AAAATcDLMG7Xrl16errqqbm5uZOTk3pTY2Nj7voFAADQZLwM44ULFy5cuJDHrgAAADRNWu7aBAAAAFxCGAMAAPAMYQwAAMAzhDEAAADPEMYAAAA8QxgDAADwDGEMAADAM4QxAAAAzxDGAAAAPEMYAwAA8AxhDAAAwDOEMQAAAM8QxgAAADxDGAMAAPAMYQwAAMAzVsI4OTl54sSJbdq0adOmzSeffFJaWspGFQAAgMaBlTB+8eLFgAEDrly5EhkZmZqa+vXXX7NRBQAAoHEQsTHT7t27d+/enXk8bdq0//73v2xUAQAAaBxYCWN1x48f79OnTw0NaJpOS0sTCoWEEIqiWrZsKRaL2e4VAADA24PdMP7tt9/u3r0bEhJSQ5vKyspBgwapni5ZsmTixIkN2AeZTNaAc9OKpumKioqysjI+ShOtpeVyOdFluzRdXl6uvTTbaLq8vFxfX19jskKuYL0yocvLy6tPVyhZL00IKSsrY1Zb1SmVSm5KV59Is1+aJrTW0kqa/aWmtZemaZr9ytpLE/ZLK2ml9qUm7C+1UntpDihZLi0QCAwMDGpuw2IY7969e8OGDZcuXTI2Nq6hmYGBwePHj0UitnrCwXY2RVEGBgZGRkZaSrMcxxRFtJZm7/1UK00ZGhryUpq8orRQpBlUDV+ZvKK0gPXShBAjI6PqYSwQcHFORPVFJoRQ7JemCKW1tIBif6kp7aUpimK/svbShP3SAkqgfakJ+0st0F6aAwL+Squw9bsZFha2atWqiIgIOzs7lkoAAAA0DqyE8ZUrVwIDA2fOnHno0CFCiImJySeffMJGIQAAgEaAlTA2MDBYtGgRIaSwsJBwcogFAADg3cVKGHfu3Llz585szBkAAKDxweUwAQAAeIYwBgAA4BnCGAAAgGcIYwAAAJ4hjAEAAHiGMAYAAOAZwhgAAIBnCGMAAACeIYwBAAB4hjAGAADgGcIYAACAZwhjAAAAniGMAQAAeIYwBgAA4BnCGAAAgGcIYwAAAJ4hjAEAAHiGMAYAAOAZwhgAAIBnCGMAAACeIYwBAAB4hjAGAADgGcIYAACAZwhjAAAAniGMAQAAeIYwBgAA4BnCGAAAgGcIYwAAAJ4hjAEAAHiGMAYAAOAZwhgAAIBnCGMAAACeIYwBAAB4hjAGAADgGcIYAACAZwhjAAAAniGMAQAAeIYwBgAA4BnCGAAAgGcIYwAAAJ4hjAEAAHiGMAYAAOAZwhgAAIBnCGMAAACeIYwBAAB4hjAGAADgGcIYAACAZwhjAAAAniGMAQAAeIYwBgAA4BnCGAAAgGcIYwAAAJ4hjAEAAHiGMAYAAOAZwhgAAIBnCGMAAACeIYwBAAB4hjAGAADgGcIYAACAZwhjAAAAniGMAQAAeIYwBgAA4BnCGAAAgGcIYwAAAJ4hjAEAAHiGMAYAAOAZwhgAAIBnCGMAAACeIYwBAAB4hjAGAADgGcIYAACAZwhjAAAAniGMAQAAeIYwBgAA4BnCGAAAgGcIYwAAAJ4hjAEAAHiGMAYAAOAZwhgAAIBnCGMAAACeIYwBAAB4xlYYh4WF9enTp3fv3gcOHGCpBAAAQOMgYmOm8fHxn3766dGjR0Ui0ejRox0dHbt3785GIQAAgEaAlS3jbdu2zZgxw9fXt3v37h9//PG2bdvYqAIAANA4sBLGCQkJXl5ezGMvL6+EhAQ2qgAAADQOFE3TDT7TDh06/PDDD8OGDSOEREREfPLJJ0lJSa9qLBKJlEql6qm+vr6Ojk4DdqZKppBIZbVvz7wdVN2K0Mb6ugKB5pqNRKao4ql0pZyWVlWxXdrEQI+iNP+oUk6kVRKWSxMTA93qpSvkRMZ+aVNDveoTy+VEznZpipga8FOaEghM9LX8V5bJiELKcmmhyERPy9G0MhmtkLL7DReIxMa6wurTS6VKpUzKbmmxjrGOli2l0iqFUs7uT4pQR9dIrOUvSiRyWiFnubSekVjL9JJKKa2WEWyUFunqGbJyzPYfOjo6jx49Mjc3r6kPbBRu3rx5SUkJ87i4uNjS0rKGxnJ5HT5gAACAxoeV3dTt27ePj49nHsfHx7dv356NKgAAAI0DK1vGr6+CagAAEBNJREFUs2bN6tevX79+/YRC4bZt286cOcNGFQAAgMaBlWPGhJCzZ8/+9ttvNE3Pnj176NChbJQAAABoHNgKYwAAAKglXA4TAACAZ2yO5n4HlZaW3rp168WLF2PGjOG49IMHD65fv65QKPz8/FxdXTmrK5FIIiMjk5KSRCKRn5+fm5sbZ6VVkpKS7ty5M2rUKLFY25kNLCgtLVUfytC3b9+ax/w3uOjo6Bs3bjRv3nzQoEFWVlbcFL1z5476SYYWFhb9+vXjpjQhJDMz8+zZszKZrG/fvhx/zTIzM8+cOUNR1OjRo5s1a8Z2uaKiori4uKqqKvUjdEql8uTJk6mpqb179/bx8WGpdFlZ2a1bt3JycsaOHauaKJPJ7t+/n5KS8t5777G3+GVlZbdv337+/Ll66cTExKioKKlU2rt3bw8PD5ZKFxYWxsXFyeVyf39/ZopUKo2KikpISKAoytfX19PTk6XSDQhbxi+lpaXZ2trOnTt3ypQpHJcODw8fOXLk7du3Hz161LNnTy4v6J2QkLBp06Znz54lJCT06tXr4MGDnJVmVFZWjh8/fvz48ZWVlZwVzc7OnjFjxvn/KSws5Kw0IWTRokUffvhhdnb2tWvXTp8+zVndpKQk1SIvXbp0586dnJW+fft2hw4dEhMTnz9/3qdPnxMnTnBWOi4urnPnzikpKbdv3/bx8cnNzWW1XExMTKtWrT777LNPP/1UfXpQUNBPP/1UVFQ0atQolv7LsrKyrK2tP/3008DAQPXpHh4eU6dOnTx5cnJyMht1CSHZ2dlM6QkTJqgmRkVF+fv7x8XFpaSk+Pn57dixg43SkZGRjo6On3322RdffKGamJ6evm7duoyMjJSUlAEDBoSEhLBRuoHR8D9yuVwmkyUmJhoYGHBcuqysTKFQMI937NjRpUsXjjvA2Lx588CBAzkuunDhwrVr1xJCiouLOSuamJjo4ODAWTl1cXFxtra2JSUlvFRnyGQyW1vbCxcucFZx6dKlM2fOZB6vXbt2/PjxnJUeO3bs999/zzwOCgpatWoVq+VkMplCoWASQjUxLS3N2NiY+Yb//fff7u7uSqWywUsrFAqZTJaWliYSidSnSyQSmqZtbW1v3LjR4EXVS6enpwsEAtXE8vJyuVzOPD548GC7du3YKC2VShUKRXh4uJubm9YGe/fu7datGxulGxa2jF8SCoUiET/77Q0NDVVX0ZLJZIaGhtz3QSaTxcbGcnxS+I0bN+Lj44OCgrgsyigvL1+3bt2WLVvS09O5rHvgwIHx48dfuXLlP//5z7Vr17gsrXL69GldXV0/Pz/OKrq7uz969KiqqkqpVN69e7ddu3aclc7KynJxcWEeu7i4XLhwgdVyIpGo+hXxIiMju3btamJiQggZMGBAUlISGxvoAoFA6y+Yrq5ug9eqTWkDAwOh8J9LmLH3syYWi6u/4SoKhSImJoa9PeQNCGH8dsnNzV21atWSJUu4LFpZWdmsWTNjY+N79+599913nNWtqqqaM2fO5s2bq1/Ykm26urpDhgxRKBRxcXFeXl5chuKTJ0+OHj36559/CoXCiRMnbt26lbPSKjt27JgxY0YNP2ENbvLkyW5ubtbW1tbW1s+fP1+6dClnpb28vJhjAQqF4uzZs8+ePeOstEp2drZqUIJYLDY3N8/Ozua+G3wpLCz85ptvOP5ZI4RYWVkZGRlduHDh559/5rh0PSCM3yKFhYX+/v6ff/75oEGDuKyrr69fUFCQkZHh7u7+0UcfcVZ39erVY8aMcXd356yiioODQ2ho6Ndffx0SErJo0aI1a9ZwVlosFtvb22/fvv2LL74IDg5mdtFzKScn58yZM1OnTuWy6LZt2+7du3fjxo24uDgjI6Nly5ZxVnrFihUPHz708vLy9vY2MTExMjLirLSKnp6eTPbymtJVVVV6elouM94olZaWDh06dOrUqaNHj+a4dE5OTlZWVp8+fSZNmsRx6XpAGL8tSkpK/P39R44c+dVXX/HSAUtLywULFpw9e5aziqdPn163bl2zZs2cnJwIIQ4ODtevX+esuoqHhweXmymtWrVydHRkHjs6OrI9nqi60NDQfv36tWrVisuiR44cmTFjRtu2be3t7T///PPDhw9zVtra2jomJubcuXMxMTFdunThcg+5ir29/ZMnT5jH+fn5FRUVdnZ23HeDe+Xl5cOGDevdu/eqVat46UCzZs2+/PLL8+fPK+tyqwleIIzfCuXl5cOHD+/Tp8+KFSs4Lv3kyRNmGLNSqQwLC+PyHIDY2NiioqKCgoK0tDRCyNOnT7t3785N6SdPnkgkEkJIeXl5SEhIz549ualLCAkMDLx8+XJRUREh5NixY5wtssquXbtmzJjBcVEnJ6erV6/SNE0IuXLlSuvWrTkrXVpaKpPJrKysMjMzf/31V/Uxt5wZNGhQampqbGwsISQkJMTf39/Y2Jj7bnCssrJyxIgRHTt25H4vcUZGRllZGSGEpulDhw55eHhweVCmnvgeQfZ2Ub97I5dDmjXOZbK0tOSs9O7duy0sLNzc3CwtLX19fRMTEzkrrcKcWcTlaOrffvvNzMzM1dXVzMxszJgxhYWFnJWmaXr16tV2dnaenp7e3t4cv+FRUVHNmzdnhtdy6dmzZ7169XJ0dHR3d2/Xrt3du3c5K3358mVLS0sXFxdLS8vt27ezXU7jNLn333+fmX7w4EErK6t27dq5ubk9evSIperqO+G9vLyYiRqHvcrKytgozQxPY3h6etI0/ddff6nXZeksFY3dWgEBATRNHz161NLS0tXV1crKqkuXLnfu3GGjdMPC5TCByOXy3Nxcc3NzfX19vvvCnaqqqvz8fAsLi4a9f3YtVVZWlpeXW1hYcF+aR8xGKgeX3dBQVVX14sULKysrvk6XYEil0hcvXtjY2HA/YrEJUigUubm5pqamBgYGfPelVhDGAAAAPHvrd6MDAAA0dghjAAAAniGMAQAAeIYwBgAA4BnCGAAAgGcIYwAAAJ7xedYdQCNWVFSUkZGhMbFt27ZvcgudpUuXOjk5ab3JVW5ubkZGho6OjsY11JgLnFEU1alTp3pUnD9/fqdOnWpzIesZM2aMGTNm2LBh1V969uxZYWGh6s458fHxzBmVhoaGxsbGtra2OO8WAFfgAmDFzp07q/+73b9//03m2alTp6CgIK0vbdiwgRBCUVRqaqr69Hnz5hFCxGJx/Sq6urouWLCgNi2NjY1//vlnrS/NmTNH/epLGldZMTU1HT9+/K1bt+rXQ4DGAbupAVh0/vz5p2ratm3Lajl7e/u9e/eqnkql0v3793N8T4jamD17dkFBQXZ29v3799evX3/37t2uXbseP36c734B8Aa7qQFYZGNjo5GFiYmJDx8+VL+d3NWrVymK6tWrl2rKtWvXLl26JJFIOnXqNGLEiNpf437KlCk7d+785ptvmB2/f/31l0QiCQwM3LJli3qzR48enTx5sqioyM3NLSAgQP0yqBUVFfv3709LS3N3dx837v/bu6OQpr44DuDnqsXCYDUXu9imDzU2ajOLLRy4oq0hQRRJfy+BzWYQkUJZD5EURcEgovChosQiZw8JQUVYDpbYGpNiZhjOVjmszVCa2crQcN37f7h02X9Kzb/LMfp+nu7OPfecH3v5cc4995x/EtrnOM7pdD59+pTjuA0bNphMpiQDSyASiZYuXUoIoWl69erVDMMYDIa9e/eaTKa/4QQFgOkwMgaYV/fv36+qqoovOXv2rHCqMcuyVqvVaDS2t7f7fL7du3dbLJbv378n2bjVag2FQh6Ph/9548YNhmES0tvly5c1Gs3169e7u7tramrWrFkTDof5W58+fdLr9YcPH+7p6Tl37pzFYok/hXd8fNxsNu/YscPj8Xg8nrKysurqai4V++kuXrz4+PHjo6OjDx8+nHtrAJkII2OAP6ihoSEvL4+/1mg0vz3k/OLFi62trZ2dnUajkRASCAR0Ol1DQ8PRo0eT6U4mk5WVlTU3NxuNxpGREafT+ejRo/b2dqHCmzdvDh48aLPZGhsbKYoaGBgoKSmpra29e/cuIeTkyZOhUOjZs2dqtZrjuJqaGrfbLTx77Nixly9f9vb2KpVKQkhHR4fFYtm6dWt5efks/5UZ8BMDvb29FRUVc28NIONgZAzwB/l8PvdPfr//t/WbmprKy8v5TEwIUalUO3fudLlcyfdYVVXV2to6Pj7ucDjkcnlpaWn83QcPHrAsa7fb+XnsFStW7N+/v62tjR8B37t3r7KyUq1WE0Ioijp9+rQwQx6LxZqbmw8cOMBnYkKIyWQyGAyziu0XlixZQgiJRqMpaQ0g42BkDPAH3bx5c9WqVUlW5jju1atXkUhEp9MJhR8+fBCJRMn3uH37dpFIdOfOnZaWFpvNlvDV0MDAAE3Ty5YtE0q0Wm0sFhscHCwoKBgaGoqPViqVymQy/jocDn/9+tXhcLS1tQkVgsFgbm5u8rH9wufPnwkhYrE4Ja0BZBwkY4B5RVGJ55ZOTU3Ff+2zadMmm80WX2FWnyYvXLiQYZgTJ06EQqGE090JITk5ObFYLL7kx48fhJAFCxZkZWVRFMX/FAiV+ZgrKiosFkt8BX4d1tx5vV5CSFFRUUpaA8g4SMYA80oqlX779m1iYoJfw8yybCAQ4HfqoChKo9EMDw9v3rx5Ll3s2bPn0qVLZrO5sLAw4ZZSqfz48WMoFFIoFHyJz+cTiUQKhSI7O7uwsPDFixdC5XA4HIlE+GuFQiEWi6PR6Bxjm9HExITdbs/Ly9uyZUvKGwfICHhnDDCv1q5dSwi5evUqIYTjOLvd/u7dO+HuoUOHOjo6zp8/z7IsX/L27dvOzs5ZdaHT6TiOm/Ft7rZt2xYtWlRXV8ev0Pb5fE1NTQzDZGdnE0J27dp169YtfpA6NTV15MgR4cGcnJza2tpr167dvn1bKOzp6enu7p5VbLzJycmxsbGxsbHXr187HI7169f39fU1Njbiuyb4ayEZA8yroqKiffv21dXVKZVKmqbdbnf8WNNqtZ45c6a+vl4mk+n1eoVCoVKpnjx5kqrely9f3tLS4nQ68/PztVqtwWDQarUXLlzg79bX1xsMho0bNxYXF/ND55UrVwrPnjp1qrq6mmEYuVyu0+lomtbr9YFA4H+EceXKFYlEIpFIVCoVvyisq6srJauyATJU4usrAEiJ0dHRYDCo1WpnXH7l9Xr7+/sLCgrMZnMwGCT/TXvDw8OPHz+ORqMymWzdunXClLLf78/NzZ0++Ux+7k1dXFzMj3HjDQ0NjYyMxO9NHYlEXC7Xly9f1Gp1aWlp/KYiLMu6XK7BwUG1Wm00Gv1+v1gslsvlQoVgMOj1eicnJ2maLikpkUqlfPnz58/z8/Npmp4e2/v37yORiBCAsDd1VlaWRCKRy+XTYwb42yAZAwAApBmmqQEAANIMyRgAACDNkIwBAADSDMkYAAAgzZCMAQAA0gzJGAAAIM2QjAEAANLsX3HPPlr1BroSAAAAAElFTkSuQmCC">
+</div>
+</div>
+</section>
+<section id="dynamic-fuel-models" class="level2">
+<h2 class="anchored" data-anchor-id="dynamic-fuel-models">Dynamic Fuel Models</h2>
+<p>Dynamic fuel models transfer live herbaceous fuel to the dead fuel category as live moisture content decreases. This simulates curing of grasses.</p>
+<div id="16" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fuel model 1 is dynamic (short grass)</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>raw <span class="op">=</span> fuel_table.raw_models[<span class="fl">1</span>]</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>moistures <span class="op">=</span> <span class="fl">30</span><span class="op">:</span><span class="fl">10</span><span class="op">:</span><span class="fl">120</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>dead_loadings <span class="op">=</span> <span class="dt">Float64</span>[]</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>live_loadings <span class="op">=</span> <span class="dt">Float64</span>[]</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> m <span class="kw">in</span> moistures</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>    fm <span class="op">=</span> <span class="fu">compute_fuel_model</span>(raw, m)</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(dead_loadings, <span class="fu">sum</span>(fm.W0[<span class="fl">1</span><span class="op">:</span><span class="fl">4</span>]))  <span class="co"># Dead classes</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">push!</span>(live_loadings, <span class="fu">sum</span>(fm.W0[<span class="fl">5</span><span class="op">:</span><span class="fl">6</span>]))  <span class="co"># Live classes</span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(moistures, [dead_loadings live_loadings],</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>    xlabel <span class="op">=</span> <span class="st">"Live Moisture Class (%)"</span>,</span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>    ylabel <span class="op">=</span> <span class="st">"Fuel Loading (lb/ft²)"</span>,</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>    title <span class="op">=</span> <span class="st">"Dynamic Fuel Transfer in Model 1"</span>,</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>    label <span class="op">=</span> [<span class="st">"Dead"</span> <span class="st">"Live"</span>],</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>    linewidth <span class="op">=</span> <span class="fl">2</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display" data-execution_count="1">
+<img src="data:image/png;base64,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">
+</div>
+</div>
+</section>
+<section id="rothermel-coefficients" class="level2">
+<h2 class="anchored" data-anchor-id="rothermel-coefficients">Rothermel Coefficients</h2>
+<p>The <code>FuelModel</code> type pre-computes many Rothermel model coefficients for efficiency:</p>
+<div id="18" class="cell" data-execution_count="1">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>fm <span class="op">=</span> <span class="fu">get_fuel_model</span>(fuel_table, <span class="fl">1</span>, <span class="fl">60</span>)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Rothermel Coefficients for </span><span class="sc">$</span>(fm.name)<span class="st">:"</span>)</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  A coefficient: </span><span class="sc">$</span>(<span class="fu">round</span>(fm.A, digits<span class="op">=</span><span class="fl">4</span>))<span class="st">"</span>)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  B coefficient: </span><span class="sc">$</span>(<span class="fu">round</span>(fm.B, digits<span class="op">=</span><span class="fl">4</span>))<span class="st">"</span>)</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  C coefficient: </span><span class="sc">$</span>(<span class="fu">round</span>(fm.C, digits<span class="op">=</span><span class="fl">4</span>))<span class="st">"</span>)</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  E coefficient: </span><span class="sc">$</span>(<span class="fu">round</span>(fm.E, digits<span class="op">=</span><span class="fl">4</span>))<span class="st">"</span>)</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  Reaction velocity (Γ'): </span><span class="sc">$</span>(<span class="fu">round</span>(fm.gammaprime, digits<span class="op">=</span><span class="fl">3</span>))<span class="st"> 1/min"</span>)</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  Propagating flux ratio (ξ): </span><span class="sc">$</span>(<span class="fu">round</span>(fm.xi, digits<span class="op">=</span><span class="fl">4</span>))<span class="st">"</span>)</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  Residence time (τr): </span><span class="sc">$</span>(<span class="fu">round</span>(fm.tr, digits<span class="op">=</span><span class="fl">2</span>))<span class="st"> min"</span>)</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  Packing ratio (β): </span><span class="sc">$</span>(<span class="fu">round</span>(fm.beta, digits<span class="op">=</span><span class="fl">5</span>))<span class="st">"</span>)</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"  Optimal packing ratio (βop): </span><span class="sc">$</span>(<span class="fu">round</span>(fm.betaop, digits<span class="op">=</span><span class="fl">5</span>))<span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rothermel Coefficients for FBFM01:
+  A coefficient: 0.2087
+  B coefficient: 2.0712
+  C coefficient: 0.0001
+  E coefficient: 0.2035
+  Reaction velocity (Γ'): 14.201 1/min
+  Propagating flux ratio (ξ): 0.0578
+  Residence time (τr): 0.11 min
+  Packing ratio (β): 0.00106
+  Optimal packing ratio (βop): 0.00419</code></pre>
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../reference/rothermel.html" class="pagination-link" aria-label="Rothermel Fire Spread Model">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">Rothermel Fire Spread Model</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../reference/simulation.html" class="pagination-link" aria-label="Simulation">
+        <span class="nav-page-text"><span class="chapter-title">Simulation</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/RallypointOne/Elmfire.jl/blob/main/reference/fuel-models.qmd" class="toc-action"><i class="bi bi-github"></i>View source</a></li></ul></div></div></div></footer><script>
+(function() {
+    // Detect repo name and current version from URL path
+    // Deployed: /{repoName}/{version}/...
+    // Local preview: /page.html (no repo/version segments)
+    var pathParts = window.location.pathname.split('/').filter(Boolean);
+    var isLocal = pathParts.length < 2 || !pathParts[0].includes('.');
+    var currentVersion, basePath;
+
+    if (pathParts.length >= 2 && pathParts[1].match(/^(dev|stable|v\d)/)) {
+        currentVersion = pathParts[1];
+        basePath = '/' + pathParts[0] + '/';
+    } else {
+        currentVersion = 'dev';
+        basePath = '/';
+    }
+
+    // Build dropdown HTML
+    function buildDropdown(versions) {
+        var navbar = document.querySelector('.navbar-nav.navbar-nav-scroll.ms-auto');
+        if (!navbar) return;
+
+        var li = document.createElement('li');
+        li.className = 'nav-item dropdown';
+        li.innerHTML =
+            '<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">' +
+                currentVersion +
+            '</a>' +
+            '<ul class="dropdown-menu dropdown-menu-end"></ul>';
+
+        var menu = li.querySelector('.dropdown-menu');
+
+        // Always add dev and stable
+        var fixed = ['stable', 'dev'];
+        fixed.forEach(function(v) {
+            var a = document.createElement('a');
+            a.className = 'dropdown-item' + (v === currentVersion ? ' active' : '');
+            a.href = basePath + v + '/';
+            a.textContent = v;
+            var item = document.createElement('li');
+            item.appendChild(a);
+            menu.appendChild(item);
+        });
+
+        // Add release versions from versions.json
+        if (versions && versions.length > 0) {
+            var divider = document.createElement('li');
+            divider.innerHTML = '<hr class="dropdown-divider">';
+            menu.appendChild(divider);
+
+            versions.forEach(function(v) {
+                var a = document.createElement('a');
+                a.className = 'dropdown-item' + (v === currentVersion ? ' active' : '');
+                a.href = basePath + v + '/';
+                a.textContent = v;
+                var item = document.createElement('li');
+                item.appendChild(a);
+                menu.appendChild(item);
+            });
+        }
+
+        navbar.prepend(li);
+
+        // Show outdated version banner
+        if (versions && versions.length > 0 && currentVersion !== 'stable' && currentVersion !== 'dev') {
+            var latest = versions[0]; // versions.json is sorted descending
+            if (currentVersion !== latest) {
+                var banner = document.createElement('div');
+                banner.className = 'alert alert-warning text-center mb-0 rounded-0';
+                banner.setAttribute('role', 'alert');
+                banner.innerHTML = 'You are viewing docs for <strong>' + currentVersion + '</strong>. ' +
+                    'The latest stable release is <a href="' + basePath + 'stable/" class="alert-link">' + latest + '</a>.';
+                document.body.prepend(banner);
+            }
+        }
+    }
+
+    // Fetch versions.json, then build dropdown
+    fetch(basePath + 'versions.json')
+        .then(function(res) { return res.ok ? res.json() : []; })
+        .catch(function() { return []; })
+        .then(buildDropdown);
+
+    // Fetch star count from GitHub API
+    var starLink = document.querySelector('a.nav-link[href*="/stargazers"]');
+    if (starLink) {
+        var match = starLink.href.match(/github\.com\/([^/]+\/[^/]+)\/stargazers/);
+        if (match) {
+            fetch('https://api.github.com/repos/' + match[1])
+                .then(function(res) { return res.ok ? res.json() : null; })
+                .then(function(data) {
+                    if (!data) return;
+                    var text = starLink.querySelector('.menu-text');
+                    if (text) text.textContent = data.stargazers_count;
+                })
+                .catch(function() {});
+        }
+    }
+})();
+</script>
+
+
+
+
+</body></html>
