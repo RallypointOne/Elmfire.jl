@@ -1,6 +1,7 @@
 ---
 title: "Ensemble Simulations"
 subtitle: "Monte Carlo probabilistic fire forecasting"
+engine: julia
 ---
 
 Ensemble simulations run multiple realizations of a fire scenario with perturbed inputs to generate probabilistic forecasts. This tutorial covers Elmfire.jl's ensemble capabilities.

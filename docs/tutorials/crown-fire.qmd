@@ -1,6 +1,7 @@
 ---
 title: "Crown Fire"
 subtitle: "Modeling passive and active crown fire"
+engine: julia
 ---
 
 Crown fire occurs when fire spreads through the canopy layer of trees. This tutorial covers crown fire modeling in Elmfire.jl.

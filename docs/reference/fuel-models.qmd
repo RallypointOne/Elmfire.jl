@@ -1,6 +1,7 @@
 ---
 title: "Fuel Models"
 subtitle: "Fuel model types and functions"
+engine: julia
 ---
 
 Fuel models describe the physical characteristics of wildland fuels and are essential inputs to the Rothermel fire spread model.

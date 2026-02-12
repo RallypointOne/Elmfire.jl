@@ -1,6 +1,7 @@
 ---
 title: "Terrain Effects"
 subtitle: "Slope, aspect, and topographic influence"
+engine: julia
 ---
 
 Terrain dramatically influences fire behavior. This tutorial explores slope and aspect effects.

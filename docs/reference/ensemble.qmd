@@ -1,6 +1,7 @@
 ---
 title: "Ensemble"
 subtitle: "Monte Carlo ensemble simulations"
+engine: julia
 ---
 
 This module implements Monte Carlo ensemble simulations with parameter perturbations for probabilistic fire spread forecasting.

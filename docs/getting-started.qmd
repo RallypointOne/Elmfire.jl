@@ -1,6 +1,7 @@
 ---
 title: "Getting Started"
 subtitle: "Your First Fire Simulation with Elmfire.jl"
+engine: julia
 ---
 
 This tutorial will guide you through running your first wildfire simulation with Elmfire.jl. We'll cover the basic components and build up to more complex scenarios with visualizations.

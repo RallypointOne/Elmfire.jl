@@ -1,6 +1,7 @@
 ---
 title: "WUI & Suppression"
 subtitle: "Wildland-urban interface and fire suppression models"
+engine: julia
 ---
 
 This module provides models for building ignition in the Wildland-Urban Interface (WUI) and fire suppression resource management.

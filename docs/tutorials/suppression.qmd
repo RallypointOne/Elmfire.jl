@@ -1,6 +1,7 @@
 ---
 title: "Suppression"
 subtitle: "Fire containment and resource management"
+engine: julia
 ---
 
 This tutorial covers fire suppression modeling in Elmfire.jl.

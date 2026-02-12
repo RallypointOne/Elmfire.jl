@@ -1,6 +1,7 @@
 ---
 title: "Rothermel Fire Spread Model"
 subtitle: "Mathematical foundation and implementation"
+engine: julia
 ---
 
 The Rothermel surface fire spread model (Rothermel 1972) is the foundation of fire behavior prediction in Elmfire.jl. This page describes the mathematical equations and how they are implemented.

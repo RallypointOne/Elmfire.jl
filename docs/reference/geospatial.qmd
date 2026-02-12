@@ -1,6 +1,7 @@
 ---
 title: "Geospatial I/O"
 subtitle: "Reading and writing geospatial data"
+engine: julia
 ---
 
 This module provides GeoTIFF reading/writing, raster processing, and landscape data management for fire simulations.

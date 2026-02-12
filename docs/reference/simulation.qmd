@@ -1,6 +1,7 @@
 ---
 title: "Simulation"
 subtitle: "Fire state and simulation functions"
+engine: julia
 ---
 
 This module provides the core fire simulation state and execution functions.

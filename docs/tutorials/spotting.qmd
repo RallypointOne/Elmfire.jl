@@ -1,6 +1,7 @@
 ---
 title: "Spotting"
 subtitle: "Ember generation and transport"
+engine: julia
 ---
 
 Spotting (ember transport) creates new ignitions downwind of the main fire. This tutorial covers Elmfire.jl's spotting capabilities.

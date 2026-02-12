@@ -1,6 +1,7 @@
 ---
 title: "WUI Modeling"
 subtitle: "Wildland-urban interface and building ignition"
+engine: julia
 ---
 
 The Wildland-Urban Interface (WUI) is where homes and structures meet wildland vegetation. This tutorial covers modeling building ignition during wildfires.

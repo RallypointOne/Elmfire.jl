@@ -1,6 +1,7 @@
 ---
 title: "Weather Effects"
 subtitle: "Wind, moisture, and time-varying weather"
+engine: julia
 ---
 
 Weather is the primary driver of fire behavior. This tutorial explores how different weather parameters affect fire spread.

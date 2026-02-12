@@ -1,6 +1,7 @@
 ---
 title: "Weather"
 subtitle: "Weather data management and interpolation"
+engine: julia
 ---
 
 This module handles weather data for fire simulations, including spatially and temporally varying conditions.
