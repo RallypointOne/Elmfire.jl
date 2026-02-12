@@ -3,9 +3,8 @@ project:
   output-dir: _site
 
 engine: julia
-
-jupyter:
-  kernel: julia-1.12
+julia:
+  project: "."
 
 book:
   title: "Elmfire.jl"
@@ -23,6 +22,9 @@ book:
       - text: Reference
         href: reference/index.qmd
     right:
+      - icon: star
+        href: https://github.com/RallypointOne/Elmfire.jl/stargazers
+        text: "Star"
       - icon: github
         href: https://github.com/RallypointOne/Elmfire.jl
   chapters:
@@ -49,14 +51,19 @@ book:
         - reference/geospatial.qmd
         - reference/ensemble.qmd
         - reference/wui-suppression.qmd
+    - part: "More"
+      chapters:
+        - api.qmd
+        - changelog.qmd
+        - coverage.qmd
 
 format:
   html:
+    css: styles.css
+    number-sections: false
     theme:
       light: flatly
       dark: darkly
     toc: true
-    toc-depth: 3
-    code-fold: false
-    code-tools: true
-    highlight-style: github
+    include-after-body:
+      - file: _version-selector.html
