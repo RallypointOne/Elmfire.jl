@@ -175,4 +175,4 @@ Tutorials are available in `docs/tutorials/`:
 
 ## License
 
-MIT License
+The Julia package code is licensed under the [MIT License](LICENSE). The bundled ELMFIRE Fortran source code in the `elmfire/` directory is licensed separately under the [Eclipse Public License 2.0](elmfire/LICENSE.md).

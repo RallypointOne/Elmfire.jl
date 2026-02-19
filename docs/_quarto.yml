@@ -8,19 +8,11 @@ julia:
 
 book:
   title: "Elmfire.jl"
-  description: "A Julia implementation of the ELMFIRE wildfire simulation model"
-  repo-url: https://github.com/RallypointOne/Elmfire.jl
-  repo-actions: [source]
+  search:
+    location: sidebar
+    keyboard-shortcut:
+      - "/"
   navbar:
-    left:
-      - text: Home
-        href: index.qmd
-      - text: Getting Started
-        href: getting-started.qmd
-      - text: Tutorials
-        href: tutorials/index.qmd
-      - text: Reference
-        href: reference/index.qmd
     right:
       - icon: star
         href: https://github.com/RallypointOne/Elmfire.jl/stargazers
@@ -28,9 +20,11 @@ book:
       - icon: github
         href: https://github.com/RallypointOne/Elmfire.jl
   chapters:
-    - index.qmd
-    - getting-started.qmd
-    - part: Tutorials
+    - part: "Docs"
+      chapters:
+        - index.qmd
+        - getting-started.qmd
+    - part: "Tutorials"
       chapters:
         - tutorials/index.qmd
         - tutorials/basic-simulation.qmd
@@ -41,7 +35,7 @@ book:
         - tutorials/ensemble.qmd
         - tutorials/wui.qmd
         - tutorials/suppression.qmd
-    - part: Reference
+    - part: "Module Reference"
       chapters:
         - reference/index.qmd
         - reference/rothermel.qmd
@@ -51,11 +45,19 @@ book:
         - reference/geospatial.qmd
         - reference/ensemble.qmd
         - reference/wui-suppression.qmd
-    - part: "More"
+    - part: "API"
       chapters:
         - api.qmd
+    - part: "Reference"
+      chapters:
         - changelog.qmd
         - coverage.qmd
+
+  page-footer:
+    center: "Built on __BUILD_DATE__"
+
+language:
+  search-text-placeholder: "Search  (/)"
 
 format:
   html:
@@ -64,6 +66,6 @@ format:
     theme:
       light: flatly
       dark: darkly
-    toc: true
+    respect-user-color-scheme: true
     include-after-body:
       - file: _version-selector.html
