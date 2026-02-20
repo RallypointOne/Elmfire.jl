@@ -31,13 +31,13 @@
             <td class="headerValue">on branch main</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryHi">96.3&nbsp;%</td>
-            <td class="headerCovTableEntry">109</td>
+            <td class="headerCovTableEntryLo">62.9&nbsp;%</td>
+            <td class="headerCovTableEntry">167</td>
             <td class="headerCovTableEntry">105</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-19 14:48:25</td>
+            <td class="headerValue">2026-02-20 13:05:07</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -448,6 +448,143 @@
 <span id="L386"><span class="lineNum">     386</span>              : Check if a fuel model is non-burnable (fuel model 256 or similar).</span>
 <span id="L387"><span class="lineNum">     387</span>              : &quot;&quot;&quot;</span>
 <span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">     1327244 : isnonburnable(fm::FuelModel{T}) where {T} = fm.id == FUEL_MODEL_NONBURNABLE || fm.W0[1] &lt; T(1e-6)</span></span>
+<span id="L389"><span class="lineNum">     389</span>              : </span>
+<span id="L390"><span class="lineNum">     390</span>              : </span>
+<span id="L391"><span class="lineNum">     391</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L392"><span class="lineNum">     392</span>              : #                     GPU-Friendly Fuel Model Array</span>
+<span id="L393"><span class="lineNum">     393</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L394"><span class="lineNum">     394</span>              : &quot;&quot;&quot;</span>
+<span id="L395"><span class="lineNum">     395</span>              :     FuelModelArray{T&lt;:AbstractFloat}</span>
+<span id="L396"><span class="lineNum">     396</span>              : </span>
+<span id="L397"><span class="lineNum">     397</span>              : Dense struct-of-arrays representation of fuel model coefficients for GPU-friendly lookup.</span>
+<span id="L398"><span class="lineNum">     398</span>              : Replaces the `Dict`-based `FuelModelTable` with array indexing.</span>
+<span id="L399"><span class="lineNum">     399</span>              : </span>
+<span id="L400"><span class="lineNum">     400</span>              : Fields are stored as `[fuel_index, moisture_class_index]` matrices where:</span>
+<span id="L401"><span class="lineNum">     401</span>              : - `fuel_index` maps from fuel ID via `fuel_id_to_index`</span>
+<span id="L402"><span class="lineNum">     402</span>              : - `moisture_class_index = live_moisture_class - 29` (so class 30 → index 1, class 120 → index 91)</span>
+<span id="L403"><span class="lineNum">     403</span>              : </span>
+<span id="L404"><span class="lineNum">     404</span>              : NTuple fields are stored as 3D arrays `[fuel_index, moisture_class_index, component]`.</span>
+<span id="L405"><span class="lineNum">     405</span>              : &quot;&quot;&quot;</span>
+<span id="L406"><span class="lineNum">     406</span>              : struct FuelModelArray{T&lt;:AbstractFloat}</span>
+<span id="L407"><span class="lineNum">     407</span>              :     # Scalar fields: [fuel_index, moisture_class_index]</span>
+<span id="L408"><span class="lineNum">     408</span>              :     delta::Matrix{T}</span>
+<span id="L409"><span class="lineNum">     409</span>              :     mex_dead::Matrix{T}</span>
+<span id="L410"><span class="lineNum">     410</span>              :     mex_live::Matrix{T}</span>
+<span id="L411"><span class="lineNum">     411</span>              :     rhob::Matrix{T}</span>
+<span id="L412"><span class="lineNum">     412</span>              :     xi::Matrix{T}</span>
+<span id="L413"><span class="lineNum">     413</span>              :     B::Matrix{T}</span>
+<span id="L414"><span class="lineNum">     414</span>              :     GP_WND_ETAS_HOC::Matrix{T}</span>
+<span id="L415"><span class="lineNum">     415</span>              :     GP_WNL_ETAS_HOC::Matrix{T}</span>
+<span id="L416"><span class="lineNum">     416</span>              :     phisterm::Matrix{T}</span>
+<span id="L417"><span class="lineNum">     417</span>              :     phiwterm::Matrix{T}</span>
+<span id="L418"><span class="lineNum">     418</span>              :     R_MPRIMEDENOME14SUM_MEX_DEAD::Matrix{T}</span>
+<span id="L419"><span class="lineNum">     419</span>              :     F_dead::Matrix{T}</span>
+<span id="L420"><span class="lineNum">     420</span>              :     F_live::Matrix{T}</span>
+<span id="L421"><span class="lineNum">     421</span>              :     tr::Matrix{T}</span>
+<span id="L422"><span class="lineNum">     422</span>              : </span>
+<span id="L423"><span class="lineNum">     423</span>              :     # NTuple fields: [fuel_index, moisture_class_index, component]</span>
+<span id="L424"><span class="lineNum">     424</span>              :     F::Array{T, 3}            # 6 components</span>
+<span id="L425"><span class="lineNum">     425</span>              :     FEPS::Array{T, 3}         # 6 components</span>
+<span id="L426"><span class="lineNum">     426</span>              :     WPRIMENUMER::Array{T, 3}  # 4 components</span>
+<span id="L427"><span class="lineNum">     427</span>              : </span>
+<span id="L428"><span class="lineNum">     428</span>              :     # Nonburnable flag</span>
+<span id="L429"><span class="lineNum">     429</span>              :     nonburnable::BitMatrix     # [fuel_index, moisture_class_index]</span>
+<span id="L430"><span class="lineNum">     430</span>              : </span>
+<span id="L431"><span class="lineNum">     431</span>              :     # Mapping from fuel ID to array row index (0 = not present)</span>
+<span id="L432"><span class="lineNum">     432</span>              :     fuel_id_to_index::Vector{Int}</span>
+<span id="L433"><span class="lineNum">     433</span>              : end</span>
+<span id="L434"><span class="lineNum">     434</span>              : </span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaUNC tlaBgUNC">           0 : Base.eltype(::FuelModelArray{T}) where {T} = T</span></span>
+<span id="L436"><span class="lineNum">     436</span>              : </span>
+<span id="L437"><span class="lineNum">     437</span>              : &quot;&quot;&quot;</span>
+<span id="L438"><span class="lineNum">     438</span>              :     FuelModelArray(table::FuelModelTable{T}) -&gt; FuelModelArray{T}</span>
+<span id="L439"><span class="lineNum">     439</span>              : </span>
+<span id="L440"><span class="lineNum">     440</span>              : Convert a `FuelModelTable` to a dense `FuelModelArray` for GPU-friendly access.</span>
+<span id="L441"><span class="lineNum">     441</span>              : </span>
+<span id="L442"><span class="lineNum">     442</span>              : ### Examples</span>
+<span id="L443"><span class="lineNum">     443</span>              : </span>
+<span id="L444"><span class="lineNum">     444</span>              :     table = create_standard_fuel_table(Float64)</span>
+<span id="L445"><span class="lineNum">     445</span>              :     arr = FuelModelArray(table)</span>
+<span id="L446"><span class="lineNum">     446</span>              : &quot;&quot;&quot;</span>
+<span id="L447"><span class="lineNum">     447</span> <span class="tlaUNC">           0 : function FuelModelArray(table::FuelModelTable{T}) where {T&lt;:AbstractFloat}</span></span>
+<span id="L448"><span class="lineNum">     448</span>              :     # Collect unique fuel IDs and build index mapping</span>
+<span id="L449"><span class="lineNum">     449</span> <span class="tlaUNC">           0 :     fuel_ids = sort!(unique(first.(keys(table.models))))</span></span>
+<span id="L450"><span class="lineNum">     450</span> <span class="tlaUNC">           0 :     n_fuels = length(fuel_ids)</span></span>
+<span id="L451"><span class="lineNum">     451</span> <span class="tlaUNC">           0 :     n_mc = 91  # moisture classes 30:120</span></span>
+<span id="L452"><span class="lineNum">     452</span>              : </span>
+<span id="L453"><span class="lineNum">     453</span> <span class="tlaUNC">           0 :     max_fuel_id = maximum(fuel_ids)</span></span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaUNC">           0 :     fuel_id_to_index = zeros(Int, max_fuel_id)</span></span>
+<span id="L455"><span class="lineNum">     455</span> <span class="tlaUNC">           0 :     for (i, fid) in enumerate(fuel_ids)</span></span>
+<span id="L456"><span class="lineNum">     456</span> <span class="tlaUNC">           0 :         fuel_id_to_index[fid] = i</span></span>
+<span id="L457"><span class="lineNum">     457</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L458"><span class="lineNum">     458</span>              : </span>
+<span id="L459"><span class="lineNum">     459</span>              :     # Allocate scalar fields</span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :     delta = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC">           0 :     mex_dead = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaUNC">           0 :     mex_live = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L463"><span class="lineNum">     463</span> <span class="tlaUNC">           0 :     rhob = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L464"><span class="lineNum">     464</span> <span class="tlaUNC">           0 :     xi = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L465"><span class="lineNum">     465</span> <span class="tlaUNC">           0 :     B = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L466"><span class="lineNum">     466</span> <span class="tlaUNC">           0 :     GP_WND_ETAS_HOC = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L467"><span class="lineNum">     467</span> <span class="tlaUNC">           0 :     GP_WNL_ETAS_HOC = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L468"><span class="lineNum">     468</span> <span class="tlaUNC">           0 :     phisterm = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L469"><span class="lineNum">     469</span> <span class="tlaUNC">           0 :     phiwterm = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L470"><span class="lineNum">     470</span> <span class="tlaUNC">           0 :     R_MPRIMEDENOME14SUM_MEX_DEAD = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L471"><span class="lineNum">     471</span> <span class="tlaUNC">           0 :     F_dead = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L472"><span class="lineNum">     472</span> <span class="tlaUNC">           0 :     F_live = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L473"><span class="lineNum">     473</span> <span class="tlaUNC">           0 :     tr = zeros(T, n_fuels, n_mc)</span></span>
+<span id="L474"><span class="lineNum">     474</span>              : </span>
+<span id="L475"><span class="lineNum">     475</span>              :     # Allocate NTuple fields</span>
+<span id="L476"><span class="lineNum">     476</span> <span class="tlaUNC">           0 :     F = zeros(T, n_fuels, n_mc, 6)</span></span>
+<span id="L477"><span class="lineNum">     477</span> <span class="tlaUNC">           0 :     FEPS = zeros(T, n_fuels, n_mc, 6)</span></span>
+<span id="L478"><span class="lineNum">     478</span> <span class="tlaUNC">           0 :     WPRIMENUMER = zeros(T, n_fuels, n_mc, 4)</span></span>
+<span id="L479"><span class="lineNum">     479</span>              : </span>
+<span id="L480"><span class="lineNum">     480</span>              :     # Allocate nonburnable flag</span>
+<span id="L481"><span class="lineNum">     481</span> <span class="tlaUNC">           0 :     nonburnable = falses(n_fuels, n_mc)</span></span>
+<span id="L482"><span class="lineNum">     482</span>              : </span>
+<span id="L483"><span class="lineNum">     483</span>              :     # Fill from table</span>
+<span id="L484"><span class="lineNum">     484</span> <span class="tlaUNC">           0 :     for fid in fuel_ids</span></span>
+<span id="L485"><span class="lineNum">     485</span> <span class="tlaUNC">           0 :         fi = fuel_id_to_index[fid]</span></span>
+<span id="L486"><span class="lineNum">     486</span> <span class="tlaUNC">           0 :         for lmc in 30:120</span></span>
+<span id="L487"><span class="lineNum">     487</span> <span class="tlaUNC">           0 :             mi = lmc - 29</span></span>
+<span id="L488"><span class="lineNum">     488</span> <span class="tlaUNC">           0 :             fm = get_fuel_model(table, fid, lmc)</span></span>
+<span id="L489"><span class="lineNum">     489</span>              : </span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaUNC">           0 :             delta[fi, mi] = fm.delta</span></span>
+<span id="L491"><span class="lineNum">     491</span> <span class="tlaUNC">           0 :             mex_dead[fi, mi] = fm.mex_dead</span></span>
+<span id="L492"><span class="lineNum">     492</span> <span class="tlaUNC">           0 :             mex_live[fi, mi] = fm.mex_live</span></span>
+<span id="L493"><span class="lineNum">     493</span> <span class="tlaUNC">           0 :             rhob[fi, mi] = fm.rhob</span></span>
+<span id="L494"><span class="lineNum">     494</span> <span class="tlaUNC">           0 :             xi[fi, mi] = fm.xi</span></span>
+<span id="L495"><span class="lineNum">     495</span> <span class="tlaUNC">           0 :             B[fi, mi] = fm.B</span></span>
+<span id="L496"><span class="lineNum">     496</span> <span class="tlaUNC">           0 :             GP_WND_ETAS_HOC[fi, mi] = fm.GP_WND_ETAS_HOC</span></span>
+<span id="L497"><span class="lineNum">     497</span> <span class="tlaUNC">           0 :             GP_WNL_ETAS_HOC[fi, mi] = fm.GP_WNL_ETAS_HOC</span></span>
+<span id="L498"><span class="lineNum">     498</span> <span class="tlaUNC">           0 :             phisterm[fi, mi] = fm.phisterm</span></span>
+<span id="L499"><span class="lineNum">     499</span> <span class="tlaUNC">           0 :             phiwterm[fi, mi] = fm.phiwterm</span></span>
+<span id="L500"><span class="lineNum">     500</span> <span class="tlaUNC">           0 :             R_MPRIMEDENOME14SUM_MEX_DEAD[fi, mi] = fm.R_MPRIMEDENOME14SUM_MEX_DEAD</span></span>
+<span id="L501"><span class="lineNum">     501</span> <span class="tlaUNC">           0 :             F_dead[fi, mi] = fm.F_dead</span></span>
+<span id="L502"><span class="lineNum">     502</span> <span class="tlaUNC">           0 :             F_live[fi, mi] = fm.F_live</span></span>
+<span id="L503"><span class="lineNum">     503</span> <span class="tlaUNC">           0 :             tr[fi, mi] = fm.tr</span></span>
+<span id="L504"><span class="lineNum">     504</span>              : </span>
+<span id="L505"><span class="lineNum">     505</span> <span class="tlaUNC">           0 :             for k in 1:6</span></span>
+<span id="L506"><span class="lineNum">     506</span> <span class="tlaUNC">           0 :                 F[fi, mi, k] = fm.F[k]</span></span>
+<span id="L507"><span class="lineNum">     507</span> <span class="tlaUNC">           0 :                 FEPS[fi, mi, k] = fm.FEPS[k]</span></span>
+<span id="L508"><span class="lineNum">     508</span> <span class="tlaUNC">           0 :             end</span></span>
+<span id="L509"><span class="lineNum">     509</span> <span class="tlaUNC">           0 :             for k in 1:4</span></span>
+<span id="L510"><span class="lineNum">     510</span> <span class="tlaUNC">           0 :                 WPRIMENUMER[fi, mi, k] = fm.WPRIMENUMER[k]</span></span>
+<span id="L511"><span class="lineNum">     511</span> <span class="tlaUNC">           0 :             end</span></span>
+<span id="L512"><span class="lineNum">     512</span>              : </span>
+<span id="L513"><span class="lineNum">     513</span> <span class="tlaUNC">           0 :             nonburnable[fi, mi] = isnonburnable(fm)</span></span>
+<span id="L514"><span class="lineNum">     514</span> <span class="tlaUNC">           0 :         end</span></span>
+<span id="L515"><span class="lineNum">     515</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L516"><span class="lineNum">     516</span>              : </span>
+<span id="L517"><span class="lineNum">     517</span> <span class="tlaUNC">           0 :     return FuelModelArray{T}(</span></span>
+<span id="L518"><span class="lineNum">     518</span>              :         delta, mex_dead, mex_live, rhob, xi, B,</span>
+<span id="L519"><span class="lineNum">     519</span>              :         GP_WND_ETAS_HOC, GP_WNL_ETAS_HOC,</span>
+<span id="L520"><span class="lineNum">     520</span>              :         phisterm, phiwterm, R_MPRIMEDENOME14SUM_MEX_DEAD,</span>
+<span id="L521"><span class="lineNum">     521</span>              :         F_dead, F_live, tr,</span>
+<span id="L522"><span class="lineNum">     522</span>              :         F, FEPS, WPRIMENUMER,</span>
+<span id="L523"><span class="lineNum">     523</span>              :         nonburnable, fuel_id_to_index</span>
+<span id="L524"><span class="lineNum">     524</span>              :     )</span>
+<span id="L525"><span class="lineNum">     525</span>              : end</span>
         </pre>
               </td>
             </tr>

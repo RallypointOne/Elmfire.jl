@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>API Reference – Elmfire.jl</title>
+<title>Comparison with Original ELMFIRE – Elmfire.jl</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -58,30 +58,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="../site_libs/quarto-nav/headroom.min.js"></script>
-<script src="../site_libs/clipboard/clipboard.min.js"></script>
-<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="../site_libs/quarto-search/fuse.min.js"></script>
-<script src="../site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="../">
-<link href="../reference/rothermel.html" rel="next">
-<link href="../tutorials/suppression.html" rel="prev">
-<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
-<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
-<script src="../site_libs/quarto-html/popper.min.js"></script>
-<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="../site_libs/quarto-html/anchor.min.js"></script>
-<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-4d9afe2b8d18ee9fa5d0d57b5ed4214d.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
-<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-4ff66e45b39d49436fe97d3fe27b9920.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-7e34ecb6a0e7991f0346b0751d4a7c3f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-4ff66e45b39d49436fe97d3fe27b9920.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./tutorials/index.html" rel="next">
+<link href="./getting-started.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4d9afe2b8d18ee9fa5d0d57b5ed4214d.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-4ff66e45b39d49436fe97d3fe27b9920.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-7e34ecb6a0e7991f0346b0751d4a7c3f.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-4ff66e45b39d49436fe97d3fe27b9920.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -108,7 +108,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 
 
-<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="styles.css">
 </head>
 
 <body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
@@ -289,7 +289,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a class="navbar-brand" href="../index.html">
+    <a class="navbar-brand" href="./index.html">
     <span class="navbar-title">Elmfire.jl</span>
     </a>
   </div>
@@ -320,7 +320,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Module Reference</a></li><li class="breadcrumb-item"><a href="../reference/index.html"><span class="chapter-title">API Reference</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Docs</a></li><li class="breadcrumb-item"><a href="./comparison.html"><span class="chapter-title">Comparison with Original ELMFIRE</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -351,17 +351,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Elmfire.jl</span></a>
+  <a href="./index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Elmfire.jl</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../getting-started.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Getting Started</span></a>
+  <a href="./getting-started.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Getting Started</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../comparison.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Comparison with Original ELMFIRE</span></a>
+  <a href="./comparison.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">Comparison with Original ELMFIRE</span></a>
   </div>
 </li>
       </ul>
@@ -377,47 +377,47 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Tutorials</span></a>
+  <a href="./tutorials/index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Tutorials</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/basic-simulation.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Basic Simulation</span></a>
+  <a href="./tutorials/basic-simulation.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Basic Simulation</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/weather-effects.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Weather Effects</span></a>
+  <a href="./tutorials/weather-effects.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Weather Effects</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/terrain-effects.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Terrain Effects</span></a>
+  <a href="./tutorials/terrain-effects.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Terrain Effects</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/crown-fire.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Crown Fire</span></a>
+  <a href="./tutorials/crown-fire.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Crown Fire</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/spotting.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Spotting</span></a>
+  <a href="./tutorials/spotting.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Spotting</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/ensemble.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Ensemble Simulations</span></a>
+  <a href="./tutorials/ensemble.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Ensemble Simulations</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/wui.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">WUI Modeling</span></a>
+  <a href="./tutorials/wui.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">WUI Modeling</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../tutorials/suppression.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Suppression</span></a>
+  <a href="./tutorials/suppression.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Suppression</span></a>
   </div>
 </li>
       </ul>
@@ -433,42 +433,42 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/index.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">API Reference</span></a>
+  <a href="./reference/index.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">API Reference</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/rothermel.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Rothermel Fire Spread Model</span></a>
+  <a href="./reference/rothermel.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Rothermel Fire Spread Model</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/fuel-models.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Fuel Models</span></a>
+  <a href="./reference/fuel-models.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Fuel Models</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/simulation.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Simulation</span></a>
+  <a href="./reference/simulation.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Simulation</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/weather.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Weather</span></a>
+  <a href="./reference/weather.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Weather</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/geospatial.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Geospatial I/O</span></a>
+  <a href="./reference/geospatial.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Geospatial I/O</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/ensemble.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Ensemble</span></a>
+  <a href="./reference/ensemble.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Ensemble</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/wui-suppression.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">WUI &amp; Suppression</span></a>
+  <a href="./reference/wui-suppression.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">WUI &amp; Suppression</span></a>
   </div>
 </li>
       </ul>
@@ -484,7 +484,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../api.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">API</span></a>
+  <a href="./api.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">API</span></a>
   </div>
 </li>
       </ul>
@@ -500,12 +500,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../changelog.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Changelog</span></a>
+  <a href="./changelog.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Changelog</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../coverage.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Coverage</span></a>
+  <a href="./coverage.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Coverage</span></a>
   </div>
 </li>
       </ul>
@@ -520,23 +520,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#core-modules" id="toc-core-modules" class="nav-link active" data-scroll-target="#core-modules">Core Modules</a>
-  <ul class="collapse">
-  <li><a href="#rothermel-fire-spread-model" id="toc-rothermel-fire-spread-model" class="nav-link" data-scroll-target="#rothermel-fire-spread-model">Rothermel Fire Spread Model</a></li>
-  <li><a href="#fuel-models" id="toc-fuel-models" class="nav-link" data-scroll-target="#fuel-models">Fuel Models</a></li>
-  <li><a href="#simulation" id="toc-simulation" class="nav-link" data-scroll-target="#simulation">Simulation</a></li>
-  <li><a href="#weather" id="toc-weather" class="nav-link" data-scroll-target="#weather">Weather</a></li>
+  <li><a href="#at-a-glance" id="toc-at-a-glance" class="nav-link active" data-scroll-target="#at-a-glance">At a Glance</a></li>
+  <li><a href="#language" id="toc-language" class="nav-link" data-scroll-target="#language">Language</a></li>
+  <li><a href="#development-workflow" id="toc-development-workflow" class="nav-link" data-scroll-target="#development-workflow">Development Workflow</a></li>
+  <li><a href="#numeric-precision" id="toc-numeric-precision" class="nav-link" data-scroll-target="#numeric-precision">Numeric Precision</a></li>
+  <li><a href="#parallelism" id="toc-parallelism" class="nav-link" data-scroll-target="#parallelism">Parallelism</a></li>
+  <li><a href="#configuration" id="toc-configuration" class="nav-link" data-scroll-target="#configuration">Configuration</a></li>
   <li><a href="#geospatial-io" id="toc-geospatial-io" class="nav-link" data-scroll-target="#geospatial-io">Geospatial I/O</a></li>
-  <li><a href="#ensemble" id="toc-ensemble" class="nav-link" data-scroll-target="#ensemble">Ensemble</a></li>
-  <li><a href="#wui-suppression" id="toc-wui-suppression" class="nav-link" data-scroll-target="#wui-suppression">WUI &amp; Suppression</a></li>
-  </ul></li>
-  <li><a href="#quick-reference" id="toc-quick-reference" class="nav-link" data-scroll-target="#quick-reference">Quick Reference</a>
-  <ul class="collapse">
-  <li><a href="#main-types" id="toc-main-types" class="nav-link" data-scroll-target="#main-types">Main Types</a></li>
-  <li><a href="#main-functions" id="toc-main-functions" class="nav-link" data-scroll-target="#main-functions">Main Functions</a></li>
-  <li><a href="#constants" id="toc-constants" class="nav-link" data-scroll-target="#constants">Constants</a></li>
-  </ul></li>
-  <li><a href="#type-parameters" id="toc-type-parameters" class="nav-link" data-scroll-target="#type-parameters">Type Parameters</a></li>
+  <li><a href="#testing" id="toc-testing" class="nav-link" data-scroll-target="#testing">Testing</a></li>
+  <li><a href="#maturity" id="toc-maturity" class="nav-link" data-scroll-target="#maturity">Maturity</a></li>
+  <li><a href="#what-stays-the-same" id="toc-what-stays-the-same" class="nav-link" data-scroll-target="#what-stays-the-same">What Stays the Same</a></li>
   </ul>
 </nav>
     </div>
@@ -544,10 +537,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/index.html">Module Reference</a></li><li class="breadcrumb-item"><a href="../reference/index.html"><span class="chapter-title">API Reference</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Docs</a></li><li class="breadcrumb-item"><a href="./comparison.html"><span class="chapter-title">Comparison with Original ELMFIRE</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-title">API Reference</span></h1>
-<p class="subtitle lead">Complete function and type documentation</p>
+<h1 class="title"><span class="chapter-title">Comparison with Original ELMFIRE</span></h1>
+<p class="subtitle lead">How Elmfire.jl Differs from the Fortran Implementation</p>
 </div>
 
 
@@ -564,168 +557,138 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>This section provides comprehensive API documentation for Elmfire.jl.</p>
-<section id="core-modules" class="level2">
-<h2 class="anchored" data-anchor-id="core-modules">Core Modules</h2>
-<section id="rothermel-fire-spread-model" class="level3">
-<h3 class="anchored" data-anchor-id="rothermel-fire-spread-model"><a href="../reference/rothermel.html">Rothermel Fire Spread Model</a></h3>
-<p>The mathematical foundation of fire behavior prediction:</p>
-<ul>
-<li><code>surface_spread_rate()</code> - Calculate spread rate from Rothermel model</li>
-<li><code>elliptical_spread()</code> - Compute elliptical fire shape (Anderson 1982)</li>
-<li><code>SpreadResult</code> - Fire behavior outputs (velocity, intensity, heat)</li>
-<li><code>EllipticalSpread</code> - Head, back, and flank fire rates</li>
-</ul>
-</section>
-<section id="fuel-models" class="level3">
-<h3 class="anchored" data-anchor-id="fuel-models"><a href="../reference/fuel-models.html">Fuel Models</a></h3>
-<p>Types and functions for managing fuel model data:</p>
-<ul>
-<li><code>FuelModel</code> - Processed fuel model with derived quantities</li>
-<li><code>FuelModelTable</code> - Collection of fuel models</li>
-<li><code>create_standard_fuel_table()</code> - Create standard 13 FBFM fuel models</li>
-</ul>
-</section>
-<section id="simulation" class="level3">
-<h3 class="anchored" data-anchor-id="simulation"><a href="../reference/simulation.html">Simulation</a></h3>
-<p>Fire simulation state and execution:</p>
-<ul>
-<li><code>FireState</code> - Main simulation state container</li>
-<li><code>SimulationConfig</code> - Configuration options</li>
-<li><code>simulate!()</code> / <code>simulate_full!()</code> - Run simulations</li>
-<li><code>ignite!()</code> - Start fires</li>
-</ul>
-</section>
-<section id="weather" class="level3">
-<h3 class="anchored" data-anchor-id="weather"><a href="../reference/weather.html">Weather</a></h3>
-<p>Weather data management and interpolation:</p>
-<ul>
-<li><code>ConstantWeather</code> - Uniform weather conditions</li>
-<li><code>WeatherInterpolator</code> - Spatiotemporal weather</li>
-<li><code>create_constant_interpolator()</code> - Create interpolator from constant weather</li>
-</ul>
-</section>
-<section id="geospatial-io" class="level3">
-<h3 class="anchored" data-anchor-id="geospatial-io"><a href="../reference/geospatial.html">Geospatial I/O</a></h3>
-<p>Reading and writing geospatial data:</p>
-<ul>
-<li><code>read_geotiff()</code> / <code>write_geotiff()</code> - GeoTIFF I/O</li>
-<li><code>read_landscape()</code> - Load complete landscape data</li>
-<li><code>compute_slope_aspect()</code> - Derive terrain from DEM</li>
-</ul>
-</section>
-<section id="ensemble" class="level3">
-<h3 class="anchored" data-anchor-id="ensemble"><a href="../reference/ensemble.html">Ensemble</a></h3>
-<p>Monte Carlo ensemble simulations:</p>
-<ul>
-<li><code>EnsembleConfig</code> - Ensemble configuration</li>
-<li><code>run_ensemble!()</code> - Run Monte Carlo ensemble</li>
-<li><code>run_ensemble_threaded!()</code> - Parallel ensemble execution</li>
-</ul>
-</section>
-<section id="wui-suppression" class="level3">
-<h3 class="anchored" data-anchor-id="wui-suppression"><a href="../reference/wui-suppression.html">WUI &amp; Suppression</a></h3>
-<p>Wildland-urban interface and fire suppression:</p>
-<ul>
-<li><code>WUIBuilding</code> / <code>WUIGrid</code> - Building representation</li>
-<li><code>SuppressionResource</code> / <code>SuppressionState</code> - Suppression modeling</li>
-<li><code>simulate_with_suppression!()</code> - Integrated suppression simulation</li>
-</ul>
-</section>
-</section>
-<section id="quick-reference" class="level2">
-<h2 class="anchored" data-anchor-id="quick-reference">Quick Reference</h2>
-<section id="main-types" class="level3">
-<h3 class="anchored" data-anchor-id="main-types">Main Types</h3>
+<p><a href="https://elmfire.io">ELMFIRE</a> (Eulerian Level Set Model of FIRE spread) was originally developed by <a href="mailto:chris@cloudfire.ai">Chris Lautenberger</a> as a Fortran-based operational wildfire simulation system. It is used by the <a href="https://pyrecast.org">Pyrecast project</a> to forecast the spread of large fires across the Continental US. The mathematical formulation is described in the <a href="https://doi.org/10.1016/j.firesaf.2013.08.014">original journal article</a>.</p>
+<p><strong>Elmfire.jl</strong> is a ground-up rewrite of ELMFIRE in Julia. It reimplements the core algorithms but differs substantially in software architecture. The fire physics (Rothermel spread model, level set solver, crown fire, spotting) are faithful to the original formulation. This page documents the key differences between the two implementations.</p>
+<section id="at-a-glance" class="level2">
+<h2 class="anchored" data-anchor-id="at-a-glance">At a Glance</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 31%">
-<col style="width: 68%">
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
 </colgroup>
 <thead>
 <tr class="header">
-<th>Type</th>
-<th>Description</th>
+<th></th>
+<th>Original ELMFIRE</th>
+<th>Elmfire.jl</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>FireState{T}</code></td>
-<td>Simulation state with level set, arrival times, burned area</td>
+<td><strong>Language</strong></td>
+<td>Fortran + Shell + Python</td>
+<td>Julia</td>
 </tr>
 <tr class="even">
-<td><code>FuelModel{T}</code></td>
-<td>Fuel model properties with derived spread coefficients</td>
+<td><strong>Lines of code</strong></td>
+<td>~28,000 (14K Fortran, 11K Shell, 3K Python)</td>
+<td>~7,000</td>
 </tr>
 <tr class="odd">
-<td><code>SimulationConfig{T}</code></td>
-<td>Crown fire, spotting, and solver settings</td>
+<td><strong>Parallelism</strong></td>
+<td>MPI (distributed)</td>
+<td>Julia threads + Distributed</td>
 </tr>
 <tr class="even">
-<td><code>ConstantWeather{T}</code></td>
-<td>Uniform wind and moisture conditions</td>
+<td><strong>Configuration</strong></td>
+<td>Fortran namelists</td>
+<td>Julia structs and keyword arguments</td>
 </tr>
 <tr class="odd">
-<td><code>EnsembleResult{T}</code></td>
-<td>Monte Carlo ensemble results and statistics</td>
+<td><strong>Geospatial I/O</strong></td>
+<td>Direct GDAL / C bindings</td>
+<td>ArchGDAL.jl and Rasters.jl</td>
+</tr>
+<tr class="even">
+<td><strong>Numeric precision</strong></td>
+<td>Double precision</td>
+<td>Generic (<code>Float32</code> or <code>Float64</code>)</td>
+</tr>
+<tr class="odd">
+<td><strong>Testing</strong></td>
+<td>Verification/validation scripts</td>
+<td>Unit tests with CI</td>
+</tr>
+<tr class="even">
+<td><strong>Maturity</strong></td>
+<td>Operational, peer-reviewed</td>
+<td>In development</td>
+</tr>
+<tr class="odd">
+<td><strong>License</strong></td>
+<td>Eclipse Public License 2.0</td>
+<td>MIT</td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="main-functions" class="level3">
-<h3 class="anchored" data-anchor-id="main-functions">Main Functions</h3>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 43%">
-<col style="width: 56%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Function</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>simulate!(state, ...)</code></td>
-<td>Run fire simulation</td>
-</tr>
-<tr class="even">
-<td><code>simulate_full!(state, ...)</code></td>
-<td>Full simulation with crown fire/spotting</td>
-</tr>
-<tr class="odd">
-<td><code>ignite!(state, ix, iy, t)</code></td>
-<td>Ignite fire at grid location</td>
-</tr>
-<tr class="even">
-<td><code>run_ensemble!(config, ...)</code></td>
-<td>Run Monte Carlo ensemble</td>
-</tr>
-<tr class="odd">
-<td><code>read_landscape(T, paths...)</code></td>
-<td>Load landscape from GeoTIFF files</td>
-</tr>
-</tbody>
-</table>
+<section id="language" class="level2">
+<h2 class="anchored" data-anchor-id="language">Language</h2>
+<p>The original ELMFIRE uses Fortran for the core simulation (~14,000 lines), shell scripts for orchestration and job management (~11,000 lines), and Python for pre/post-processing (~3,000 lines).</p>
+<p>Elmfire.jl uses Julia for all components (~7,000 lines). The line count difference partly reflects Julia’s expressiveness and partly reflects that the original includes operational tooling (cloud deployment, gRPC services, etc.) that Elmfire.jl does not yet cover.</p>
 </section>
-<section id="constants" class="level3">
-<h3 class="anchored" data-anchor-id="constants">Constants</h3>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Unit conversions</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>FT_TO_M <span class="op">=</span> <span class="fl">0.3048</span>        <span class="co"># Feet to meters</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>M_TO_FT <span class="op">=</span> <span class="fl">3.28084</span>       <span class="co"># Meters to feet</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>BTUPFT2MIN_TO_KWPM2 <span class="op">=</span> <span class="fl">0.18956</span>  <span class="co"># BTU/ft²/min to kW/m²</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<section id="development-workflow" class="level2">
+<h2 class="anchored" data-anchor-id="development-workflow">Development Workflow</h2>
+<p>The original ELMFIRE is a compiled executable. Parameters are set via namelist files, and code changes require recompilation.</p>
+<p>Elmfire.jl runs in the Julia REPL or notebooks, allowing interactive parameter adjustment and visualization without recompilation:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>weather <span class="op">=</span> <span class="fu">ConstantWeather</span><span class="dt">{Float64}</span>(wind_speed_mph<span class="op">=</span><span class="fl">20.0</span>, wind_direction<span class="op">=</span><span class="fl">270.0</span>,</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    M1<span class="op">=</span><span class="fl">0.06</span>, M10<span class="op">=</span><span class="fl">0.08</span>, M100<span class="op">=</span><span class="fl">0.10</span>, MLH<span class="op">=</span><span class="fl">0.60</span>, MLW<span class="op">=</span><span class="fl">0.90</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">reset!</span>(state)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">ignite!</span>(state, <span class="fl">50</span>, <span class="fl">50</span>, <span class="fl">0.0</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(state, <span class="fl">1</span>, fuel_table, weather, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">0.0</span>, <span class="fl">30.0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The trade-off is that Julia has longer startup and compilation times compared to a pre-built Fortran binary.</p>
 </section>
+<section id="numeric-precision" class="level2">
+<h2 class="anchored" data-anchor-id="numeric-precision">Numeric Precision</h2>
+<p>The original ELMFIRE uses double-precision floating point throughout. Elmfire.jl parameterizes core types on <code>AbstractFloat</code>, allowing either <code>Float64</code> or <code>Float32</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>state64 <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>state32 <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float32}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30f0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This is useful for exploring memory/performance trade-offs, though <code>Float64</code> remains the default and is recommended for production use.</p>
 </section>
-<section id="type-parameters" class="level2">
-<h2 class="anchored" data-anchor-id="type-parameters">Type Parameters</h2>
-<p>Most types in Elmfire.jl are parametric on the floating-point type <code>T</code>:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Float64 for maximum precision</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float64}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0</span>)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Float32 for memory efficiency</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>state <span class="op">=</span> <span class="fu">FireState</span><span class="dt">{Float32}</span>(<span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">30.0f0</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This allows trading precision for memory when running large ensembles or high-resolution simulations.</p>
+<section id="parallelism" class="level2">
+<h2 class="anchored" data-anchor-id="parallelism">Parallelism</h2>
+<p>The original ELMFIRE uses MPI for distributed parallelism with domain decomposition. This scales well across HPC clusters and is battle-tested in operational forecasting.</p>
+<p>Elmfire.jl uses Julia’s native threading for ensemble runs (<code>run_ensemble_threaded!</code>), running independent simulations in parallel without domain decomposition. Julia’s <code>Distributed</code> module is available for multi-node scaling. This approach is simpler but does not yet match the original’s MPI scalability for single large-domain simulations.</p>
+</section>
+<section id="configuration" class="level2">
+<h2 class="anchored" data-anchor-id="configuration">Configuration</h2>
+<p>The original ELMFIRE reads parameters from Fortran namelist files. Elmfire.jl uses Julia structs with keyword arguments:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>config <span class="op">=</span> <span class="fu">SimulationConfig</span><span class="dt">{Float64}</span>(</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    enable_crown_fire <span class="op">=</span> <span class="cn">true</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    foliar_moisture <span class="op">=</span> <span class="fl">100.0</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Namelist files are language-agnostic and well-suited for batch job submission. Julia structs are type-checked and composable but require Julia to work with.</p>
+</section>
+<section id="geospatial-io" class="level2">
+<h2 class="anchored" data-anchor-id="geospatial-io">Geospatial I/O</h2>
+<p>Both implementations read and write GeoTIFF rasters via GDAL. The original ELMFIRE uses Fortran/C bindings directly. Elmfire.jl uses <a href="https://github.com/yeesian/ArchGDAL.jl">ArchGDAL.jl</a> and <a href="https://github.com/rafaqz/Rasters.jl">Rasters.jl</a> for higher-level raster handling.</p>
+</section>
+<section id="testing" class="level2">
+<h2 class="anchored" data-anchor-id="testing">Testing</h2>
+<p>The original ELMFIRE includes verification cases and validation scripts for known fire scenarios.</p>
+<p>Elmfire.jl has a unit test suite covering each module (Rothermel, level set, crown fire, spotting, weather, ensemble, etc.) that runs in CI on every commit. However, Elmfire.jl has not yet undergone the same level of real-world validation as the original.</p>
+</section>
+<section id="maturity" class="level2">
+<h2 class="anchored" data-anchor-id="maturity">Maturity</h2>
+<p>The original ELMFIRE is a mature, operationally deployed system. It has been peer-reviewed, validated against real fires, and used in production forecasting through Pyrecast.</p>
+<p>Elmfire.jl is a newer implementation still under active development. While the core algorithms are implemented and tested, it has not yet been validated to the same degree and should be considered experimental for operational use.</p>
+</section>
+<section id="what-stays-the-same" class="level2">
+<h2 class="anchored" data-anchor-id="what-stays-the-same">What Stays the Same</h2>
+<p>The fire science is the same. Both implementations use:</p>
+<ul>
+<li><strong>Rothermel (1972)</strong> surface fire spread model</li>
+<li><strong>Level set PDE</strong> with upwind differencing and narrow-band tracking</li>
+<li><strong>Superbee flux limiter</strong> for gradient calculation</li>
+<li><strong>2nd-order Runge-Kutta</strong> time integration</li>
+<li><strong>CFL-adaptive timestep</strong> for numerical stability</li>
+<li><strong>Van Wagner (1977)</strong> crown fire initiation</li>
+<li><strong>Cruz et al.&nbsp;(2005)</strong> active crown fire spread rate</li>
+<li><strong>53 standard FBFM</strong> fuel models</li>
+<li><strong>Elliptical fire shape</strong> (Anderson, 1983)</li>
+</ul>
+<p>For equivalent inputs, the two implementations should produce consistent fire behavior outputs.</p>
 
 
 </section>
@@ -1146,13 +1109,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../tutorials/suppression.html" class="pagination-link" aria-label="Suppression">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">Suppression</span></span>
+      <a href="./getting-started.html" class="pagination-link" aria-label="Getting Started">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">Getting Started</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/rothermel.html" class="pagination-link" aria-label="Rothermel Fire Spread Model">
-        <span class="nav-page-text"><span class="chapter-title">Rothermel Fire Spread Model</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./tutorials/index.html" class="pagination-link" aria-label="Tutorials">
+        <span class="nav-page-text"><span class="chapter-title">Tutorials</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

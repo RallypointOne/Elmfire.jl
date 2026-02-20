@@ -31,13 +31,13 @@
             <td class="headerValue">on branch main</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryHi">98.7&nbsp;%</td>
-            <td class="headerCovTableEntry">76</td>
+            <td class="headerCovTableEntryLo">54.7&nbsp;%</td>
+            <td class="headerCovTableEntry">137</td>
             <td class="headerCovTableEntry">75</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-19 14:48:25</td>
+            <td class="headerValue">2026-02-20 13:05:07</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -244,153 +244,267 @@
 <span id="L182"><span class="lineNum">     182</span>              : end</span>
 <span id="L183"><span class="lineNum">     183</span>              : </span>
 <span id="L184"><span class="lineNum">     184</span>              : </span>
-<span id="L185"><span class="lineNum">     185</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L186"><span class="lineNum">     186</span>              : #                     Elliptical Fire Spread Model</span>
-<span id="L187"><span class="lineNum">     187</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L188"><span class="lineNum">     188</span>              : </span>
-<span id="L189"><span class="lineNum">     189</span>              : &quot;&quot;&quot;</span>
-<span id="L190"><span class="lineNum">     190</span>              :     EllipticalSpread{T&lt;:AbstractFloat}</span>
+<span id="L185"><span class="lineNum">     185</span>              : &quot;&quot;&quot;</span>
+<span id="L186"><span class="lineNum">     186</span>              :     surface_spread_rate_flat(</span>
+<span id="L187"><span class="lineNum">     187</span>              :         fuel_arr::FuelModelArray{T}, fuel_index::Int, mc_index::Int,</span>
+<span id="L188"><span class="lineNum">     188</span>              :         M1::T, M10::T, M100::T, MLH::T, MLW::T,</span>
+<span id="L189"><span class="lineNum">     189</span>              :         wsmf::T, tanslp2::T, adj::T</span>
+<span id="L190"><span class="lineNum">     190</span>              :     ) -&gt; Tuple{T, T, T}</span>
 <span id="L191"><span class="lineNum">     191</span>              : </span>
-<span id="L192"><span class="lineNum">     192</span>              : Elliptical fire spread parameters following Anderson (1982).</span>
-<span id="L193"><span class="lineNum">     193</span>              : &quot;&quot;&quot;</span>
-<span id="L194"><span class="lineNum">     194</span>              : struct EllipticalSpread{T&lt;:AbstractFloat}</span>
-<span id="L195"><span class="lineNum">     195</span> <span class="tlaGNC">      325599 :     head::T           # Head fire spread rate (ft/min)</span></span>
-<span id="L196"><span class="lineNum">     196</span>              :     back::T           # Backing fire spread rate (ft/min)</span>
-<span id="L197"><span class="lineNum">     197</span>              :     flank::T          # Flanking fire spread rate (ft/min)</span>
-<span id="L198"><span class="lineNum">     198</span>              :     eccentricity::T   # Ellipse eccentricity</span>
-<span id="L199"><span class="lineNum">     199</span>              :     length_to_breadth::T  # Length to breadth ratio</span>
-<span id="L200"><span class="lineNum">     200</span>              : end</span>
-<span id="L201"><span class="lineNum">     201</span>              : </span>
-<span id="L202"><span class="lineNum">     202</span> <span class="tlaGNC">           1 : Base.eltype(::EllipticalSpread{T}) where {T} = T</span></span>
-<span id="L203"><span class="lineNum">     203</span>              : </span>
-<span id="L204"><span class="lineNum">     204</span>              : </span>
+<span id="L192"><span class="lineNum">     192</span>              : Compute surface fire spread rate from a `FuelModelArray` using dense array indexing.</span>
+<span id="L193"><span class="lineNum">     193</span>              : This variant is designed for GPU kernels where `Dict`-based `FuelModel` lookup is not available.</span>
+<span id="L194"><span class="lineNum">     194</span>              : </span>
+<span id="L195"><span class="lineNum">     195</span>              : Returns `(velocity, vs0, flin)` as a tuple instead of a `SpreadResult` struct.</span>
+<span id="L196"><span class="lineNum">     196</span>              : </span>
+<span id="L197"><span class="lineNum">     197</span>              : ### Arguments</span>
+<span id="L198"><span class="lineNum">     198</span>              : - `fuel_arr`: Dense fuel model array</span>
+<span id="L199"><span class="lineNum">     199</span>              : - `fuel_index`: Row index in `fuel_arr` (from `fuel_arr.fuel_id_to_index[fuel_id]`)</span>
+<span id="L200"><span class="lineNum">     200</span>              : - `mc_index`: Moisture class index (`live_moisture_class - 29`)</span>
+<span id="L201"><span class="lineNum">     201</span>              : - `M1, M10, M100, MLH, MLW`: Fuel moisture fractions</span>
+<span id="L202"><span class="lineNum">     202</span>              : - `wsmf`: Mid-flame wind speed (ft/min)</span>
+<span id="L203"><span class="lineNum">     203</span>              : - `tanslp2`: tan²(slope angle)</span>
+<span id="L204"><span class="lineNum">     204</span>              : - `adj`: Spread rate adjustment factor</span>
 <span id="L205"><span class="lineNum">     205</span>              : &quot;&quot;&quot;</span>
-<span id="L206"><span class="lineNum">     206</span>              :     elliptical_spread(velocity::T, effective_windspeed::T) -&gt; EllipticalSpread{T}</span>
-<span id="L207"><span class="lineNum">     207</span>              : </span>
-<span id="L208"><span class="lineNum">     208</span>              : Calculate elliptical fire spread dimensions from the head fire rate and effective windspeed.</span>
-<span id="L209"><span class="lineNum">     209</span>              : </span>
-<span id="L210"><span class="lineNum">     210</span>              : Uses Anderson (1982) length-to-breadth ratio:</span>
-<span id="L211"><span class="lineNum">     211</span>              : LB = 0.936 * exp(0.2566 * U) + 0.461 * exp(-0.1548 * U) - 0.397</span>
-<span id="L212"><span class="lineNum">     212</span>              : </span>
-<span id="L213"><span class="lineNum">     213</span>              : Where U is effective windspeed in mi/h.</span>
-<span id="L214"><span class="lineNum">     214</span>              : &quot;&quot;&quot;</span>
-<span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">      325599 : function elliptical_spread(velocity::T, effective_windspeed_mph::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L216"><span class="lineNum">     216</span> <span class="tlaGNC">      325599 :     U = max(effective_windspeed_mph, zero(T))</span></span>
-<span id="L217"><span class="lineNum">     217</span>              : </span>
-<span id="L218"><span class="lineNum">     218</span>              :     # Length to breadth ratio (Anderson 1982)</span>
-<span id="L219"><span class="lineNum">     219</span>              :     # Note: The Anderson formula gives unrealistic values at high wind speeds</span>
-<span id="L220"><span class="lineNum">     220</span>              :     # (e.g., L/B &gt; 10^11 at 100 mph). Real fires rarely exceed L/B of 8-10.</span>
-<span id="L221"><span class="lineNum">     221</span> <span class="tlaGNC">      325599 :     if U &lt; T(0.5)</span></span>
-<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC">        1142 :         LB = one(T)  # Nearly circular at low wind speeds</span></span>
-<span id="L223"><span class="lineNum">     223</span>              :     else</span>
-<span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC">      324457 :         LB = T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397)</span></span>
-<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">      324457 :         LB = clamp(LB, one(T), T(8))  # Cap at realistic maximum</span></span>
-<span id="L226"><span class="lineNum">     226</span>              :     end</span>
-<span id="L227"><span class="lineNum">     227</span>              : </span>
-<span id="L228"><span class="lineNum">     228</span>              :     # Eccentricity from L/B ratio</span>
-<span id="L229"><span class="lineNum">     229</span>              :     # LB = (1 + e) / sqrt(1 - e²)</span>
-<span id="L230"><span class="lineNum">     230</span>              :     # Solving: e² * (LB² + 1) = LB² - 1</span>
-<span id="L231"><span class="lineNum">     231</span>              :     # Therefore: e = sqrt((LB² - 1) / (LB² + 1))</span>
-<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">      325599 :     eccentricity = if LB &gt; T(1.001)</span></span>
-<span id="L233"><span class="lineNum">     233</span> <span class="tlaGNC">      324457 :         LB2 = LB * LB</span></span>
-<span id="L234"><span class="lineNum">     234</span> <span class="tlaGNC">      324457 :         sqrt((LB2 - one(T)) / (LB2 + one(T)))</span></span>
-<span id="L235"><span class="lineNum">     235</span>              :     else</span>
-<span id="L236"><span class="lineNum">     236</span> <span class="tlaGNC">      326741 :         zero(T)</span></span>
-<span id="L237"><span class="lineNum">     237</span>              :     end</span>
-<span id="L238"><span class="lineNum">     238</span>              : </span>
-<span id="L239"><span class="lineNum">     239</span>              :     # Head fire rate is the input velocity</span>
-<span id="L240"><span class="lineNum">     240</span> <span class="tlaGNC">      325599 :     head = velocity</span></span>
-<span id="L241"><span class="lineNum">     241</span>              : </span>
-<span id="L242"><span class="lineNum">     242</span>              :     # Backing fire rate from eccentricity</span>
-<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">      325599 :     back = head * (one(T) - eccentricity) / (one(T) + eccentricity)</span></span>
-<span id="L244"><span class="lineNum">     244</span>              : </span>
-<span id="L245"><span class="lineNum">     245</span>              :     # Flanking fire rate (at the widest point)</span>
-<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">      325599 :     flank = head * sqrt(one(T) - eccentricity * eccentricity) / (one(T) + eccentricity)</span></span>
-<span id="L247"><span class="lineNum">     247</span>              : </span>
-<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">      325599 :     return EllipticalSpread{T}(head, back, flank, eccentricity, LB)</span></span>
-<span id="L249"><span class="lineNum">     249</span>              : end</span>
-<span id="L250"><span class="lineNum">     250</span>              : </span>
-<span id="L251"><span class="lineNum">     251</span>              : </span>
-<span id="L252"><span class="lineNum">     252</span>              : &quot;&quot;&quot;</span>
-<span id="L253"><span class="lineNum">     253</span>              :     velocity_at_angle(es::EllipticalSpread{T}, theta::T) -&gt; T</span>
-<span id="L254"><span class="lineNum">     254</span>              : </span>
-<span id="L255"><span class="lineNum">     255</span>              : Calculate fire spread rate at angle theta from the wind direction.</span>
-<span id="L256"><span class="lineNum">     256</span>              : theta = 0 is head fire (downwind), theta = π is backing fire (upwind).</span>
-<span id="L257"><span class="lineNum">     257</span>              : &quot;&quot;&quot;</span>
-<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">           3 : function velocity_at_angle(es::EllipticalSpread{T}, theta::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L259"><span class="lineNum">     259</span> <span class="tlaGNC">           3 :     if es.eccentricity &lt; T(1e-6)</span></span>
-<span id="L260"><span class="lineNum">     260</span>              :         # Circular spread</span>
-<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC tlaBgUNC">           0 :         return es.head</span></span>
-<span id="L262"><span class="lineNum">     262</span>              :     end</span>
-<span id="L263"><span class="lineNum">     263</span>              : </span>
-<span id="L264"><span class="lineNum">     264</span>              :     # Ellipse polar equation: r = a(1-e²) / (1 - e*cos(θ))</span>
-<span id="L265"><span class="lineNum">     265</span>              :     # Where a is semi-major axis (head fire distance from center)</span>
-<span id="L266"><span class="lineNum">     266</span>              :     # But we need velocity, which scales with the ellipse dimensions</span>
-<span id="L267"><span class="lineNum">     267</span>              : </span>
-<span id="L268"><span class="lineNum">     268</span>              :     # The fire front position traces an ellipse, so velocity at angle θ</span>
-<span id="L269"><span class="lineNum">     269</span>              :     # can be computed from the ellipse geometry</span>
-<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC tlaBgGNC">           3 :     e = es.eccentricity</span></span>
-<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">           3 :     a = (es.head + es.back) / T(2)  # semi-major axis rate</span></span>
-<span id="L272"><span class="lineNum">     272</span>              : </span>
-<span id="L273"><span class="lineNum">     273</span>              :     # Distance from focus (ignition point) at angle θ</span>
-<span id="L274"><span class="lineNum">     274</span>              :     # r = a(1-e²) / (1 - e*cos(θ))</span>
-<span id="L275"><span class="lineNum">     275</span> <span class="tlaGNC">           3 :     r = a * (one(T) - e*e) / (one(T) - e * cos(theta))</span></span>
-<span id="L276"><span class="lineNum">     276</span>              : </span>
-<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">           3 :     return r</span></span>
-<span id="L278"><span class="lineNum">     278</span>              : end</span>
-<span id="L279"><span class="lineNum">     279</span>              : </span>
-<span id="L280"><span class="lineNum">     280</span>              : </span>
-<span id="L281"><span class="lineNum">     281</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L282"><span class="lineNum">     282</span>              : #                     Velocity Components</span>
-<span id="L283"><span class="lineNum">     283</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L284"><span class="lineNum">     284</span>              : </span>
-<span id="L285"><span class="lineNum">     285</span>              : &quot;&quot;&quot;</span>
-<span id="L286"><span class="lineNum">     286</span>              :     velocity_components(</span>
-<span id="L287"><span class="lineNum">     287</span>              :         head_velocity::T,</span>
-<span id="L288"><span class="lineNum">     288</span>              :         back_velocity::T,</span>
-<span id="L289"><span class="lineNum">     289</span>              :         wind_direction_rad::T,</span>
-<span id="L290"><span class="lineNum">     290</span>              :         normal_x::T,</span>
-<span id="L291"><span class="lineNum">     291</span>              :         normal_y::T</span>
-<span id="L292"><span class="lineNum">     292</span>              :     ) -&gt; Tuple{T, T}</span>
-<span id="L293"><span class="lineNum">     293</span>              : </span>
-<span id="L294"><span class="lineNum">     294</span>              : Calculate velocity components (ux, uy) in grid coordinates from fire spread parameters.</span>
-<span id="L295"><span class="lineNum">     295</span>              : </span>
-<span id="L296"><span class="lineNum">     296</span>              : # Arguments</span>
-<span id="L297"><span class="lineNum">     297</span>              : - `head_velocity`: Head fire spread rate (ft/min)</span>
-<span id="L298"><span class="lineNum">     298</span>              : - `back_velocity`: Backing fire spread rate (ft/min)</span>
-<span id="L299"><span class="lineNum">     299</span>              : - `wind_direction_rad`: Wind direction in radians (meteorological convention)</span>
-<span id="L300"><span class="lineNum">     300</span>              : - `normal_x, normal_y`: Unit normal vector to the fire front</span>
-<span id="L301"><span class="lineNum">     301</span>              : </span>
-<span id="L302"><span class="lineNum">     302</span>              : # Returns</span>
-<span id="L303"><span class="lineNum">     303</span>              : - `(ux, uy)`: Velocity components in grid coordinates (ft/min)</span>
-<span id="L304"><span class="lineNum">     304</span>              : &quot;&quot;&quot;</span>
-<span id="L305"><span class="lineNum">     305</span>              : function velocity_components(</span>
-<span id="L306"><span class="lineNum">     306</span>              :     head_velocity::T,</span>
-<span id="L307"><span class="lineNum">     307</span>              :     back_velocity::T,</span>
-<span id="L308"><span class="lineNum">     308</span>              :     wind_direction_rad::T,</span>
-<span id="L309"><span class="lineNum">     309</span>              :     normal_x::T,</span>
-<span id="L310"><span class="lineNum">     310</span>              :     normal_y::T</span>
-<span id="L311"><span class="lineNum">     311</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L312"><span class="lineNum">     312</span>              :     # Calculate the angle between the normal and the wind direction</span>
-<span id="L313"><span class="lineNum">     313</span>              :     # Wind direction in ELMFIRE is meteorological (direction FROM)</span>
-<span id="L314"><span class="lineNum">     314</span>              :     # Convert to mathematical convention (direction TO)</span>
-<span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC">      325594 :     wind_to_x = -sin(wind_direction_rad)</span></span>
-<span id="L316"><span class="lineNum">     316</span> <span class="tlaGNC">      325594 :     wind_to_y = -cos(wind_direction_rad)</span></span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaUNC tlaBgUNC">           0 : @inline function surface_spread_rate_flat(</span></span>
+<span id="L207"><span class="lineNum">     207</span>              :     fuel_arr::FuelModelArray{T},</span>
+<span id="L208"><span class="lineNum">     208</span>              :     fuel_index::Int, mc_index::Int,</span>
+<span id="L209"><span class="lineNum">     209</span>              :     M1::T, M10::T, M100::T, MLH::T, MLW::T,</span>
+<span id="L210"><span class="lineNum">     210</span>              :     wsmf::T, tanslp2::T, adj::T</span>
+<span id="L211"><span class="lineNum">     211</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :     fi = fuel_index</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :     mi = mc_index</span></span>
+<span id="L214"><span class="lineNum">     214</span>              : </span>
+<span id="L215"><span class="lineNum">     215</span>              :     # Check nonburnable</span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaUNC">           0 :     if fuel_arr.nonburnable[fi, mi]</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :         return (zero(T), zero(T), zero(T))</span></span>
+<span id="L218"><span class="lineNum">     218</span>              :     end</span>
+<span id="L219"><span class="lineNum">     219</span>              : </span>
+<span id="L220"><span class="lineNum">     220</span>              :     # Load coefficients from arrays</span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :     rhob = fuel_arr.rhob[fi, mi]</span></span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC">           0 :     xi = fuel_arr.xi[fi, mi]</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :     B = fuel_arr.B[fi, mi]</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :     GP_WND_ETAS_HOC = fuel_arr.GP_WND_ETAS_HOC[fi, mi]</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :     GP_WNL_ETAS_HOC = fuel_arr.GP_WNL_ETAS_HOC[fi, mi]</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :     phisterm = fuel_arr.phisterm[fi, mi]</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 :     phiwterm = fuel_arr.phiwterm[fi, mi]</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :     R_MPRIMEDENOME14SUM_MEX_DEAD = fuel_arr.R_MPRIMEDENOME14SUM_MEX_DEAD[fi, mi]</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :     F_dead = fuel_arr.F_dead[fi, mi]</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :     F_live = fuel_arr.F_live[fi, mi]</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC">           0 :     mex_dead = fuel_arr.mex_dead[fi, mi]</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 :     mex_live_base = fuel_arr.mex_live[fi, mi]</span></span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaUNC">           0 :     tr = fuel_arr.tr[fi, mi]</span></span>
+<span id="L234"><span class="lineNum">     234</span>              : </span>
+<span id="L235"><span class="lineNum">     235</span>              :     # Moisture array</span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaUNC">           0 :     M = (M1, M10, M100, M1, MLH, MLW)</span></span>
+<span id="L237"><span class="lineNum">     237</span>              : </span>
+<span id="L238"><span class="lineNum">     238</span>              :     # Live fuel moisture of extinction (dynamic)</span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaUNC">           0 :     SUM_MPRIMENUMER = zero(T)</span></span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaUNC">           0 :     for k in 1:4</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :         SUM_MPRIMENUMER += fuel_arr.WPRIMENUMER[fi, mi, k] * M[k]</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 :     mex_live = mex_live_base * (one(T) - R_MPRIMEDENOME14SUM_MEX_DEAD * SUM_MPRIMENUMER) - T(0.226)</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaUNC">           0 :     mex_live = max(mex_live, mex_dead)</span></span>
+<span id="L245"><span class="lineNum">     245</span>              : </span>
+<span id="L246"><span class="lineNum">     246</span>              :     # Heat of pre-ignition and effective heating</span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaUNC">           0 :     RHOBEPSQIG_DEAD = zero(T)</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC">           0 :     RHOBEPSQIG_LIVE = zero(T)</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaUNC">           0 :     for k in 1:4</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaUNC">           0 :         RHOBEPSQIG_DEAD += fuel_arr.FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :     for k in 5:6</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaUNC">           0 :         RHOBEPSQIG_LIVE += fuel_arr.FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaUNC">           0 :     RHOBEPSQIG_DEAD *= rhob</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 :     RHOBEPSQIG_LIVE *= rhob</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaUNC">           0 :     RHOBEPSQIG = F_dead * RHOBEPSQIG_DEAD + F_live * RHOBEPSQIG_LIVE</span></span>
+<span id="L258"><span class="lineNum">     258</span>              : </span>
+<span id="L259"><span class="lineNum">     259</span>              :     # Moisture damping</span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaUNC">           0 :     M_dead = zero(T)</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 :     for k in 1:4</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaUNC">           0 :         M_dead += fuel_arr.F[fi, mi, k] * M[k]</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :     etam_dead = moisture_damping(M_dead / mex_dead)</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaUNC">           0 :     IR_dead = GP_WND_ETAS_HOC * etam_dead</span></span>
+<span id="L266"><span class="lineNum">     266</span>              : </span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC">           0 :     M_live = zero(T)</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaUNC">           0 :     for k in 5:6</span></span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaUNC">           0 :         M_live += fuel_arr.F[fi, mi, k] * M[k]</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC">           0 :     etam_live = moisture_damping(M_live / mex_live)</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaUNC">           0 :     IR_live = GP_WNL_ETAS_HOC * etam_live</span></span>
+<span id="L273"><span class="lineNum">     273</span>              : </span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :     IR_btupft2min = IR_dead + IR_live</span></span>
+<span id="L275"><span class="lineNum">     275</span>              : </span>
+<span id="L276"><span class="lineNum">     276</span>              :     # Wind/slope factors</span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaUNC">           0 :     WS_LIMIT = T(0.9) * IR_btupft2min</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaUNC">           0 :     wsmf_limited = min(wsmf, WS_LIMIT)</span></span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaUNC">           0 :     phiw = phiwterm * wsmf_limited^B</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaUNC">           0 :     phis_max = phiwterm * WS_LIMIT^B</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaUNC">           0 :     phis = min(phisterm * tanslp2, phis_max)</span></span>
+<span id="L282"><span class="lineNum">     282</span>              : </span>
+<span id="L283"><span class="lineNum">     283</span>              :     # Spread rate</span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 :     vs0 = if RHOBEPSQIG &gt; T(1e-9)</span></span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaUNC">           0 :         adj * IR_btupft2min * xi / RHOBEPSQIG</span></span>
+<span id="L286"><span class="lineNum">     286</span>              :     else</span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 :         zero(T)</span></span>
+<span id="L288"><span class="lineNum">     288</span>              :     end</span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaUNC">           0 :     velocity = vs0 * (one(T) + phis + phiw)</span></span>
+<span id="L290"><span class="lineNum">     290</span>              : </span>
+<span id="L291"><span class="lineNum">     291</span>              :     # Fireline intensity</span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :     IR = IR_btupft2min * btupft2min_to_kwpm2(T)</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaUNC">           0 :     flin = tr * IR * velocity * ft_to_m(T)</span></span>
+<span id="L294"><span class="lineNum">     294</span>              : </span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaUNC">           0 :     return (velocity, vs0, flin)</span></span>
+<span id="L296"><span class="lineNum">     296</span>              : end</span>
+<span id="L297"><span class="lineNum">     297</span>              : </span>
+<span id="L298"><span class="lineNum">     298</span>              : </span>
+<span id="L299"><span class="lineNum">     299</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L300"><span class="lineNum">     300</span>              : #                     Elliptical Fire Spread Model</span>
+<span id="L301"><span class="lineNum">     301</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L302"><span class="lineNum">     302</span>              : </span>
+<span id="L303"><span class="lineNum">     303</span>              : &quot;&quot;&quot;</span>
+<span id="L304"><span class="lineNum">     304</span>              :     EllipticalSpread{T&lt;:AbstractFloat}</span>
+<span id="L305"><span class="lineNum">     305</span>              : </span>
+<span id="L306"><span class="lineNum">     306</span>              : Elliptical fire spread parameters following Anderson (1982).</span>
+<span id="L307"><span class="lineNum">     307</span>              : &quot;&quot;&quot;</span>
+<span id="L308"><span class="lineNum">     308</span>              : struct EllipticalSpread{T&lt;:AbstractFloat}</span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaGNC tlaBgGNC">      325599 :     head::T           # Head fire spread rate (ft/min)</span></span>
+<span id="L310"><span class="lineNum">     310</span>              :     back::T           # Backing fire spread rate (ft/min)</span>
+<span id="L311"><span class="lineNum">     311</span>              :     flank::T          # Flanking fire spread rate (ft/min)</span>
+<span id="L312"><span class="lineNum">     312</span>              :     eccentricity::T   # Ellipse eccentricity</span>
+<span id="L313"><span class="lineNum">     313</span>              :     length_to_breadth::T  # Length to breadth ratio</span>
+<span id="L314"><span class="lineNum">     314</span>              : end</span>
+<span id="L315"><span class="lineNum">     315</span>              : </span>
+<span id="L316"><span class="lineNum">     316</span> <span class="tlaGNC">           1 : Base.eltype(::EllipticalSpread{T}) where {T} = T</span></span>
 <span id="L317"><span class="lineNum">     317</span>              : </span>
-<span id="L318"><span class="lineNum">     318</span>              :     # Dot product gives cos(angle between normal and wind)</span>
-<span id="L319"><span class="lineNum">     319</span> <span class="tlaGNC">      325594 :     cos_theta = normal_x * wind_to_x + normal_y * wind_to_y</span></span>
-<span id="L320"><span class="lineNum">     320</span>              : </span>
-<span id="L321"><span class="lineNum">     321</span>              :     # Interpolate between head and back fire based on angle</span>
-<span id="L322"><span class="lineNum">     322</span>              :     # At head (cos_theta = 1): velocity = head_velocity</span>
-<span id="L323"><span class="lineNum">     323</span>              :     # At back (cos_theta = -1): velocity = back_velocity</span>
-<span id="L324"><span class="lineNum">     324</span> <span class="tlaGNC">      325594 :     velocity = T(0.5) * ((one(T) + cos_theta) * head_velocity + (one(T) - cos_theta) * back_velocity)</span></span>
-<span id="L325"><span class="lineNum">     325</span>              : </span>
-<span id="L326"><span class="lineNum">     326</span>              :     # Velocity components along the normal</span>
-<span id="L327"><span class="lineNum">     327</span> <span class="tlaGNC">      325594 :     ux = velocity * normal_x</span></span>
-<span id="L328"><span class="lineNum">     328</span> <span class="tlaGNC">      325594 :     uy = velocity * normal_y</span></span>
-<span id="L329"><span class="lineNum">     329</span>              : </span>
-<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">      325594 :     return (ux, uy)</span></span>
-<span id="L331"><span class="lineNum">     331</span>              : end</span>
+<span id="L318"><span class="lineNum">     318</span>              : </span>
+<span id="L319"><span class="lineNum">     319</span>              : &quot;&quot;&quot;</span>
+<span id="L320"><span class="lineNum">     320</span>              :     elliptical_spread(velocity::T, effective_windspeed::T) -&gt; EllipticalSpread{T}</span>
+<span id="L321"><span class="lineNum">     321</span>              : </span>
+<span id="L322"><span class="lineNum">     322</span>              : Calculate elliptical fire spread dimensions from the head fire rate and effective windspeed.</span>
+<span id="L323"><span class="lineNum">     323</span>              : </span>
+<span id="L324"><span class="lineNum">     324</span>              : Uses Anderson (1982) length-to-breadth ratio:</span>
+<span id="L325"><span class="lineNum">     325</span>              : LB = 0.936 * exp(0.2566 * U) + 0.461 * exp(-0.1548 * U) - 0.397</span>
+<span id="L326"><span class="lineNum">     326</span>              : </span>
+<span id="L327"><span class="lineNum">     327</span>              : Where U is effective windspeed in mi/h.</span>
+<span id="L328"><span class="lineNum">     328</span>              : &quot;&quot;&quot;</span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaGNC">      325599 : function elliptical_spread(velocity::T, effective_windspeed_mph::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">      325599 :     U = max(effective_windspeed_mph, zero(T))</span></span>
+<span id="L331"><span class="lineNum">     331</span>              : </span>
+<span id="L332"><span class="lineNum">     332</span>              :     # Length to breadth ratio (Anderson 1982)</span>
+<span id="L333"><span class="lineNum">     333</span>              :     # Note: The Anderson formula gives unrealistic values at high wind speeds</span>
+<span id="L334"><span class="lineNum">     334</span>              :     # (e.g., L/B &gt; 10^11 at 100 mph). Real fires rarely exceed L/B of 8-10.</span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaGNC">      325599 :     if U &lt; T(0.5)</span></span>
+<span id="L336"><span class="lineNum">     336</span> <span class="tlaGNC">        1142 :         LB = one(T)  # Nearly circular at low wind speeds</span></span>
+<span id="L337"><span class="lineNum">     337</span>              :     else</span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">      324457 :         LB = T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397)</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">      324457 :         LB = clamp(LB, one(T), T(8))  # Cap at realistic maximum</span></span>
+<span id="L340"><span class="lineNum">     340</span>              :     end</span>
+<span id="L341"><span class="lineNum">     341</span>              : </span>
+<span id="L342"><span class="lineNum">     342</span>              :     # Eccentricity from L/B ratio</span>
+<span id="L343"><span class="lineNum">     343</span>              :     # LB = (1 + e) / sqrt(1 - e²)</span>
+<span id="L344"><span class="lineNum">     344</span>              :     # Solving: e² * (LB² + 1) = LB² - 1</span>
+<span id="L345"><span class="lineNum">     345</span>              :     # Therefore: e = sqrt((LB² - 1) / (LB² + 1))</span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC">      325599 :     eccentricity = if LB &gt; T(1.001)</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">      324457 :         LB2 = LB * LB</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">      324457 :         sqrt((LB2 - one(T)) / (LB2 + one(T)))</span></span>
+<span id="L349"><span class="lineNum">     349</span>              :     else</span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaGNC">      326741 :         zero(T)</span></span>
+<span id="L351"><span class="lineNum">     351</span>              :     end</span>
+<span id="L352"><span class="lineNum">     352</span>              : </span>
+<span id="L353"><span class="lineNum">     353</span>              :     # Head fire rate is the input velocity</span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">      325599 :     head = velocity</span></span>
+<span id="L355"><span class="lineNum">     355</span>              : </span>
+<span id="L356"><span class="lineNum">     356</span>              :     # Backing fire rate from eccentricity</span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">      325599 :     back = head * (one(T) - eccentricity) / (one(T) + eccentricity)</span></span>
+<span id="L358"><span class="lineNum">     358</span>              : </span>
+<span id="L359"><span class="lineNum">     359</span>              :     # Flanking fire rate (at the widest point)</span>
+<span id="L360"><span class="lineNum">     360</span> <span class="tlaGNC">      325599 :     flank = head * sqrt(one(T) - eccentricity * eccentricity) / (one(T) + eccentricity)</span></span>
+<span id="L361"><span class="lineNum">     361</span>              : </span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaGNC">      325599 :     return EllipticalSpread{T}(head, back, flank, eccentricity, LB)</span></span>
+<span id="L363"><span class="lineNum">     363</span>              : end</span>
+<span id="L364"><span class="lineNum">     364</span>              : </span>
+<span id="L365"><span class="lineNum">     365</span>              : </span>
+<span id="L366"><span class="lineNum">     366</span>              : &quot;&quot;&quot;</span>
+<span id="L367"><span class="lineNum">     367</span>              :     velocity_at_angle(es::EllipticalSpread{T}, theta::T) -&gt; T</span>
+<span id="L368"><span class="lineNum">     368</span>              : </span>
+<span id="L369"><span class="lineNum">     369</span>              : Calculate fire spread rate at angle theta from the wind direction.</span>
+<span id="L370"><span class="lineNum">     370</span>              : theta = 0 is head fire (downwind), theta = π is backing fire (upwind).</span>
+<span id="L371"><span class="lineNum">     371</span>              : &quot;&quot;&quot;</span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaGNC">           3 : function velocity_at_angle(es::EllipticalSpread{T}, theta::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L373"><span class="lineNum">     373</span> <span class="tlaGNC">           3 :     if es.eccentricity &lt; T(1e-6)</span></span>
+<span id="L374"><span class="lineNum">     374</span>              :         # Circular spread</span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaUNC tlaBgUNC">           0 :         return es.head</span></span>
+<span id="L376"><span class="lineNum">     376</span>              :     end</span>
+<span id="L377"><span class="lineNum">     377</span>              : </span>
+<span id="L378"><span class="lineNum">     378</span>              :     # Ellipse polar equation: r = a(1-e²) / (1 - e*cos(θ))</span>
+<span id="L379"><span class="lineNum">     379</span>              :     # Where a is semi-major axis (head fire distance from center)</span>
+<span id="L380"><span class="lineNum">     380</span>              :     # But we need velocity, which scales with the ellipse dimensions</span>
+<span id="L381"><span class="lineNum">     381</span>              : </span>
+<span id="L382"><span class="lineNum">     382</span>              :     # The fire front position traces an ellipse, so velocity at angle θ</span>
+<span id="L383"><span class="lineNum">     383</span>              :     # can be computed from the ellipse geometry</span>
+<span id="L384"><span class="lineNum">     384</span> <span class="tlaGNC tlaBgGNC">           3 :     e = es.eccentricity</span></span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaGNC">           3 :     a = (es.head + es.back) / T(2)  # semi-major axis rate</span></span>
+<span id="L386"><span class="lineNum">     386</span>              : </span>
+<span id="L387"><span class="lineNum">     387</span>              :     # Distance from focus (ignition point) at angle θ</span>
+<span id="L388"><span class="lineNum">     388</span>              :     # r = a(1-e²) / (1 - e*cos(θ))</span>
+<span id="L389"><span class="lineNum">     389</span> <span class="tlaGNC">           3 :     r = a * (one(T) - e*e) / (one(T) - e * cos(theta))</span></span>
+<span id="L390"><span class="lineNum">     390</span>              : </span>
+<span id="L391"><span class="lineNum">     391</span> <span class="tlaGNC">           3 :     return r</span></span>
+<span id="L392"><span class="lineNum">     392</span>              : end</span>
+<span id="L393"><span class="lineNum">     393</span>              : </span>
+<span id="L394"><span class="lineNum">     394</span>              : </span>
+<span id="L395"><span class="lineNum">     395</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L396"><span class="lineNum">     396</span>              : #                     Velocity Components</span>
+<span id="L397"><span class="lineNum">     397</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L398"><span class="lineNum">     398</span>              : </span>
+<span id="L399"><span class="lineNum">     399</span>              : &quot;&quot;&quot;</span>
+<span id="L400"><span class="lineNum">     400</span>              :     velocity_components(</span>
+<span id="L401"><span class="lineNum">     401</span>              :         head_velocity::T,</span>
+<span id="L402"><span class="lineNum">     402</span>              :         back_velocity::T,</span>
+<span id="L403"><span class="lineNum">     403</span>              :         wind_direction_rad::T,</span>
+<span id="L404"><span class="lineNum">     404</span>              :         normal_x::T,</span>
+<span id="L405"><span class="lineNum">     405</span>              :         normal_y::T</span>
+<span id="L406"><span class="lineNum">     406</span>              :     ) -&gt; Tuple{T, T}</span>
+<span id="L407"><span class="lineNum">     407</span>              : </span>
+<span id="L408"><span class="lineNum">     408</span>              : Calculate velocity components (ux, uy) in grid coordinates from fire spread parameters.</span>
+<span id="L409"><span class="lineNum">     409</span>              : </span>
+<span id="L410"><span class="lineNum">     410</span>              : # Arguments</span>
+<span id="L411"><span class="lineNum">     411</span>              : - `head_velocity`: Head fire spread rate (ft/min)</span>
+<span id="L412"><span class="lineNum">     412</span>              : - `back_velocity`: Backing fire spread rate (ft/min)</span>
+<span id="L413"><span class="lineNum">     413</span>              : - `wind_direction_rad`: Wind direction in radians (meteorological convention)</span>
+<span id="L414"><span class="lineNum">     414</span>              : - `normal_x, normal_y`: Unit normal vector to the fire front</span>
+<span id="L415"><span class="lineNum">     415</span>              : </span>
+<span id="L416"><span class="lineNum">     416</span>              : # Returns</span>
+<span id="L417"><span class="lineNum">     417</span>              : - `(ux, uy)`: Velocity components in grid coordinates (ft/min)</span>
+<span id="L418"><span class="lineNum">     418</span>              : &quot;&quot;&quot;</span>
+<span id="L419"><span class="lineNum">     419</span>              : function velocity_components(</span>
+<span id="L420"><span class="lineNum">     420</span>              :     head_velocity::T,</span>
+<span id="L421"><span class="lineNum">     421</span>              :     back_velocity::T,</span>
+<span id="L422"><span class="lineNum">     422</span>              :     wind_direction_rad::T,</span>
+<span id="L423"><span class="lineNum">     423</span>              :     normal_x::T,</span>
+<span id="L424"><span class="lineNum">     424</span>              :     normal_y::T</span>
+<span id="L425"><span class="lineNum">     425</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L426"><span class="lineNum">     426</span>              :     # Calculate the angle between the normal and the wind direction</span>
+<span id="L427"><span class="lineNum">     427</span>              :     # Wind direction in ELMFIRE is meteorological (direction FROM)</span>
+<span id="L428"><span class="lineNum">     428</span>              :     # Convert to mathematical convention (direction TO)</span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaGNC">      325594 :     wind_to_x = -sin(wind_direction_rad)</span></span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC">      325594 :     wind_to_y = -cos(wind_direction_rad)</span></span>
+<span id="L431"><span class="lineNum">     431</span>              : </span>
+<span id="L432"><span class="lineNum">     432</span>              :     # Dot product gives cos(angle between normal and wind)</span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaGNC">      325594 :     cos_theta = normal_x * wind_to_x + normal_y * wind_to_y</span></span>
+<span id="L434"><span class="lineNum">     434</span>              : </span>
+<span id="L435"><span class="lineNum">     435</span>              :     # Interpolate between head and back fire based on angle</span>
+<span id="L436"><span class="lineNum">     436</span>              :     # At head (cos_theta = 1): velocity = head_velocity</span>
+<span id="L437"><span class="lineNum">     437</span>              :     # At back (cos_theta = -1): velocity = back_velocity</span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaGNC">      325594 :     velocity = T(0.5) * ((one(T) + cos_theta) * head_velocity + (one(T) - cos_theta) * back_velocity)</span></span>
+<span id="L439"><span class="lineNum">     439</span>              : </span>
+<span id="L440"><span class="lineNum">     440</span>              :     # Velocity components along the normal</span>
+<span id="L441"><span class="lineNum">     441</span> <span class="tlaGNC">      325594 :     ux = velocity * normal_x</span></span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaGNC">      325594 :     uy = velocity * normal_y</span></span>
+<span id="L443"><span class="lineNum">     443</span>              : </span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaGNC">      325594 :     return (ux, uy)</span></span>
+<span id="L445"><span class="lineNum">     445</span>              : end</span>
         </pre>
               </td>
             </tr>

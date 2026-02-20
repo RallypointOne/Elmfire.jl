@@ -31,13 +31,13 @@
             <td class="headerValue">on branch main</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryHi">93.4&nbsp;%</td>
-            <td class="headerCovTableEntry">181</td>
+            <td class="headerCovTableEntryHi">90.4&nbsp;%</td>
+            <td class="headerCovTableEntry">187</td>
             <td class="headerCovTableEntry">169</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-19 14:48:25</td>
+            <td class="headerValue">2026-02-20 13:05:07</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -507,139 +507,158 @@
 <span id="L445"><span class="lineNum">     445</span>              : end</span>
 <span id="L446"><span class="lineNum">     446</span>              : </span>
 <span id="L447"><span class="lineNum">     447</span>              : </span>
-<span id="L448"><span class="lineNum">     448</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L449"><span class="lineNum">     449</span>              : #                     Level Set Propagation Step</span>
-<span id="L450"><span class="lineNum">     450</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L451"><span class="lineNum">     451</span>              : </span>
-<span id="L452"><span class="lineNum">     452</span>              : &quot;&quot;&quot;</span>
-<span id="L453"><span class="lineNum">     453</span>              :     level_set_step!(</span>
-<span id="L454"><span class="lineNum">     454</span>              :         phi::AbstractMatrix{T},</span>
-<span id="L455"><span class="lineNum">     455</span>              :         phi_old::AbstractMatrix{T},</span>
-<span id="L456"><span class="lineNum">     456</span>              :         ux::AbstractMatrix{T},</span>
-<span id="L457"><span class="lineNum">     457</span>              :         uy::AbstractMatrix{T},</span>
-<span id="L458"><span class="lineNum">     458</span>              :         active_cells::AbstractVector{CartesianIndex{2}},</span>
-<span id="L459"><span class="lineNum">     459</span>              :         dt::T,</span>
-<span id="L460"><span class="lineNum">     460</span>              :         dx::T</span>
-<span id="L461"><span class="lineNum">     461</span>              :     )</span>
-<span id="L462"><span class="lineNum">     462</span>              : </span>
-<span id="L463"><span class="lineNum">     463</span>              : Perform one complete level set propagation step using RK2.</span>
-<span id="L464"><span class="lineNum">     464</span>              : </span>
-<span id="L465"><span class="lineNum">     465</span>              : 1. Copy phi to phi_old</span>
-<span id="L466"><span class="lineNum">     466</span>              : 2. Perform RK2 stage 1</span>
-<span id="L467"><span class="lineNum">     467</span>              : 3. Perform RK2 stage 2</span>
-<span id="L468"><span class="lineNum">     468</span>              : &quot;&quot;&quot;</span>
-<span id="L469"><span class="lineNum">     469</span> <span class="tlaUNC tlaBgUNC">           0 : function level_set_step!(</span></span>
-<span id="L470"><span class="lineNum">     470</span>              :     phi::AbstractMatrix{T},</span>
-<span id="L471"><span class="lineNum">     471</span>              :     phi_old::AbstractMatrix{T},</span>
-<span id="L472"><span class="lineNum">     472</span>              :     ux::AbstractMatrix{T},</span>
-<span id="L473"><span class="lineNum">     473</span>              :     uy::AbstractMatrix{T},</span>
-<span id="L474"><span class="lineNum">     474</span>              :     active_cells::AbstractVector{CartesianIndex{2}},</span>
-<span id="L475"><span class="lineNum">     475</span>              :     dt::T,</span>
-<span id="L476"><span class="lineNum">     476</span>              :     dx::T</span>
-<span id="L477"><span class="lineNum">     477</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L478"><span class="lineNum">     478</span>              :     # Save current state</span>
-<span id="L479"><span class="lineNum">     479</span> <span class="tlaUNC">           0 :     for idx in active_cells</span></span>
-<span id="L480"><span class="lineNum">     480</span> <span class="tlaUNC">           0 :         phi_old[idx] = phi[idx]</span></span>
-<span id="L481"><span class="lineNum">     481</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L482"><span class="lineNum">     482</span>              : </span>
-<span id="L483"><span class="lineNum">     483</span>              :     # RK2 stage 1</span>
-<span id="L484"><span class="lineNum">     484</span> <span class="tlaUNC">           0 :     rk2_step!(phi, phi_old, ux, uy, active_cells, dt, dx, 1)</span></span>
-<span id="L485"><span class="lineNum">     485</span>              : </span>
-<span id="L486"><span class="lineNum">     486</span>              :     # RK2 stage 2</span>
-<span id="L487"><span class="lineNum">     487</span> <span class="tlaUNC">           0 :     rk2_step!(phi, phi_old, ux, uy, active_cells, dt, dx, 2)</span></span>
-<span id="L488"><span class="lineNum">     488</span>              : </span>
-<span id="L489"><span class="lineNum">     489</span> <span class="tlaUNC">           0 :     return nothing</span></span>
-<span id="L490"><span class="lineNum">     490</span>              : end</span>
-<span id="L491"><span class="lineNum">     491</span>              : </span>
-<span id="L492"><span class="lineNum">     492</span>              : </span>
-<span id="L493"><span class="lineNum">     493</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L494"><span class="lineNum">     494</span>              : #                     Initialize Level Set</span>
-<span id="L495"><span class="lineNum">     495</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L496"><span class="lineNum">     496</span>              : </span>
-<span id="L497"><span class="lineNum">     497</span>              : &quot;&quot;&quot;</span>
-<span id="L498"><span class="lineNum">     498</span>              :     initialize_phi!(phi::AbstractMatrix{T}, ignition_points::Vector{Tuple{Int,Int}}, dx::T)</span>
-<span id="L499"><span class="lineNum">     499</span>              : </span>
-<span id="L500"><span class="lineNum">     500</span>              : Initialize the level set field φ with signed distance from ignition points.</span>
+<span id="L448"><span class="lineNum">     448</span>              : &quot;&quot;&quot;</span>
+<span id="L449"><span class="lineNum">     449</span>              :     active_mask(nb::NarrowBand, nx::Int, ny::Int) -&gt; BitMatrix</span>
+<span id="L450"><span class="lineNum">     450</span>              : </span>
+<span id="L451"><span class="lineNum">     451</span>              : Create a dense BitMatrix indicating which cells are in the active narrow band.</span>
+<span id="L452"><span class="lineNum">     452</span>              : Useful for GPU kernels that need a mask instead of an index list.</span>
+<span id="L453"><span class="lineNum">     453</span>              : </span>
+<span id="L454"><span class="lineNum">     454</span>              : ### Examples</span>
+<span id="L455"><span class="lineNum">     455</span>              : </span>
+<span id="L456"><span class="lineNum">     456</span>              :     mask = active_mask(state.narrow_band, size(state.phi)...)</span>
+<span id="L457"><span class="lineNum">     457</span>              : &quot;&quot;&quot;</span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaUNC tlaBgUNC">           0 : function active_mask(nb::NarrowBand, nx::Int, ny::Int)</span></span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :     mask = falses(nx, ny)</span></span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :     for idx in nb.active</span></span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC">           0 :         mask[idx] = true</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L463"><span class="lineNum">     463</span> <span class="tlaUNC">           0 :     return mask</span></span>
+<span id="L464"><span class="lineNum">     464</span>              : end</span>
+<span id="L465"><span class="lineNum">     465</span>              : </span>
+<span id="L466"><span class="lineNum">     466</span>              : </span>
+<span id="L467"><span class="lineNum">     467</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L468"><span class="lineNum">     468</span>              : #                     Level Set Propagation Step</span>
+<span id="L469"><span class="lineNum">     469</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L470"><span class="lineNum">     470</span>              : </span>
+<span id="L471"><span class="lineNum">     471</span>              : &quot;&quot;&quot;</span>
+<span id="L472"><span class="lineNum">     472</span>              :     level_set_step!(</span>
+<span id="L473"><span class="lineNum">     473</span>              :         phi::AbstractMatrix{T},</span>
+<span id="L474"><span class="lineNum">     474</span>              :         phi_old::AbstractMatrix{T},</span>
+<span id="L475"><span class="lineNum">     475</span>              :         ux::AbstractMatrix{T},</span>
+<span id="L476"><span class="lineNum">     476</span>              :         uy::AbstractMatrix{T},</span>
+<span id="L477"><span class="lineNum">     477</span>              :         active_cells::AbstractVector{CartesianIndex{2}},</span>
+<span id="L478"><span class="lineNum">     478</span>              :         dt::T,</span>
+<span id="L479"><span class="lineNum">     479</span>              :         dx::T</span>
+<span id="L480"><span class="lineNum">     480</span>              :     )</span>
+<span id="L481"><span class="lineNum">     481</span>              : </span>
+<span id="L482"><span class="lineNum">     482</span>              : Perform one complete level set propagation step using RK2.</span>
+<span id="L483"><span class="lineNum">     483</span>              : </span>
+<span id="L484"><span class="lineNum">     484</span>              : 1. Copy phi to phi_old</span>
+<span id="L485"><span class="lineNum">     485</span>              : 2. Perform RK2 stage 1</span>
+<span id="L486"><span class="lineNum">     486</span>              : 3. Perform RK2 stage 2</span>
+<span id="L487"><span class="lineNum">     487</span>              : &quot;&quot;&quot;</span>
+<span id="L488"><span class="lineNum">     488</span> <span class="tlaUNC">           0 : function level_set_step!(</span></span>
+<span id="L489"><span class="lineNum">     489</span>              :     phi::AbstractMatrix{T},</span>
+<span id="L490"><span class="lineNum">     490</span>              :     phi_old::AbstractMatrix{T},</span>
+<span id="L491"><span class="lineNum">     491</span>              :     ux::AbstractMatrix{T},</span>
+<span id="L492"><span class="lineNum">     492</span>              :     uy::AbstractMatrix{T},</span>
+<span id="L493"><span class="lineNum">     493</span>              :     active_cells::AbstractVector{CartesianIndex{2}},</span>
+<span id="L494"><span class="lineNum">     494</span>              :     dt::T,</span>
+<span id="L495"><span class="lineNum">     495</span>              :     dx::T</span>
+<span id="L496"><span class="lineNum">     496</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L497"><span class="lineNum">     497</span>              :     # Save current state</span>
+<span id="L498"><span class="lineNum">     498</span> <span class="tlaUNC">           0 :     for idx in active_cells</span></span>
+<span id="L499"><span class="lineNum">     499</span> <span class="tlaUNC">           0 :         phi_old[idx] = phi[idx]</span></span>
+<span id="L500"><span class="lineNum">     500</span> <span class="tlaUNC">           0 :     end</span></span>
 <span id="L501"><span class="lineNum">     501</span>              : </span>
-<span id="L502"><span class="lineNum">     502</span>              : φ &lt; 0 inside the fire (burned)</span>
-<span id="L503"><span class="lineNum">     503</span>              : φ &gt; 0 outside the fire (unburned)</span>
-<span id="L504"><span class="lineNum">     504</span>              : &quot;&quot;&quot;</span>
-<span id="L505"><span class="lineNum">     505</span> <span class="tlaGNC tlaBgGNC">           1 : function initialize_phi!(</span></span>
-<span id="L506"><span class="lineNum">     506</span>              :     phi::AbstractMatrix{T},</span>
-<span id="L507"><span class="lineNum">     507</span>              :     ignition_points::Vector{Tuple{Int,Int}},</span>
-<span id="L508"><span class="lineNum">     508</span>              :     dx::T</span>
-<span id="L509"><span class="lineNum">     509</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L510"><span class="lineNum">     510</span> <span class="tlaGNC">           1 :     nx, ny = size(phi)</span></span>
+<span id="L502"><span class="lineNum">     502</span>              :     # RK2 stage 1</span>
+<span id="L503"><span class="lineNum">     503</span> <span class="tlaUNC">           0 :     rk2_step!(phi, phi_old, ux, uy, active_cells, dt, dx, 1)</span></span>
+<span id="L504"><span class="lineNum">     504</span>              : </span>
+<span id="L505"><span class="lineNum">     505</span>              :     # RK2 stage 2</span>
+<span id="L506"><span class="lineNum">     506</span> <span class="tlaUNC">           0 :     rk2_step!(phi, phi_old, ux, uy, active_cells, dt, dx, 2)</span></span>
+<span id="L507"><span class="lineNum">     507</span>              : </span>
+<span id="L508"><span class="lineNum">     508</span> <span class="tlaUNC">           0 :     return nothing</span></span>
+<span id="L509"><span class="lineNum">     509</span>              : end</span>
+<span id="L510"><span class="lineNum">     510</span>              : </span>
 <span id="L511"><span class="lineNum">     511</span>              : </span>
-<span id="L512"><span class="lineNum">     512</span>              :     # Initialize with large positive value (unburned)</span>
-<span id="L513"><span class="lineNum">     513</span> <span class="tlaGNC">         400 :     fill!(phi, T(100))</span></span>
-<span id="L514"><span class="lineNum">     514</span>              : </span>
-<span id="L515"><span class="lineNum">     515</span>              :     # Set ignition points to negative (burned)</span>
-<span id="L516"><span class="lineNum">     516</span> <span class="tlaGNC">           1 :     for (ix, iy) in ignition_points</span></span>
-<span id="L517"><span class="lineNum">     517</span> <span class="tlaGNC">           2 :         if 1 &lt;= ix &lt;= nx &amp;&amp; 1 &lt;= iy &lt;= ny</span></span>
-<span id="L518"><span class="lineNum">     518</span> <span class="tlaGNC">           2 :             phi[ix, iy] = -one(T)</span></span>
-<span id="L519"><span class="lineNum">     519</span>              :         end</span>
-<span id="L520"><span class="lineNum">     520</span> <span class="tlaGNC">           2 :     end</span></span>
-<span id="L521"><span class="lineNum">     521</span>              : </span>
-<span id="L522"><span class="lineNum">     522</span>              :     # Compute signed distance (approximate) using sweeping</span>
-<span id="L523"><span class="lineNum">     523</span>              :     # This is a simple approximation; for more accuracy use fast marching</span>
-<span id="L524"><span class="lineNum">     524</span> <span class="tlaGNC">           1 :     for _ in 1:10  # Multiple sweeps</span></span>
-<span id="L525"><span class="lineNum">     525</span> <span class="tlaGNC">          10 :         for ix in 2:nx-1</span></span>
-<span id="L526"><span class="lineNum">     526</span> <span class="tlaGNC">         180 :             for iy in 2:ny-1</span></span>
-<span id="L527"><span class="lineNum">     527</span> <span class="tlaGNC">        3240 :                 if phi[ix, iy] &gt; zero(T)</span></span>
-<span id="L528"><span class="lineNum">     528</span>              :                     # Find minimum neighbor distance</span>
-<span id="L529"><span class="lineNum">     529</span> <span class="tlaGNC">        3166 :                     min_neighbor = min(</span></span>
-<span id="L530"><span class="lineNum">     530</span>              :                         phi[ix-1, iy], phi[ix+1, iy],</span>
-<span id="L531"><span class="lineNum">     531</span>              :                         phi[ix, iy-1], phi[ix, iy+1]</span>
-<span id="L532"><span class="lineNum">     532</span>              :                     )</span>
-<span id="L533"><span class="lineNum">     533</span> <span class="tlaGNC">        3166 :                     phi[ix, iy] = min(phi[ix, iy], min_neighbor + dx)</span></span>
-<span id="L534"><span class="lineNum">     534</span>              :                 end</span>
-<span id="L535"><span class="lineNum">     535</span> <span class="tlaGNC">        6300 :             end</span></span>
-<span id="L536"><span class="lineNum">     536</span> <span class="tlaGNC">         350 :         end</span></span>
-<span id="L537"><span class="lineNum">     537</span> <span class="tlaGNC">          20 :         for ix in nx-1:-1:2</span></span>
-<span id="L538"><span class="lineNum">     538</span> <span class="tlaGNC">         360 :             for iy in ny-1:-1:2</span></span>
-<span id="L539"><span class="lineNum">     539</span> <span class="tlaGNC">        3240 :                 if phi[ix, iy] &gt; zero(T)</span></span>
-<span id="L540"><span class="lineNum">     540</span> <span class="tlaGNC">        3160 :                     min_neighbor = min(</span></span>
-<span id="L541"><span class="lineNum">     541</span>              :                         phi[ix-1, iy], phi[ix+1, iy],</span>
-<span id="L542"><span class="lineNum">     542</span>              :                         phi[ix, iy-1], phi[ix, iy+1]</span>
-<span id="L543"><span class="lineNum">     543</span>              :                     )</span>
-<span id="L544"><span class="lineNum">     544</span> <span class="tlaGNC">        3160 :                     phi[ix, iy] = min(phi[ix, iy], min_neighbor + dx)</span></span>
-<span id="L545"><span class="lineNum">     545</span>              :                 end</span>
-<span id="L546"><span class="lineNum">     546</span> <span class="tlaGNC">        6300 :             end</span></span>
-<span id="L547"><span class="lineNum">     547</span> <span class="tlaGNC">         350 :         end</span></span>
-<span id="L548"><span class="lineNum">     548</span> <span class="tlaGNC">          19 :     end</span></span>
-<span id="L549"><span class="lineNum">     549</span>              : </span>
-<span id="L550"><span class="lineNum">     550</span> <span class="tlaGNC">           1 :     return nothing</span></span>
-<span id="L551"><span class="lineNum">     551</span>              : end</span>
-<span id="L552"><span class="lineNum">     552</span>              : </span>
-<span id="L553"><span class="lineNum">     553</span>              : </span>
-<span id="L554"><span class="lineNum">     554</span>              : &quot;&quot;&quot;</span>
-<span id="L555"><span class="lineNum">     555</span>              :     initialize_circular_fire!(</span>
-<span id="L556"><span class="lineNum">     556</span>              :         phi::AbstractMatrix{T},</span>
-<span id="L557"><span class="lineNum">     557</span>              :         center_x::Int, center_y::Int,</span>
-<span id="L558"><span class="lineNum">     558</span>              :         radius_cells::T,</span>
-<span id="L559"><span class="lineNum">     559</span>              :         dx::T</span>
-<span id="L560"><span class="lineNum">     560</span>              :     )</span>
-<span id="L561"><span class="lineNum">     561</span>              : </span>
-<span id="L562"><span class="lineNum">     562</span>              : Initialize the level set with a circular fire of given radius centered at (center_x, center_y).</span>
-<span id="L563"><span class="lineNum">     563</span>              : &quot;&quot;&quot;</span>
-<span id="L564"><span class="lineNum">     564</span> <span class="tlaGNC">           1 : function initialize_circular_fire!(</span></span>
-<span id="L565"><span class="lineNum">     565</span>              :     phi::AbstractMatrix{T},</span>
-<span id="L566"><span class="lineNum">     566</span>              :     center_x::Int, center_y::Int,</span>
-<span id="L567"><span class="lineNum">     567</span>              :     radius_cells::T,</span>
-<span id="L568"><span class="lineNum">     568</span>              :     dx::T</span>
-<span id="L569"><span class="lineNum">     569</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L570"><span class="lineNum">     570</span> <span class="tlaGNC">           1 :     nx, ny = size(phi)</span></span>
+<span id="L512"><span class="lineNum">     512</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L513"><span class="lineNum">     513</span>              : #                     Initialize Level Set</span>
+<span id="L514"><span class="lineNum">     514</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L515"><span class="lineNum">     515</span>              : </span>
+<span id="L516"><span class="lineNum">     516</span>              : &quot;&quot;&quot;</span>
+<span id="L517"><span class="lineNum">     517</span>              :     initialize_phi!(phi::AbstractMatrix{T}, ignition_points::Vector{Tuple{Int,Int}}, dx::T)</span>
+<span id="L518"><span class="lineNum">     518</span>              : </span>
+<span id="L519"><span class="lineNum">     519</span>              : Initialize the level set field φ with signed distance from ignition points.</span>
+<span id="L520"><span class="lineNum">     520</span>              : </span>
+<span id="L521"><span class="lineNum">     521</span>              : φ &lt; 0 inside the fire (burned)</span>
+<span id="L522"><span class="lineNum">     522</span>              : φ &gt; 0 outside the fire (unburned)</span>
+<span id="L523"><span class="lineNum">     523</span>              : &quot;&quot;&quot;</span>
+<span id="L524"><span class="lineNum">     524</span> <span class="tlaGNC tlaBgGNC">           1 : function initialize_phi!(</span></span>
+<span id="L525"><span class="lineNum">     525</span>              :     phi::AbstractMatrix{T},</span>
+<span id="L526"><span class="lineNum">     526</span>              :     ignition_points::Vector{Tuple{Int,Int}},</span>
+<span id="L527"><span class="lineNum">     527</span>              :     dx::T</span>
+<span id="L528"><span class="lineNum">     528</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L529"><span class="lineNum">     529</span> <span class="tlaGNC">           1 :     nx, ny = size(phi)</span></span>
+<span id="L530"><span class="lineNum">     530</span>              : </span>
+<span id="L531"><span class="lineNum">     531</span>              :     # Initialize with large positive value (unburned)</span>
+<span id="L532"><span class="lineNum">     532</span> <span class="tlaGNC">         400 :     fill!(phi, T(100))</span></span>
+<span id="L533"><span class="lineNum">     533</span>              : </span>
+<span id="L534"><span class="lineNum">     534</span>              :     # Set ignition points to negative (burned)</span>
+<span id="L535"><span class="lineNum">     535</span> <span class="tlaGNC">           1 :     for (ix, iy) in ignition_points</span></span>
+<span id="L536"><span class="lineNum">     536</span> <span class="tlaGNC">           2 :         if 1 &lt;= ix &lt;= nx &amp;&amp; 1 &lt;= iy &lt;= ny</span></span>
+<span id="L537"><span class="lineNum">     537</span> <span class="tlaGNC">           2 :             phi[ix, iy] = -one(T)</span></span>
+<span id="L538"><span class="lineNum">     538</span>              :         end</span>
+<span id="L539"><span class="lineNum">     539</span> <span class="tlaGNC">           2 :     end</span></span>
+<span id="L540"><span class="lineNum">     540</span>              : </span>
+<span id="L541"><span class="lineNum">     541</span>              :     # Compute signed distance (approximate) using sweeping</span>
+<span id="L542"><span class="lineNum">     542</span>              :     # This is a simple approximation; for more accuracy use fast marching</span>
+<span id="L543"><span class="lineNum">     543</span> <span class="tlaGNC">           1 :     for _ in 1:10  # Multiple sweeps</span></span>
+<span id="L544"><span class="lineNum">     544</span> <span class="tlaGNC">          10 :         for ix in 2:nx-1</span></span>
+<span id="L545"><span class="lineNum">     545</span> <span class="tlaGNC">         180 :             for iy in 2:ny-1</span></span>
+<span id="L546"><span class="lineNum">     546</span> <span class="tlaGNC">        3240 :                 if phi[ix, iy] &gt; zero(T)</span></span>
+<span id="L547"><span class="lineNum">     547</span>              :                     # Find minimum neighbor distance</span>
+<span id="L548"><span class="lineNum">     548</span> <span class="tlaGNC">        3166 :                     min_neighbor = min(</span></span>
+<span id="L549"><span class="lineNum">     549</span>              :                         phi[ix-1, iy], phi[ix+1, iy],</span>
+<span id="L550"><span class="lineNum">     550</span>              :                         phi[ix, iy-1], phi[ix, iy+1]</span>
+<span id="L551"><span class="lineNum">     551</span>              :                     )</span>
+<span id="L552"><span class="lineNum">     552</span> <span class="tlaGNC">        3166 :                     phi[ix, iy] = min(phi[ix, iy], min_neighbor + dx)</span></span>
+<span id="L553"><span class="lineNum">     553</span>              :                 end</span>
+<span id="L554"><span class="lineNum">     554</span> <span class="tlaGNC">        6300 :             end</span></span>
+<span id="L555"><span class="lineNum">     555</span> <span class="tlaGNC">         350 :         end</span></span>
+<span id="L556"><span class="lineNum">     556</span> <span class="tlaGNC">          20 :         for ix in nx-1:-1:2</span></span>
+<span id="L557"><span class="lineNum">     557</span> <span class="tlaGNC">         360 :             for iy in ny-1:-1:2</span></span>
+<span id="L558"><span class="lineNum">     558</span> <span class="tlaGNC">        3240 :                 if phi[ix, iy] &gt; zero(T)</span></span>
+<span id="L559"><span class="lineNum">     559</span> <span class="tlaGNC">        3160 :                     min_neighbor = min(</span></span>
+<span id="L560"><span class="lineNum">     560</span>              :                         phi[ix-1, iy], phi[ix+1, iy],</span>
+<span id="L561"><span class="lineNum">     561</span>              :                         phi[ix, iy-1], phi[ix, iy+1]</span>
+<span id="L562"><span class="lineNum">     562</span>              :                     )</span>
+<span id="L563"><span class="lineNum">     563</span> <span class="tlaGNC">        3160 :                     phi[ix, iy] = min(phi[ix, iy], min_neighbor + dx)</span></span>
+<span id="L564"><span class="lineNum">     564</span>              :                 end</span>
+<span id="L565"><span class="lineNum">     565</span> <span class="tlaGNC">        6300 :             end</span></span>
+<span id="L566"><span class="lineNum">     566</span> <span class="tlaGNC">         350 :         end</span></span>
+<span id="L567"><span class="lineNum">     567</span> <span class="tlaGNC">          19 :     end</span></span>
+<span id="L568"><span class="lineNum">     568</span>              : </span>
+<span id="L569"><span class="lineNum">     569</span> <span class="tlaGNC">           1 :     return nothing</span></span>
+<span id="L570"><span class="lineNum">     570</span>              : end</span>
 <span id="L571"><span class="lineNum">     571</span>              : </span>
-<span id="L572"><span class="lineNum">     572</span> <span class="tlaGNC">           1 :     for ix in 1:nx</span></span>
-<span id="L573"><span class="lineNum">     573</span> <span class="tlaGNC">          21 :         for iy in 1:ny</span></span>
-<span id="L574"><span class="lineNum">     574</span> <span class="tlaGNC">         441 :             dist = sqrt(T(ix - center_x)^2 + T(iy - center_y)^2) * dx</span></span>
-<span id="L575"><span class="lineNum">     575</span> <span class="tlaGNC">         441 :             phi[ix, iy] = dist - radius_cells * dx</span></span>
-<span id="L576"><span class="lineNum">     576</span> <span class="tlaGNC">         861 :         end</span></span>
-<span id="L577"><span class="lineNum">     577</span> <span class="tlaGNC">          41 :     end</span></span>
-<span id="L578"><span class="lineNum">     578</span>              : </span>
-<span id="L579"><span class="lineNum">     579</span> <span class="tlaGNC">           1 :     return nothing</span></span>
-<span id="L580"><span class="lineNum">     580</span>              : end</span>
+<span id="L572"><span class="lineNum">     572</span>              : </span>
+<span id="L573"><span class="lineNum">     573</span>              : &quot;&quot;&quot;</span>
+<span id="L574"><span class="lineNum">     574</span>              :     initialize_circular_fire!(</span>
+<span id="L575"><span class="lineNum">     575</span>              :         phi::AbstractMatrix{T},</span>
+<span id="L576"><span class="lineNum">     576</span>              :         center_x::Int, center_y::Int,</span>
+<span id="L577"><span class="lineNum">     577</span>              :         radius_cells::T,</span>
+<span id="L578"><span class="lineNum">     578</span>              :         dx::T</span>
+<span id="L579"><span class="lineNum">     579</span>              :     )</span>
+<span id="L580"><span class="lineNum">     580</span>              : </span>
+<span id="L581"><span class="lineNum">     581</span>              : Initialize the level set with a circular fire of given radius centered at (center_x, center_y).</span>
+<span id="L582"><span class="lineNum">     582</span>              : &quot;&quot;&quot;</span>
+<span id="L583"><span class="lineNum">     583</span> <span class="tlaGNC">           1 : function initialize_circular_fire!(</span></span>
+<span id="L584"><span class="lineNum">     584</span>              :     phi::AbstractMatrix{T},</span>
+<span id="L585"><span class="lineNum">     585</span>              :     center_x::Int, center_y::Int,</span>
+<span id="L586"><span class="lineNum">     586</span>              :     radius_cells::T,</span>
+<span id="L587"><span class="lineNum">     587</span>              :     dx::T</span>
+<span id="L588"><span class="lineNum">     588</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L589"><span class="lineNum">     589</span> <span class="tlaGNC">           1 :     nx, ny = size(phi)</span></span>
+<span id="L590"><span class="lineNum">     590</span>              : </span>
+<span id="L591"><span class="lineNum">     591</span> <span class="tlaGNC">           1 :     for ix in 1:nx</span></span>
+<span id="L592"><span class="lineNum">     592</span> <span class="tlaGNC">          21 :         for iy in 1:ny</span></span>
+<span id="L593"><span class="lineNum">     593</span> <span class="tlaGNC">         441 :             dist = sqrt(T(ix - center_x)^2 + T(iy - center_y)^2) * dx</span></span>
+<span id="L594"><span class="lineNum">     594</span> <span class="tlaGNC">         441 :             phi[ix, iy] = dist - radius_cells * dx</span></span>
+<span id="L595"><span class="lineNum">     595</span> <span class="tlaGNC">         861 :         end</span></span>
+<span id="L596"><span class="lineNum">     596</span> <span class="tlaGNC">          41 :     end</span></span>
+<span id="L597"><span class="lineNum">     597</span>              : </span>
+<span id="L598"><span class="lineNum">     598</span> <span class="tlaGNC">           1 :     return nothing</span></span>
+<span id="L599"><span class="lineNum">     599</span>              : end</span>
         </pre>
               </td>
             </tr>
