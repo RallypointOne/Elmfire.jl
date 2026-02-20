@@ -32,12 +32,12 @@
             <td></td>
             <td class="headerItem">Lines:</td>
             <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
-            <td class="headerCovTableEntry">84</td>
-            <td class="headerCovTableEntry">84</td>
+            <td class="headerCovTableEntry">87</td>
+            <td class="headerCovTableEntry">87</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:56:25</td>
+            <td class="headerValue">2026-02-20 17:13:14</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -262,34 +262,34 @@
 <span id="L200"><span class="lineNum">     200</span>              : value = (1-f) * grids[i_lo] + f * grids[i_hi]</span>
 <span id="L201"><span class="lineNum">     201</span>              : &quot;&quot;&quot;</span>
 <span id="L202"><span class="lineNum">     202</span> <span class="tlaGNC">           5 : function find_time_indices(wts::WeatherTimeSeries{T}, t::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L203"><span class="lineNum">     203</span> <span class="tlaGNC">      276596 :     n = length(wts.times)</span></span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaGNC">        5347 :     n = length(wts.times)</span></span>
 <span id="L204"><span class="lineNum">     204</span>              : </span>
-<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">      276596 :     if n == 1</span></span>
-<span id="L206"><span class="lineNum">     206</span> <span class="tlaGNC">      271237 :         return (1, 1, zero(T))</span></span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">        5347 :     if n == 1</span></span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaGNC">           1 :         return (1, 1, zero(T))</span></span>
 <span id="L207"><span class="lineNum">     207</span>              :     end</span>
 <span id="L208"><span class="lineNum">     208</span>              : </span>
 <span id="L209"><span class="lineNum">     209</span>              :     # Find bracketing indices</span>
-<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">        5359 :     i_lo = 1</span></span>
-<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">        5359 :     for i in 1:n-1</span></span>
-<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">        5364 :         if wts.times[i] &lt;= t &lt; wts.times[i+1]</span></span>
-<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">        5356 :             i_lo = i</span></span>
-<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">        5356 :             break</span></span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">        5346 :     i_lo = 1</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">        5346 :     for i in 1:n-1</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">        5351 :         if wts.times[i] &lt;= t &lt; wts.times[i+1]</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">        5343 :             i_lo = i</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">        5343 :             break</span></span>
 <span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">           8 :         elseif i == n-1 &amp;&amp; t &gt;= wts.times[n]</span></span>
 <span id="L216"><span class="lineNum">     216</span> <span class="tlaGNC">           3 :             i_lo = n</span></span>
 <span id="L217"><span class="lineNum">     217</span>              :         end</span>
 <span id="L218"><span class="lineNum">     218</span> <span class="tlaGNC">           8 :     end</span></span>
 <span id="L219"><span class="lineNum">     219</span>              : </span>
-<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">        5359 :     i_hi = min(i_lo + 1, n)</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">        5346 :     i_hi = min(i_lo + 1, n)</span></span>
 <span id="L221"><span class="lineNum">     221</span>              : </span>
 <span id="L222"><span class="lineNum">     222</span>              :     # Interpolation weight</span>
-<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">        5359 :     if i_lo == i_hi</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">        5346 :     if i_lo == i_hi</span></span>
 <span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC">           3 :         f = zero(T)</span></span>
 <span id="L225"><span class="lineNum">     225</span>              :     else</span>
-<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">        5356 :         f = (t - wts.times[i_lo]) / (wts.times[i_hi] - wts.times[i_lo])</span></span>
-<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">        5356 :         f = clamp(f, zero(T), one(T))</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">        5343 :         f = (t - wts.times[i_lo]) / (wts.times[i_hi] - wts.times[i_lo])</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">        5343 :         f = clamp(f, zero(T), one(T))</span></span>
 <span id="L228"><span class="lineNum">     228</span>              :     end</span>
 <span id="L229"><span class="lineNum">     229</span>              : </span>
-<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">        5359 :     return (i_lo, i_hi, f)</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">        5346 :     return (i_lo, i_hi, f)</span></span>
 <span id="L231"><span class="lineNum">     231</span>              : end</span>
 <span id="L232"><span class="lineNum">     232</span>              : </span>
 <span id="L233"><span class="lineNum">     233</span>              : </span>
@@ -298,26 +298,26 @@
 <span id="L236"><span class="lineNum">     236</span>              : </span>
 <span id="L237"><span class="lineNum">     237</span>              : Interpolate wind direction, handling the 0°/360° wrap-around.</span>
 <span id="L238"><span class="lineNum">     238</span>              : &quot;&quot;&quot;</span>
-<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">      276597 : function interpolate_wind_direction(wd1::T, wd2::T, f::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">        5348 : function interpolate_wind_direction(wd1::T, wd2::T, f::T) where {T&lt;:AbstractFloat}</span></span>
 <span id="L240"><span class="lineNum">     240</span>              :     # Convert to radians</span>
-<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">      276597 :     r1 = wd1 * pio180(T)</span></span>
-<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">      276597 :     r2 = wd2 * pio180(T)</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">        5348 :     r1 = wd1 * pio180(T)</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">        5348 :     r2 = wd2 * pio180(T)</span></span>
 <span id="L243"><span class="lineNum">     243</span>              : </span>
 <span id="L244"><span class="lineNum">     244</span>              :     # Compute unit vectors</span>
-<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">      276597 :     x1, y1 = sin(r1), cos(r1)</span></span>
-<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">      276597 :     x2, y2 = sin(r2), cos(r2)</span></span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">        5348 :     x1, y1 = sin(r1), cos(r1)</span></span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">        5348 :     x2, y2 = sin(r2), cos(r2)</span></span>
 <span id="L247"><span class="lineNum">     247</span>              : </span>
 <span id="L248"><span class="lineNum">     248</span>              :     # Interpolate unit vectors</span>
-<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">      276597 :     x = (one(T) - f) * x1 + f * x2</span></span>
-<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">      276597 :     y = (one(T) - f) * y1 + f * y2</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">        5348 :     x = (one(T) - f) * x1 + f * x2</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">        5348 :     y = (one(T) - f) * y1 + f * y2</span></span>
 <span id="L251"><span class="lineNum">     251</span>              : </span>
 <span id="L252"><span class="lineNum">     252</span>              :     # Convert back to degrees</span>
-<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">      276597 :     wd = atan(x, y) / pio180(T)</span></span>
-<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">      276597 :     if wd &lt; zero(T)</span></span>
-<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">      212842 :         wd += T(360)</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">        5348 :     wd = atan(x, y) / pio180(T)</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">        5348 :     if wd &lt; zero(T)</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">        5341 :         wd += T(360)</span></span>
 <span id="L256"><span class="lineNum">     256</span>              :     end</span>
 <span id="L257"><span class="lineNum">     257</span>              : </span>
-<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">      276597 :     return wd</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">        5348 :     return wd</span></span>
 <span id="L259"><span class="lineNum">     259</span>              : end</span>
 <span id="L260"><span class="lineNum">     260</span>              : </span>
 <span id="L261"><span class="lineNum">     261</span>              : </span>
@@ -425,56 +425,63 @@
 <span id="L363"><span class="lineNum">     363</span>              : </span>
 <span id="L364"><span class="lineNum">     364</span>              : Returns named tuple with fields: ws, wd, m1, m10, m100, mlh, mlw</span>
 <span id="L365"><span class="lineNum">     365</span>              : &quot;&quot;&quot;</span>
-<span id="L366"><span class="lineNum">     366</span> <span class="tlaGNC">      276591 : function get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L367"><span class="lineNum">     367</span> <span class="tlaGNC">      276591 :     wts = interp.weather_series</span></span>
+<span id="L366"><span class="lineNum">     366</span> <span class="tlaGNC">      279748 : function get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L367"><span class="lineNum">     367</span> <span class="tlaGNC">      279748 :     wts = interp.weather_series</span></span>
 <span id="L368"><span class="lineNum">     368</span>              : </span>
 <span id="L369"><span class="lineNum">     369</span>              :     # Get weather grid indices</span>
-<span id="L370"><span class="lineNum">     370</span> <span class="tlaGNC">      276591 :     wix = interp.icol_map[ix]</span></span>
-<span id="L371"><span class="lineNum">     371</span> <span class="tlaGNC">      276591 :     wiy = interp.irow_map[iy]</span></span>
+<span id="L370"><span class="lineNum">     370</span> <span class="tlaGNC">      279748 :     wix = interp.icol_map[ix]</span></span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaGNC">      279748 :     wiy = interp.irow_map[iy]</span></span>
 <span id="L372"><span class="lineNum">     372</span>              : </span>
-<span id="L373"><span class="lineNum">     373</span>              :     # Get time indices and interpolation weight</span>
-<span id="L374"><span class="lineNum">     374</span> <span class="tlaGNC">      281946 :     i_lo, i_hi, f = find_time_indices(wts, t)</span></span>
-<span id="L375"><span class="lineNum">     375</span>              : </span>
-<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC">      276591 :     g_lo = wts.grids[i_lo]</span></span>
-<span id="L377"><span class="lineNum">     377</span> <span class="tlaGNC">      276591 :     g_hi = wts.grids[i_hi]</span></span>
-<span id="L378"><span class="lineNum">     378</span>              : </span>
-<span id="L379"><span class="lineNum">     379</span>              :     # Interpolate values</span>
-<span id="L380"><span class="lineNum">     380</span> <span class="tlaGNC">      276591 :     ws = (one(T) - f) * g_lo.ws[wix, wiy] + f * g_hi.ws[wix, wiy]</span></span>
-<span id="L381"><span class="lineNum">     381</span> <span class="tlaGNC">      276591 :     wd = interpolate_wind_direction(g_lo.wd[wix, wiy], g_hi.wd[wix, wiy], f)</span></span>
-<span id="L382"><span class="lineNum">     382</span> <span class="tlaGNC">      276591 :     m1 = (one(T) - f) * g_lo.m1[wix, wiy] + f * g_hi.m1[wix, wiy]</span></span>
-<span id="L383"><span class="lineNum">     383</span> <span class="tlaGNC">      276591 :     m10 = (one(T) - f) * g_lo.m10[wix, wiy] + f * g_hi.m10[wix, wiy]</span></span>
-<span id="L384"><span class="lineNum">     384</span> <span class="tlaGNC">      276591 :     m100 = (one(T) - f) * g_lo.m100[wix, wiy] + f * g_hi.m100[wix, wiy]</span></span>
-<span id="L385"><span class="lineNum">     385</span> <span class="tlaGNC">      276591 :     mlh = (one(T) - f) * g_lo.mlh[wix, wiy] + f * g_hi.mlh[wix, wiy]</span></span>
-<span id="L386"><span class="lineNum">     386</span> <span class="tlaGNC">      276591 :     mlw = (one(T) - f) * g_lo.mlw[wix, wiy] + f * g_hi.mlw[wix, wiy]</span></span>
-<span id="L387"><span class="lineNum">     387</span>              : </span>
-<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">      276591 :     return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)</span></span>
-<span id="L389"><span class="lineNum">     389</span>              : end</span>
-<span id="L390"><span class="lineNum">     390</span>              : </span>
-<span id="L391"><span class="lineNum">     391</span>              : </span>
-<span id="L392"><span class="lineNum">     392</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L393"><span class="lineNum">     393</span>              : #                     Convenience Functions</span>
-<span id="L394"><span class="lineNum">     394</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L395"><span class="lineNum">     395</span>              : </span>
-<span id="L396"><span class="lineNum">     396</span>              : &quot;&quot;&quot;</span>
-<span id="L397"><span class="lineNum">     397</span>              :     create_constant_interpolator(</span>
-<span id="L398"><span class="lineNum">     398</span>              :         weather::ConstantWeather{T},</span>
-<span id="L399"><span class="lineNum">     399</span>              :         sim_ncols::Int, sim_nrows::Int,</span>
-<span id="L400"><span class="lineNum">     400</span>              :         sim_cellsize::T</span>
-<span id="L401"><span class="lineNum">     401</span>              :     ) -&gt; WeatherInterpolator{T}</span>
+<span id="L373"><span class="lineNum">     373</span>              :     # Short-circuit for single time step (constant weather)</span>
+<span id="L374"><span class="lineNum">     374</span> <span class="tlaGNC">      279748 :     if length(wts.times) == 1</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaGNC">      274406 :         g = wts.grids[1]</span></span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC">      274406 :         return (ws=g.ws[wix, wiy], wd=g.wd[wix, wiy], m1=g.m1[wix, wiy],</span></span>
+<span id="L377"><span class="lineNum">     377</span>              :                 m10=g.m10[wix, wiy], m100=g.m100[wix, wiy], mlh=g.mlh[wix, wiy], mlw=g.mlw[wix, wiy])</span>
+<span id="L378"><span class="lineNum">     378</span>              :     end</span>
+<span id="L379"><span class="lineNum">     379</span>              : </span>
+<span id="L380"><span class="lineNum">     380</span>              :     # Get time indices and interpolation weight</span>
+<span id="L381"><span class="lineNum">     381</span> <span class="tlaGNC">       10684 :     i_lo, i_hi, f = find_time_indices(wts, t)</span></span>
+<span id="L382"><span class="lineNum">     382</span>              : </span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaGNC">        5342 :     g_lo = wts.grids[i_lo]</span></span>
+<span id="L384"><span class="lineNum">     384</span> <span class="tlaGNC">        5342 :     g_hi = wts.grids[i_hi]</span></span>
+<span id="L385"><span class="lineNum">     385</span>              : </span>
+<span id="L386"><span class="lineNum">     386</span>              :     # Interpolate values</span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaGNC">        5342 :     ws = (one(T) - f) * g_lo.ws[wix, wiy] + f * g_hi.ws[wix, wiy]</span></span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">        5342 :     wd = interpolate_wind_direction(g_lo.wd[wix, wiy], g_hi.wd[wix, wiy], f)</span></span>
+<span id="L389"><span class="lineNum">     389</span> <span class="tlaGNC">        5342 :     m1 = (one(T) - f) * g_lo.m1[wix, wiy] + f * g_hi.m1[wix, wiy]</span></span>
+<span id="L390"><span class="lineNum">     390</span> <span class="tlaGNC">        5342 :     m10 = (one(T) - f) * g_lo.m10[wix, wiy] + f * g_hi.m10[wix, wiy]</span></span>
+<span id="L391"><span class="lineNum">     391</span> <span class="tlaGNC">        5342 :     m100 = (one(T) - f) * g_lo.m100[wix, wiy] + f * g_hi.m100[wix, wiy]</span></span>
+<span id="L392"><span class="lineNum">     392</span> <span class="tlaGNC">        5342 :     mlh = (one(T) - f) * g_lo.mlh[wix, wiy] + f * g_hi.mlh[wix, wiy]</span></span>
+<span id="L393"><span class="lineNum">     393</span> <span class="tlaGNC">        5342 :     mlw = (one(T) - f) * g_lo.mlw[wix, wiy] + f * g_hi.mlw[wix, wiy]</span></span>
+<span id="L394"><span class="lineNum">     394</span>              : </span>
+<span id="L395"><span class="lineNum">     395</span> <span class="tlaGNC">        5342 :     return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)</span></span>
+<span id="L396"><span class="lineNum">     396</span>              : end</span>
+<span id="L397"><span class="lineNum">     397</span>              : </span>
+<span id="L398"><span class="lineNum">     398</span>              : </span>
+<span id="L399"><span class="lineNum">     399</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L400"><span class="lineNum">     400</span>              : #                     Convenience Functions</span>
+<span id="L401"><span class="lineNum">     401</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L402"><span class="lineNum">     402</span>              : </span>
-<span id="L403"><span class="lineNum">     403</span>              : Create a weather interpolator for constant weather conditions.</span>
-<span id="L404"><span class="lineNum">     404</span>              : &quot;&quot;&quot;</span>
-<span id="L405"><span class="lineNum">     405</span> <span class="tlaGNC">          11 : function create_constant_interpolator(</span></span>
-<span id="L406"><span class="lineNum">     406</span>              :     weather::ConstantWeather{T},</span>
-<span id="L407"><span class="lineNum">     407</span>              :     sim_ncols::Int, sim_nrows::Int,</span>
-<span id="L408"><span class="lineNum">     408</span>              :     sim_cellsize::T</span>
-<span id="L409"><span class="lineNum">     409</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L410"><span class="lineNum">     410</span>              :     # Create a 1x1 weather grid</span>
-<span id="L411"><span class="lineNum">     411</span> <span class="tlaGNC">          11 :     wgrid = WeatherGrid{T}(weather, 1, 1, T(1e6))  # Large cell to cover everything</span></span>
-<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC">          11 :     wts = WeatherTimeSeries{T}([wgrid], [zero(T)])</span></span>
-<span id="L413"><span class="lineNum">     413</span>              : </span>
-<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">          11 :     WeatherInterpolator(wts, sim_ncols, sim_nrows, sim_cellsize)</span></span>
-<span id="L415"><span class="lineNum">     415</span>              : end</span>
+<span id="L403"><span class="lineNum">     403</span>              : &quot;&quot;&quot;</span>
+<span id="L404"><span class="lineNum">     404</span>              :     create_constant_interpolator(</span>
+<span id="L405"><span class="lineNum">     405</span>              :         weather::ConstantWeather{T},</span>
+<span id="L406"><span class="lineNum">     406</span>              :         sim_ncols::Int, sim_nrows::Int,</span>
+<span id="L407"><span class="lineNum">     407</span>              :         sim_cellsize::T</span>
+<span id="L408"><span class="lineNum">     408</span>              :     ) -&gt; WeatherInterpolator{T}</span>
+<span id="L409"><span class="lineNum">     409</span>              : </span>
+<span id="L410"><span class="lineNum">     410</span>              : Create a weather interpolator for constant weather conditions.</span>
+<span id="L411"><span class="lineNum">     411</span>              : &quot;&quot;&quot;</span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC">          11 : function create_constant_interpolator(</span></span>
+<span id="L413"><span class="lineNum">     413</span>              :     weather::ConstantWeather{T},</span>
+<span id="L414"><span class="lineNum">     414</span>              :     sim_ncols::Int, sim_nrows::Int,</span>
+<span id="L415"><span class="lineNum">     415</span>              :     sim_cellsize::T</span>
+<span id="L416"><span class="lineNum">     416</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L417"><span class="lineNum">     417</span>              :     # Create a 1x1 weather grid</span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaGNC">          11 :     wgrid = WeatherGrid{T}(weather, 1, 1, T(1e6))  # Large cell to cover everything</span></span>
+<span id="L419"><span class="lineNum">     419</span> <span class="tlaGNC">          11 :     wts = WeatherTimeSeries{T}([wgrid], [zero(T)])</span></span>
+<span id="L420"><span class="lineNum">     420</span>              : </span>
+<span id="L421"><span class="lineNum">     421</span> <span class="tlaGNC">          11 :     WeatherInterpolator(wts, sim_ncols, sim_nrows, sim_cellsize)</span></span>
+<span id="L422"><span class="lineNum">     422</span>              : end</span>
         </pre>
               </td>
             </tr>

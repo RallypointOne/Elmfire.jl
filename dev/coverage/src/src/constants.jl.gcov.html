@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:56:25</td>
+            <td class="headerValue">2026-02-20 17:13:14</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -68,8 +68,8 @@
 <span id="L6"><span class="lineNum">       6</span>              : const DefaultFloat = Float64</span>
 <span id="L7"><span class="lineNum">       7</span>              : </span>
 <span id="L8"><span class="lineNum">       8</span>              : # Pi constant - use the appropriate precision</span>
-<span id="L9"><span class="lineNum">       9</span> <span class="tlaGNC tlaBgGNC">     1542703 : @inline pi_val(::Type{T}) where {T&lt;:AbstractFloat} = T(3.141592653589793)</span></span>
-<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC">     1453500 : @inline pio180(::Type{T}) where {T&lt;:AbstractFloat} = pi_val(T) / T(180)</span></span>
+<span id="L9"><span class="lineNum">       9</span> <span class="tlaGNC tlaBgGNC">      423609 : @inline pi_val(::Type{T}) where {T&lt;:AbstractFloat} = T(3.141592653589793)</span></span>
+<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC">      329486 : @inline pio180(::Type{T}) where {T&lt;:AbstractFloat} = pi_val(T) / T(180)</span></span>
 <span id="L11"><span class="lineNum">      11</span>              : </span>
 <span id="L12"><span class="lineNum">      12</span>              : # Convenience for default precision</span>
 <span id="L13"><span class="lineNum">      13</span>              : const PI = pi_val(DefaultFloat)</span>
@@ -80,11 +80,11 @@
 <span id="L18"><span class="lineNum">      18</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L19"><span class="lineNum">      19</span>              : </span>
 <span id="L20"><span class="lineNum">      20</span>              : # BTU/(ft²·min) to kW/m²</span>
-<span id="L21"><span class="lineNum">      21</span> <span class="tlaGNC">      334465 : @inline btupft2min_to_kwpm2(::Type{T}) where {T&lt;:AbstractFloat} = T(1.055) / (T(60) * T(0.3048) * T(0.3048))</span></span>
+<span id="L21"><span class="lineNum">      21</span> <span class="tlaGNC">      335852 : @inline btupft2min_to_kwpm2(::Type{T}) where {T&lt;:AbstractFloat} = T(1.055) / (T(60) * T(0.3048) * T(0.3048))</span></span>
 <span id="L22"><span class="lineNum">      22</span>              : const BTUPFT2MIN_TO_KWPM2 = btupft2min_to_kwpm2(DefaultFloat)</span>
 <span id="L23"><span class="lineNum">      23</span>              : </span>
 <span id="L24"><span class="lineNum">      24</span>              : # Feet to meters</span>
-<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC">      353033 : @inline ft_to_m(::Type{T}) where {T&lt;:AbstractFloat} = T(0.3048)</span></span>
+<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC">      352975 : @inline ft_to_m(::Type{T}) where {T&lt;:AbstractFloat} = T(0.3048)</span></span>
 <span id="L26"><span class="lineNum">      26</span>              : const FT_TO_M = ft_to_m(DefaultFloat)</span>
 <span id="L27"><span class="lineNum">      27</span>              : </span>
 <span id="L28"><span class="lineNum">      28</span>              : # Meters to feet</span>

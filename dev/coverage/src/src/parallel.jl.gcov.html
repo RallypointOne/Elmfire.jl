@@ -32,12 +32,12 @@
             <td></td>
             <td class="headerItem">Lines:</td>
             <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
-            <td class="headerCovTableEntry">127</td>
+            <td class="headerCovTableEntry">144</td>
             <td class="headerCovTableEntry">0</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:56:25</td>
+            <td class="headerValue">2026-02-20 17:13:14</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -93,29 +93,29 @@
 <span id="L31"><span class="lineNum">      31</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L32"><span class="lineNum">      32</span>              : </span>
 <span id="L33"><span class="lineNum">      33</span>              : &quot;&quot;&quot;</span>
-<span id="L34"><span class="lineNum">      34</span>              :     ThreadLocalState{T&lt;:AbstractFloat}</span>
+<span id="L34"><span class="lineNum">      34</span>              :     ThreadLocalState{T&lt;:AbstractFloat, R&lt;:AbstractRNG}</span>
 <span id="L35"><span class="lineNum">      35</span>              : </span>
 <span id="L36"><span class="lineNum">      36</span>              : Thread-local simulation state to avoid data races.</span>
 <span id="L37"><span class="lineNum">      37</span>              : &quot;&quot;&quot;</span>
-<span id="L38"><span class="lineNum">      38</span>              : mutable struct ThreadLocalState{T&lt;:AbstractFloat}</span>
+<span id="L38"><span class="lineNum">      38</span>              : mutable struct ThreadLocalState{T&lt;:AbstractFloat, R&lt;:AbstractRNG}</span>
 <span id="L39"><span class="lineNum">      39</span>              :     fire_state::FireState{T}</span>
-<span id="L40"><span class="lineNum">      40</span>              :     rng::AbstractRNG</span>
+<span id="L40"><span class="lineNum">      40</span>              :     rng::R</span>
 <span id="L41"><span class="lineNum">      41</span>              : end</span>
 <span id="L42"><span class="lineNum">      42</span>              : </span>
 <span id="L43"><span class="lineNum">      43</span> <span class="tlaUNC">           0 : Base.eltype(::ThreadLocalState{T}) where {T} = T</span></span>
 <span id="L44"><span class="lineNum">      44</span>              : </span>
 <span id="L45"><span class="lineNum">      45</span>              : </span>
 <span id="L46"><span class="lineNum">      46</span>              : &quot;&quot;&quot;</span>
-<span id="L47"><span class="lineNum">      47</span>              :     create_thread_local_states(template::FireState{T}, n::Int) -&gt; Vector{ThreadLocalState{T}}</span>
+<span id="L47"><span class="lineNum">      47</span>              :     create_thread_local_states(template::FireState{T}, n::Int) -&gt; Vector{ThreadLocalState{T, MersenneTwister}}</span>
 <span id="L48"><span class="lineNum">      48</span>              : </span>
 <span id="L49"><span class="lineNum">      49</span>              : Create n thread-local states from a template.</span>
 <span id="L50"><span class="lineNum">      50</span>              : &quot;&quot;&quot;</span>
 <span id="L51"><span class="lineNum">      51</span> <span class="tlaUNC">           0 : function create_thread_local_states(template::FireState{T}, n::Int) where {T&lt;:AbstractFloat}</span></span>
-<span id="L52"><span class="lineNum">      52</span> <span class="tlaUNC">           0 :     states = ThreadLocalState{T}[]</span></span>
+<span id="L52"><span class="lineNum">      52</span> <span class="tlaUNC">           0 :     states = ThreadLocalState{T, MersenneTwister}[]</span></span>
 <span id="L53"><span class="lineNum">      53</span> <span class="tlaUNC">           0 :     for i in 1:n</span></span>
 <span id="L54"><span class="lineNum">      54</span> <span class="tlaUNC">           0 :         state = copy(template)</span></span>
 <span id="L55"><span class="lineNum">      55</span> <span class="tlaUNC">           0 :         rng = MersenneTwister(i * 12345)</span></span>
-<span id="L56"><span class="lineNum">      56</span> <span class="tlaUNC">           0 :         push!(states, ThreadLocalState{T}(state, rng))</span></span>
+<span id="L56"><span class="lineNum">      56</span> <span class="tlaUNC">           0 :         push!(states, ThreadLocalState{T, MersenneTwister}(state, rng))</span></span>
 <span id="L57"><span class="lineNum">      57</span> <span class="tlaUNC">           0 :     end</span></span>
 <span id="L58"><span class="lineNum">      58</span> <span class="tlaUNC">           0 :     return states</span></span>
 <span id="L59"><span class="lineNum">      59</span>              : end</span>
@@ -165,8 +165,8 @@
 <span id="L103"><span class="lineNum">     103</span>              :     canopy::Union{Nothing, CanopyGrid{T}} = nothing,</span>
 <span id="L104"><span class="lineNum">     104</span>              :     parallel_config::ParallelConfig = ParallelConfig(),</span>
 <span id="L105"><span class="lineNum">     105</span>              :     show_progress::Bool = true,</span>
-<span id="L106"><span class="lineNum">     106</span>              :     callback::Union{Nothing, Function} = nothing</span>
-<span id="L107"><span class="lineNum">     107</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L106"><span class="lineNum">     106</span>              :     callback::CB = nothing</span>
+<span id="L107"><span class="lineNum">     107</span>              : ) where {T&lt;:AbstractFloat, CB}</span>
 <span id="L108"><span class="lineNum">     108</span> <span class="tlaUNC">           0 :     ncols = state_template.ncols</span></span>
 <span id="L109"><span class="lineNum">     109</span> <span class="tlaUNC">           0 :     nrows = state_template.nrows</span></span>
 <span id="L110"><span class="lineNum">     110</span>              : </span>
@@ -279,263 +279,281 @@
 <span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :     result = EnsembleResult{T}(config, ncols, nrows)</span></span>
 <span id="L218"><span class="lineNum">     218</span> <span class="tlaUNC">           0 :     result.members = members</span></span>
 <span id="L219"><span class="lineNum">     219</span>              : </span>
-<span id="L220"><span class="lineNum">     220</span>              :     # Compute convergence history</span>
+<span id="L220"><span class="lineNum">     220</span>              :     # Compute convergence history incrementally</span>
 <span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :     prev_burn_prob = zeros(T, ncols, nrows)</span></span>
-<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC">           0 :     for i in 1:config.n_simulations</span></span>
-<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :         new_burn_prob = compute_burn_probability(result.members[1:i], ncols, nrows)</span></span>
-<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :         rms_change = sqrt(sum((new_burn_prob .- prev_burn_prob).^2) / (ncols * nrows))</span></span>
-<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :         push!(result.convergence_history, rms_change)</span></span>
-<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :         prev_burn_prob = new_burn_prob</span></span>
-<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L228"><span class="lineNum">     228</span>              : </span>
-<span id="L229"><span class="lineNum">     229</span>              :     # Compute final statistics</span>
-<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :     aggregate_ensemble_statistics!(result)</span></span>
-<span id="L231"><span class="lineNum">     231</span>              : </span>
-<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 :     return result</span></span>
-<span id="L233"><span class="lineNum">     233</span>              : end</span>
-<span id="L234"><span class="lineNum">     234</span>              : </span>
-<span id="L235"><span class="lineNum">     235</span>              : </span>
-<span id="L236"><span class="lineNum">     236</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L237"><span class="lineNum">     237</span>              : #                     Parallel Batch Processing</span>
-<span id="L238"><span class="lineNum">     238</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L239"><span class="lineNum">     239</span>              : </span>
-<span id="L240"><span class="lineNum">     240</span>              : &quot;&quot;&quot;</span>
-<span id="L241"><span class="lineNum">     241</span>              :     BatchSimulationJob{T&lt;:AbstractFloat}</span>
-<span id="L242"><span class="lineNum">     242</span>              : </span>
-<span id="L243"><span class="lineNum">     243</span>              : A single simulation job for batch processing.</span>
-<span id="L244"><span class="lineNum">     244</span>              : &quot;&quot;&quot;</span>
-<span id="L245"><span class="lineNum">     245</span>              : struct BatchSimulationJob{T&lt;:AbstractFloat}</span>
-<span id="L246"><span class="lineNum">     246</span>              :     id::Int</span>
-<span id="L247"><span class="lineNum">     247</span>              :     ignition_ix::Int</span>
-<span id="L248"><span class="lineNum">     248</span>              :     ignition_iy::Int</span>
-<span id="L249"><span class="lineNum">     249</span>              :     weather::ConstantWeather{T}</span>
-<span id="L250"><span class="lineNum">     250</span>              :     t_start::T</span>
-<span id="L251"><span class="lineNum">     251</span>              :     t_stop::T</span>
-<span id="L252"><span class="lineNum">     252</span>              : end</span>
-<span id="L253"><span class="lineNum">     253</span>              : </span>
-<span id="L254"><span class="lineNum">     254</span>              : </span>
-<span id="L255"><span class="lineNum">     255</span>              : &quot;&quot;&quot;</span>
-<span id="L256"><span class="lineNum">     256</span>              :     BatchResult{T&lt;:AbstractFloat}</span>
-<span id="L257"><span class="lineNum">     257</span>              : </span>
-<span id="L258"><span class="lineNum">     258</span>              : Result from a single batch job.</span>
-<span id="L259"><span class="lineNum">     259</span>              : &quot;&quot;&quot;</span>
-<span id="L260"><span class="lineNum">     260</span>              : struct BatchResult{T&lt;:AbstractFloat}</span>
-<span id="L261"><span class="lineNum">     261</span>              :     job_id::Int</span>
-<span id="L262"><span class="lineNum">     262</span>              :     burned::BitMatrix</span>
-<span id="L263"><span class="lineNum">     263</span>              :     time_of_arrival::Matrix{T}</span>
-<span id="L264"><span class="lineNum">     264</span>              :     burned_area_acres::T</span>
-<span id="L265"><span class="lineNum">     265</span>              :     elapsed_time::Float64</span>
-<span id="L266"><span class="lineNum">     266</span>              : end</span>
-<span id="L267"><span class="lineNum">     267</span>              : </span>
-<span id="L268"><span class="lineNum">     268</span>              : </span>
-<span id="L269"><span class="lineNum">     269</span>              : &quot;&quot;&quot;</span>
-<span id="L270"><span class="lineNum">     270</span>              :     run_batch_simulations(</span>
-<span id="L271"><span class="lineNum">     271</span>              :         jobs::Vector{BatchSimulationJob{T}},</span>
-<span id="L272"><span class="lineNum">     272</span>              :         state_template::FireState{T},</span>
-<span id="L273"><span class="lineNum">     273</span>              :         fuel_ids::AbstractMatrix{Int},</span>
-<span id="L274"><span class="lineNum">     274</span>              :         fuel_table::FuelModelTable{T},</span>
-<span id="L275"><span class="lineNum">     275</span>              :         slope::AbstractMatrix{T},</span>
-<span id="L276"><span class="lineNum">     276</span>              :         aspect::AbstractMatrix{T};</span>
-<span id="L277"><span class="lineNum">     277</span>              :         canopy::Union{Nothing, CanopyGrid{T}} = nothing,</span>
-<span id="L278"><span class="lineNum">     278</span>              :         config::SimulationConfig{T} = SimulationConfig{T}(),</span>
-<span id="L279"><span class="lineNum">     279</span>              :         show_progress::Bool = true</span>
-<span id="L280"><span class="lineNum">     280</span>              :     ) -&gt; Vector{BatchResult{T}}</span>
-<span id="L281"><span class="lineNum">     281</span>              : </span>
-<span id="L282"><span class="lineNum">     282</span>              : Run a batch of independent simulations in parallel.</span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC">           0 :     burn_count = zeros(Int, ncols, nrows)</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :     for i in 1:config.n_simulations</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :         member = result.members[i]</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :         for ix in 1:ncols</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :             for iy in 1:nrows</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 :                 if member.burned[ix, iy]</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :                     burn_count[ix, iy] += 1</span></span>
+<span id="L229"><span class="lineNum">     229</span>              :                 end</span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :             end</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC">           0 :         end</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 :         inv_i = one(T) / T(i)</span></span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaUNC">           0 :         rms_sum = zero(T)</span></span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaUNC">           0 :         for ix in 1:ncols</span></span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaUNC">           0 :             for iy in 1:nrows</span></span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaUNC">           0 :                 new_prob = T(burn_count[ix, iy]) * inv_i</span></span>
+<span id="L237"><span class="lineNum">     237</span> <span class="tlaUNC">           0 :                 diff = new_prob - prev_burn_prob[ix, iy]</span></span>
+<span id="L238"><span class="lineNum">     238</span> <span class="tlaUNC">           0 :                 rms_sum += diff * diff</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaUNC">           0 :                 prev_burn_prob[ix, iy] = new_prob</span></span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaUNC">           0 :             end</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :         end</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaUNC">           0 :         push!(result.convergence_history, sqrt(rms_sum / (ncols * nrows)))</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L244"><span class="lineNum">     244</span>              : </span>
+<span id="L245"><span class="lineNum">     245</span>              :     # Compute final statistics</span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaUNC">           0 :     aggregate_ensemble_statistics!(result)</span></span>
+<span id="L247"><span class="lineNum">     247</span>              : </span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC">           0 :     return result</span></span>
+<span id="L249"><span class="lineNum">     249</span>              : end</span>
+<span id="L250"><span class="lineNum">     250</span>              : </span>
+<span id="L251"><span class="lineNum">     251</span>              : </span>
+<span id="L252"><span class="lineNum">     252</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L253"><span class="lineNum">     253</span>              : #                     Parallel Batch Processing</span>
+<span id="L254"><span class="lineNum">     254</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L255"><span class="lineNum">     255</span>              : </span>
+<span id="L256"><span class="lineNum">     256</span>              : &quot;&quot;&quot;</span>
+<span id="L257"><span class="lineNum">     257</span>              :     BatchSimulationJob{T&lt;:AbstractFloat}</span>
+<span id="L258"><span class="lineNum">     258</span>              : </span>
+<span id="L259"><span class="lineNum">     259</span>              : A single simulation job for batch processing.</span>
+<span id="L260"><span class="lineNum">     260</span>              : &quot;&quot;&quot;</span>
+<span id="L261"><span class="lineNum">     261</span>              : struct BatchSimulationJob{T&lt;:AbstractFloat}</span>
+<span id="L262"><span class="lineNum">     262</span>              :     id::Int</span>
+<span id="L263"><span class="lineNum">     263</span>              :     ignition_ix::Int</span>
+<span id="L264"><span class="lineNum">     264</span>              :     ignition_iy::Int</span>
+<span id="L265"><span class="lineNum">     265</span>              :     weather::ConstantWeather{T}</span>
+<span id="L266"><span class="lineNum">     266</span>              :     t_start::T</span>
+<span id="L267"><span class="lineNum">     267</span>              :     t_stop::T</span>
+<span id="L268"><span class="lineNum">     268</span>              : end</span>
+<span id="L269"><span class="lineNum">     269</span>              : </span>
+<span id="L270"><span class="lineNum">     270</span>              : </span>
+<span id="L271"><span class="lineNum">     271</span>              : &quot;&quot;&quot;</span>
+<span id="L272"><span class="lineNum">     272</span>              :     BatchResult{T&lt;:AbstractFloat}</span>
+<span id="L273"><span class="lineNum">     273</span>              : </span>
+<span id="L274"><span class="lineNum">     274</span>              : Result from a single batch job.</span>
+<span id="L275"><span class="lineNum">     275</span>              : &quot;&quot;&quot;</span>
+<span id="L276"><span class="lineNum">     276</span>              : struct BatchResult{T&lt;:AbstractFloat}</span>
+<span id="L277"><span class="lineNum">     277</span>              :     job_id::Int</span>
+<span id="L278"><span class="lineNum">     278</span>              :     burned::BitMatrix</span>
+<span id="L279"><span class="lineNum">     279</span>              :     time_of_arrival::Matrix{T}</span>
+<span id="L280"><span class="lineNum">     280</span>              :     burned_area_acres::T</span>
+<span id="L281"><span class="lineNum">     281</span>              :     elapsed_time::Float64</span>
+<span id="L282"><span class="lineNum">     282</span>              : end</span>
 <span id="L283"><span class="lineNum">     283</span>              : </span>
-<span id="L284"><span class="lineNum">     284</span>              : This is useful for running multiple scenarios with different ignition points</span>
-<span id="L285"><span class="lineNum">     285</span>              : or weather conditions.</span>
-<span id="L286"><span class="lineNum">     286</span>              : &quot;&quot;&quot;</span>
-<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 : function run_batch_simulations(</span></span>
-<span id="L288"><span class="lineNum">     288</span>              :     jobs::Vector{BatchSimulationJob{T}},</span>
-<span id="L289"><span class="lineNum">     289</span>              :     state_template::FireState{T},</span>
-<span id="L290"><span class="lineNum">     290</span>              :     fuel_ids::AbstractMatrix{Int},</span>
-<span id="L291"><span class="lineNum">     291</span>              :     fuel_table::FuelModelTable{T},</span>
-<span id="L292"><span class="lineNum">     292</span>              :     slope::AbstractMatrix{T},</span>
-<span id="L293"><span class="lineNum">     293</span>              :     aspect::AbstractMatrix{T};</span>
-<span id="L294"><span class="lineNum">     294</span>              :     canopy::Union{Nothing, CanopyGrid{T}} = nothing,</span>
-<span id="L295"><span class="lineNum">     295</span>              :     config::SimulationConfig{T} = SimulationConfig{T}(),</span>
-<span id="L296"><span class="lineNum">     296</span>              :     show_progress::Bool = true</span>
-<span id="L297"><span class="lineNum">     297</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L298"><span class="lineNum">     298</span> <span class="tlaUNC">           0 :     n_jobs = length(jobs)</span></span>
-<span id="L299"><span class="lineNum">     299</span> <span class="tlaUNC">           0 :     n_threads = Threads.nthreads()</span></span>
-<span id="L300"><span class="lineNum">     300</span>              : </span>
-<span id="L301"><span class="lineNum">     301</span>              :     # Create thread-local states</span>
-<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 :     thread_states = create_thread_local_states(state_template, n_threads)</span></span>
-<span id="L303"><span class="lineNum">     303</span>              : </span>
-<span id="L304"><span class="lineNum">     304</span>              :     # Results array</span>
-<span id="L305"><span class="lineNum">     305</span> <span class="tlaUNC">           0 :     results = Vector{BatchResult{T}}(undef, n_jobs)</span></span>
-<span id="L306"><span class="lineNum">     306</span>              : </span>
-<span id="L307"><span class="lineNum">     307</span>              :     # Progress</span>
-<span id="L308"><span class="lineNum">     308</span> <span class="tlaUNC">           0 :     progress = if show_progress</span></span>
-<span id="L309"><span class="lineNum">     309</span> <span class="tlaUNC">           0 :         Progress(n_jobs, desc=&quot;Running batch simulations: &quot;)</span></span>
-<span id="L310"><span class="lineNum">     310</span>              :     else</span>
-<span id="L311"><span class="lineNum">     311</span> <span class="tlaUNC">           0 :         nothing</span></span>
-<span id="L312"><span class="lineNum">     312</span>              :     end</span>
-<span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :     progress_counter = Threads.Atomic{Int}(0)</span></span>
-<span id="L314"><span class="lineNum">     314</span>              : </span>
-<span id="L315"><span class="lineNum">     315</span> <span class="tlaUNC">           0 :     Threads.@threads for i in 1:n_jobs</span></span>
-<span id="L316"><span class="lineNum">     316</span> <span class="tlaUNC">           0 :         tid = Threads.threadid()</span></span>
-<span id="L317"><span class="lineNum">     317</span> <span class="tlaUNC">           0 :         job = jobs[i]</span></span>
-<span id="L318"><span class="lineNum">     318</span> <span class="tlaUNC">           0 :         local_state = thread_states[tid]</span></span>
+<span id="L284"><span class="lineNum">     284</span>              : </span>
+<span id="L285"><span class="lineNum">     285</span>              : &quot;&quot;&quot;</span>
+<span id="L286"><span class="lineNum">     286</span>              :     run_batch_simulations(</span>
+<span id="L287"><span class="lineNum">     287</span>              :         jobs::Vector{BatchSimulationJob{T}},</span>
+<span id="L288"><span class="lineNum">     288</span>              :         state_template::FireState{T},</span>
+<span id="L289"><span class="lineNum">     289</span>              :         fuel_ids::AbstractMatrix{Int},</span>
+<span id="L290"><span class="lineNum">     290</span>              :         fuel_table::FuelModelTable{T},</span>
+<span id="L291"><span class="lineNum">     291</span>              :         slope::AbstractMatrix{T},</span>
+<span id="L292"><span class="lineNum">     292</span>              :         aspect::AbstractMatrix{T};</span>
+<span id="L293"><span class="lineNum">     293</span>              :         canopy::Union{Nothing, CanopyGrid{T}} = nothing,</span>
+<span id="L294"><span class="lineNum">     294</span>              :         config::SimulationConfig{T} = SimulationConfig{T}(),</span>
+<span id="L295"><span class="lineNum">     295</span>              :         show_progress::Bool = true</span>
+<span id="L296"><span class="lineNum">     296</span>              :     ) -&gt; Vector{BatchResult{T}}</span>
+<span id="L297"><span class="lineNum">     297</span>              : </span>
+<span id="L298"><span class="lineNum">     298</span>              : Run a batch of independent simulations in parallel.</span>
+<span id="L299"><span class="lineNum">     299</span>              : </span>
+<span id="L300"><span class="lineNum">     300</span>              : This is useful for running multiple scenarios with different ignition points</span>
+<span id="L301"><span class="lineNum">     301</span>              : or weather conditions.</span>
+<span id="L302"><span class="lineNum">     302</span>              : &quot;&quot;&quot;</span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 : function run_batch_simulations(</span></span>
+<span id="L304"><span class="lineNum">     304</span>              :     jobs::Vector{BatchSimulationJob{T}},</span>
+<span id="L305"><span class="lineNum">     305</span>              :     state_template::FireState{T},</span>
+<span id="L306"><span class="lineNum">     306</span>              :     fuel_ids::AbstractMatrix{Int},</span>
+<span id="L307"><span class="lineNum">     307</span>              :     fuel_table::FuelModelTable{T},</span>
+<span id="L308"><span class="lineNum">     308</span>              :     slope::AbstractMatrix{T},</span>
+<span id="L309"><span class="lineNum">     309</span>              :     aspect::AbstractMatrix{T};</span>
+<span id="L310"><span class="lineNum">     310</span>              :     canopy::Union{Nothing, CanopyGrid{T}} = nothing,</span>
+<span id="L311"><span class="lineNum">     311</span>              :     config::SimulationConfig{T} = SimulationConfig{T}(),</span>
+<span id="L312"><span class="lineNum">     312</span>              :     show_progress::Bool = true</span>
+<span id="L313"><span class="lineNum">     313</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L314"><span class="lineNum">     314</span> <span class="tlaUNC">           0 :     n_jobs = length(jobs)</span></span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaUNC">           0 :     n_threads = Threads.nthreads()</span></span>
+<span id="L316"><span class="lineNum">     316</span>              : </span>
+<span id="L317"><span class="lineNum">     317</span>              :     # Create thread-local states</span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaUNC">           0 :     thread_states = create_thread_local_states(state_template, n_threads)</span></span>
 <span id="L319"><span class="lineNum">     319</span>              : </span>
-<span id="L320"><span class="lineNum">     320</span>              :         # Record start time</span>
-<span id="L321"><span class="lineNum">     321</span> <span class="tlaUNC">           0 :         t0 = time()</span></span>
+<span id="L320"><span class="lineNum">     320</span>              :     # Results array</span>
+<span id="L321"><span class="lineNum">     321</span> <span class="tlaUNC">           0 :     results = Vector{BatchResult{T}}(undef, n_jobs)</span></span>
 <span id="L322"><span class="lineNum">     322</span>              : </span>
-<span id="L323"><span class="lineNum">     323</span>              :         # Reset state</span>
-<span id="L324"><span class="lineNum">     324</span> <span class="tlaUNC">           0 :         reset!(local_state.fire_state)</span></span>
-<span id="L325"><span class="lineNum">     325</span>              : </span>
-<span id="L326"><span class="lineNum">     326</span>              :         # Ignite</span>
-<span id="L327"><span class="lineNum">     327</span> <span class="tlaUNC">           0 :         ignite!(local_state.fire_state, job.ignition_ix, job.ignition_iy, job.t_start)</span></span>
-<span id="L328"><span class="lineNum">     328</span>              : </span>
-<span id="L329"><span class="lineNum">     329</span>              :         # Create weather interpolator</span>
-<span id="L330"><span class="lineNum">     330</span> <span class="tlaUNC">           0 :         ncols = local_state.fire_state.ncols</span></span>
-<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :         nrows = local_state.fire_state.nrows</span></span>
-<span id="L332"><span class="lineNum">     332</span> <span class="tlaUNC">           0 :         weather_interp = create_constant_interpolator(job.weather, ncols, nrows, local_state.fire_state.cellsize)</span></span>
-<span id="L333"><span class="lineNum">     333</span>              : </span>
-<span id="L334"><span class="lineNum">     334</span>              :         # Create thread-local RNG</span>
-<span id="L335"><span class="lineNum">     335</span> <span class="tlaUNC">           0 :         rng = MersenneTwister(job.id * 12345)</span></span>
-<span id="L336"><span class="lineNum">     336</span>              : </span>
-<span id="L337"><span class="lineNum">     337</span>              :         # Run simulation</span>
-<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 :         simulate_full!(</span></span>
-<span id="L339"><span class="lineNum">     339</span>              :             local_state.fire_state,</span>
-<span id="L340"><span class="lineNum">     340</span>              :             fuel_ids,</span>
-<span id="L341"><span class="lineNum">     341</span>              :             fuel_table,</span>
-<span id="L342"><span class="lineNum">     342</span>              :             weather_interp,</span>
-<span id="L343"><span class="lineNum">     343</span>              :             slope,</span>
-<span id="L344"><span class="lineNum">     344</span>              :             aspect,</span>
-<span id="L345"><span class="lineNum">     345</span>              :             job.t_start,</span>
-<span id="L346"><span class="lineNum">     346</span>              :             job.t_stop;</span>
-<span id="L347"><span class="lineNum">     347</span>              :             canopy = canopy,</span>
-<span id="L348"><span class="lineNum">     348</span>              :             config = config,</span>
-<span id="L349"><span class="lineNum">     349</span>              :             rng = rng</span>
-<span id="L350"><span class="lineNum">     350</span>              :         )</span>
-<span id="L351"><span class="lineNum">     351</span>              : </span>
-<span id="L352"><span class="lineNum">     352</span>              :         # Compute elapsed time</span>
-<span id="L353"><span class="lineNum">     353</span> <span class="tlaUNC">           0 :         elapsed = time() - t0</span></span>
-<span id="L354"><span class="lineNum">     354</span>              : </span>
-<span id="L355"><span class="lineNum">     355</span>              :         # Store result</span>
-<span id="L356"><span class="lineNum">     356</span> <span class="tlaUNC">           0 :         results[i] = BatchResult{T}(</span></span>
-<span id="L357"><span class="lineNum">     357</span>              :             job.id,</span>
-<span id="L358"><span class="lineNum">     358</span>              :             copy(local_state.fire_state.burned),</span>
-<span id="L359"><span class="lineNum">     359</span>              :             copy(local_state.fire_state.time_of_arrival),</span>
-<span id="L360"><span class="lineNum">     360</span>              :             get_burned_area_acres(local_state.fire_state),</span>
-<span id="L361"><span class="lineNum">     361</span>              :             elapsed</span>
-<span id="L362"><span class="lineNum">     362</span>              :         )</span>
-<span id="L363"><span class="lineNum">     363</span>              : </span>
-<span id="L364"><span class="lineNum">     364</span>              :         # Update progress</span>
-<span id="L365"><span class="lineNum">     365</span> <span class="tlaUNC">           0 :         Threads.atomic_add!(progress_counter, 1)</span></span>
-<span id="L366"><span class="lineNum">     366</span> <span class="tlaUNC">           0 :         if progress !== nothing &amp;&amp; tid == 1</span></span>
-<span id="L367"><span class="lineNum">     367</span> <span class="tlaUNC">           0 :             update!(progress, progress_counter[])</span></span>
-<span id="L368"><span class="lineNum">     368</span>              :         end</span>
-<span id="L369"><span class="lineNum">     369</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L323"><span class="lineNum">     323</span>              :     # Progress</span>
+<span id="L324"><span class="lineNum">     324</span> <span class="tlaUNC">           0 :     progress = if show_progress</span></span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaUNC">           0 :         Progress(n_jobs, desc=&quot;Running batch simulations: &quot;)</span></span>
+<span id="L326"><span class="lineNum">     326</span>              :     else</span>
+<span id="L327"><span class="lineNum">     327</span> <span class="tlaUNC">           0 :         nothing</span></span>
+<span id="L328"><span class="lineNum">     328</span>              :     end</span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaUNC">           0 :     progress_counter = Threads.Atomic{Int}(0)</span></span>
+<span id="L330"><span class="lineNum">     330</span>              : </span>
+<span id="L331"><span class="lineNum">     331</span> <span class="tlaUNC">           0 :     Threads.@threads for i in 1:n_jobs</span></span>
+<span id="L332"><span class="lineNum">     332</span> <span class="tlaUNC">           0 :         tid = Threads.threadid()</span></span>
+<span id="L333"><span class="lineNum">     333</span> <span class="tlaUNC">           0 :         job = jobs[i]</span></span>
+<span id="L334"><span class="lineNum">     334</span> <span class="tlaUNC">           0 :         local_state = thread_states[tid]</span></span>
+<span id="L335"><span class="lineNum">     335</span>              : </span>
+<span id="L336"><span class="lineNum">     336</span>              :         # Record start time</span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaUNC">           0 :         t0 = time()</span></span>
+<span id="L338"><span class="lineNum">     338</span>              : </span>
+<span id="L339"><span class="lineNum">     339</span>              :         # Reset state</span>
+<span id="L340"><span class="lineNum">     340</span> <span class="tlaUNC">           0 :         reset!(local_state.fire_state)</span></span>
+<span id="L341"><span class="lineNum">     341</span>              : </span>
+<span id="L342"><span class="lineNum">     342</span>              :         # Ignite</span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaUNC">           0 :         ignite!(local_state.fire_state, job.ignition_ix, job.ignition_iy, job.t_start)</span></span>
+<span id="L344"><span class="lineNum">     344</span>              : </span>
+<span id="L345"><span class="lineNum">     345</span>              :         # Create weather interpolator</span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaUNC">           0 :         ncols = local_state.fire_state.ncols</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaUNC">           0 :         nrows = local_state.fire_state.nrows</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaUNC">           0 :         weather_interp = create_constant_interpolator(job.weather, ncols, nrows, local_state.fire_state.cellsize)</span></span>
+<span id="L349"><span class="lineNum">     349</span>              : </span>
+<span id="L350"><span class="lineNum">     350</span>              :         # Create thread-local RNG</span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaUNC">           0 :         rng = MersenneTwister(job.id * 12345)</span></span>
+<span id="L352"><span class="lineNum">     352</span>              : </span>
+<span id="L353"><span class="lineNum">     353</span>              :         # Run simulation</span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaUNC">           0 :         simulate_full!(</span></span>
+<span id="L355"><span class="lineNum">     355</span>              :             local_state.fire_state,</span>
+<span id="L356"><span class="lineNum">     356</span>              :             fuel_ids,</span>
+<span id="L357"><span class="lineNum">     357</span>              :             fuel_table,</span>
+<span id="L358"><span class="lineNum">     358</span>              :             weather_interp,</span>
+<span id="L359"><span class="lineNum">     359</span>              :             slope,</span>
+<span id="L360"><span class="lineNum">     360</span>              :             aspect,</span>
+<span id="L361"><span class="lineNum">     361</span>              :             job.t_start,</span>
+<span id="L362"><span class="lineNum">     362</span>              :             job.t_stop;</span>
+<span id="L363"><span class="lineNum">     363</span>              :             canopy = canopy,</span>
+<span id="L364"><span class="lineNum">     364</span>              :             config = config,</span>
+<span id="L365"><span class="lineNum">     365</span>              :             rng = rng</span>
+<span id="L366"><span class="lineNum">     366</span>              :         )</span>
+<span id="L367"><span class="lineNum">     367</span>              : </span>
+<span id="L368"><span class="lineNum">     368</span>              :         # Compute elapsed time</span>
+<span id="L369"><span class="lineNum">     369</span> <span class="tlaUNC">           0 :         elapsed = time() - t0</span></span>
 <span id="L370"><span class="lineNum">     370</span>              : </span>
-<span id="L371"><span class="lineNum">     371</span> <span class="tlaUNC">           0 :     if progress !== nothing</span></span>
-<span id="L372"><span class="lineNum">     372</span> <span class="tlaUNC">           0 :         finish!(progress)</span></span>
-<span id="L373"><span class="lineNum">     373</span>              :     end</span>
-<span id="L374"><span class="lineNum">     374</span>              : </span>
-<span id="L375"><span class="lineNum">     375</span> <span class="tlaUNC">           0 :     return results</span></span>
-<span id="L376"><span class="lineNum">     376</span>              : end</span>
-<span id="L377"><span class="lineNum">     377</span>              : </span>
-<span id="L378"><span class="lineNum">     378</span>              : </span>
-<span id="L379"><span class="lineNum">     379</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L380"><span class="lineNum">     380</span>              : #                     Parallel Map/Reduce Utilities</span>
-<span id="L381"><span class="lineNum">     381</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L382"><span class="lineNum">     382</span>              : </span>
-<span id="L383"><span class="lineNum">     383</span>              : &quot;&quot;&quot;</span>
-<span id="L384"><span class="lineNum">     384</span>              :     parallel_map(f::Function, items::AbstractVector; n_threads::Int = 0)</span>
-<span id="L385"><span class="lineNum">     385</span>              : </span>
-<span id="L386"><span class="lineNum">     386</span>              : Apply function f to each item in parallel.</span>
-<span id="L387"><span class="lineNum">     387</span>              : &quot;&quot;&quot;</span>
-<span id="L388"><span class="lineNum">     388</span> <span class="tlaUNC">           0 : function parallel_map(f::Function, items::AbstractVector; n_threads::Int = 0)</span></span>
-<span id="L389"><span class="lineNum">     389</span> <span class="tlaUNC">           0 :     n = length(items)</span></span>
-<span id="L390"><span class="lineNum">     390</span> <span class="tlaUNC">           0 :     results = Vector{Any}(undef, n)</span></span>
-<span id="L391"><span class="lineNum">     391</span>              : </span>
-<span id="L392"><span class="lineNum">     392</span> <span class="tlaUNC">           0 :     Threads.@threads for i in 1:n</span></span>
-<span id="L393"><span class="lineNum">     393</span> <span class="tlaUNC">           0 :         results[i] = f(items[i])</span></span>
-<span id="L394"><span class="lineNum">     394</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L395"><span class="lineNum">     395</span>              : </span>
-<span id="L396"><span class="lineNum">     396</span> <span class="tlaUNC">           0 :     return results</span></span>
-<span id="L397"><span class="lineNum">     397</span>              : end</span>
+<span id="L371"><span class="lineNum">     371</span>              :         # Store result</span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaUNC">           0 :         results[i] = BatchResult{T}(</span></span>
+<span id="L373"><span class="lineNum">     373</span>              :             job.id,</span>
+<span id="L374"><span class="lineNum">     374</span>              :             copy(local_state.fire_state.burned),</span>
+<span id="L375"><span class="lineNum">     375</span>              :             copy(local_state.fire_state.time_of_arrival),</span>
+<span id="L376"><span class="lineNum">     376</span>              :             get_burned_area_acres(local_state.fire_state),</span>
+<span id="L377"><span class="lineNum">     377</span>              :             elapsed</span>
+<span id="L378"><span class="lineNum">     378</span>              :         )</span>
+<span id="L379"><span class="lineNum">     379</span>              : </span>
+<span id="L380"><span class="lineNum">     380</span>              :         # Update progress</span>
+<span id="L381"><span class="lineNum">     381</span> <span class="tlaUNC">           0 :         Threads.atomic_add!(progress_counter, 1)</span></span>
+<span id="L382"><span class="lineNum">     382</span> <span class="tlaUNC">           0 :         if progress !== nothing &amp;&amp; tid == 1</span></span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaUNC">           0 :             update!(progress, progress_counter[])</span></span>
+<span id="L384"><span class="lineNum">     384</span>              :         end</span>
+<span id="L385"><span class="lineNum">     385</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L386"><span class="lineNum">     386</span>              : </span>
+<span id="L387"><span class="lineNum">     387</span> <span class="tlaUNC">           0 :     if progress !== nothing</span></span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaUNC">           0 :         finish!(progress)</span></span>
+<span id="L389"><span class="lineNum">     389</span>              :     end</span>
+<span id="L390"><span class="lineNum">     390</span>              : </span>
+<span id="L391"><span class="lineNum">     391</span> <span class="tlaUNC">           0 :     return results</span></span>
+<span id="L392"><span class="lineNum">     392</span>              : end</span>
+<span id="L393"><span class="lineNum">     393</span>              : </span>
+<span id="L394"><span class="lineNum">     394</span>              : </span>
+<span id="L395"><span class="lineNum">     395</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L396"><span class="lineNum">     396</span>              : #                     Parallel Map/Reduce Utilities</span>
+<span id="L397"><span class="lineNum">     397</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L398"><span class="lineNum">     398</span>              : </span>
-<span id="L399"><span class="lineNum">     399</span>              : </span>
-<span id="L400"><span class="lineNum">     400</span>              : &quot;&quot;&quot;</span>
-<span id="L401"><span class="lineNum">     401</span>              :     parallel_reduce(f::Function, g::Function, items::AbstractVector; init, n_threads::Int = 0)</span>
-<span id="L402"><span class="lineNum">     402</span>              : </span>
-<span id="L403"><span class="lineNum">     403</span>              : Apply function f to each item and reduce with g.</span>
-<span id="L404"><span class="lineNum">     404</span>              : </span>
-<span id="L405"><span class="lineNum">     405</span>              : # Arguments</span>
-<span id="L406"><span class="lineNum">     406</span>              : - `f`: Map function to apply to each item</span>
-<span id="L407"><span class="lineNum">     407</span>              : - `g`: Reduce function to combine results (must be associative)</span>
-<span id="L408"><span class="lineNum">     408</span>              : - `items`: Items to process</span>
-<span id="L409"><span class="lineNum">     409</span>              : - `init`: Initial value for reduction</span>
-<span id="L410"><span class="lineNum">     410</span>              : &quot;&quot;&quot;</span>
-<span id="L411"><span class="lineNum">     411</span> <span class="tlaUNC">           0 : function parallel_reduce(f::Function, g::Function, items::AbstractVector; init, n_threads::Int = 0)</span></span>
-<span id="L412"><span class="lineNum">     412</span> <span class="tlaUNC">           0 :     n = length(items)</span></span>
-<span id="L413"><span class="lineNum">     413</span> <span class="tlaUNC">           0 :     if n == 0</span></span>
-<span id="L414"><span class="lineNum">     414</span> <span class="tlaUNC">           0 :         return init</span></span>
-<span id="L415"><span class="lineNum">     415</span>              :     end</span>
+<span id="L399"><span class="lineNum">     399</span>              : &quot;&quot;&quot;</span>
+<span id="L400"><span class="lineNum">     400</span>              :     parallel_map(f, items::AbstractVector; n_threads::Int = 0)</span>
+<span id="L401"><span class="lineNum">     401</span>              : </span>
+<span id="L402"><span class="lineNum">     402</span>              : Apply function f to each item in parallel.</span>
+<span id="L403"><span class="lineNum">     403</span>              : &quot;&quot;&quot;</span>
+<span id="L404"><span class="lineNum">     404</span> <span class="tlaUNC">           0 : function parallel_map(f::F, items::AbstractVector; n_threads::Int = 0) where {F}</span></span>
+<span id="L405"><span class="lineNum">     405</span> <span class="tlaUNC">           0 :     n = length(items)</span></span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaUNC">           0 :     RT = Core.Compiler.return_type(f, Tuple{eltype(items)})</span></span>
+<span id="L407"><span class="lineNum">     407</span> <span class="tlaUNC">           0 :     results = Vector{RT}(undef, n)</span></span>
+<span id="L408"><span class="lineNum">     408</span>              : </span>
+<span id="L409"><span class="lineNum">     409</span> <span class="tlaUNC">           0 :     Threads.@threads for i in 1:n</span></span>
+<span id="L410"><span class="lineNum">     410</span> <span class="tlaUNC">           0 :         results[i] = f(items[i])</span></span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L412"><span class="lineNum">     412</span>              : </span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaUNC">           0 :     return results</span></span>
+<span id="L414"><span class="lineNum">     414</span>              : end</span>
+<span id="L415"><span class="lineNum">     415</span>              : </span>
 <span id="L416"><span class="lineNum">     416</span>              : </span>
-<span id="L417"><span class="lineNum">     417</span> <span class="tlaUNC">           0 :     n_workers = n_threads == 0 ? Threads.nthreads() : n_threads</span></span>
-<span id="L418"><span class="lineNum">     418</span>              : </span>
-<span id="L419"><span class="lineNum">     419</span>              :     # Split work among threads</span>
-<span id="L420"><span class="lineNum">     420</span> <span class="tlaUNC">           0 :     chunk_size = max(1, div(n, n_workers))</span></span>
-<span id="L421"><span class="lineNum">     421</span> <span class="tlaUNC">           0 :     partial_results = Vector{Any}(undef, n_workers)</span></span>
-<span id="L422"><span class="lineNum">     422</span>              : </span>
-<span id="L423"><span class="lineNum">     423</span> <span class="tlaUNC">           0 :     Threads.@threads for tid in 1:n_workers</span></span>
-<span id="L424"><span class="lineNum">     424</span> <span class="tlaUNC">           0 :         start_idx = (tid - 1) * chunk_size + 1</span></span>
-<span id="L425"><span class="lineNum">     425</span> <span class="tlaUNC">           0 :         end_idx = tid == n_workers ? n : min(tid * chunk_size, n)</span></span>
-<span id="L426"><span class="lineNum">     426</span>              : </span>
-<span id="L427"><span class="lineNum">     427</span> <span class="tlaUNC">           0 :         if start_idx &lt;= n</span></span>
-<span id="L428"><span class="lineNum">     428</span> <span class="tlaUNC">           0 :             local_result = init</span></span>
-<span id="L429"><span class="lineNum">     429</span> <span class="tlaUNC">           0 :             for i in start_idx:end_idx</span></span>
-<span id="L430"><span class="lineNum">     430</span> <span class="tlaUNC">           0 :                 local_result = g(local_result, f(items[i]))</span></span>
-<span id="L431"><span class="lineNum">     431</span> <span class="tlaUNC">           0 :             end</span></span>
-<span id="L432"><span class="lineNum">     432</span> <span class="tlaUNC">           0 :             partial_results[tid] = local_result</span></span>
-<span id="L433"><span class="lineNum">     433</span>              :         else</span>
-<span id="L434"><span class="lineNum">     434</span> <span class="tlaUNC">           0 :             partial_results[tid] = init</span></span>
-<span id="L435"><span class="lineNum">     435</span>              :         end</span>
-<span id="L436"><span class="lineNum">     436</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L437"><span class="lineNum">     437</span>              : </span>
-<span id="L438"><span class="lineNum">     438</span>              :     # Final reduction</span>
-<span id="L439"><span class="lineNum">     439</span> <span class="tlaUNC">           0 :     result = init</span></span>
-<span id="L440"><span class="lineNum">     440</span> <span class="tlaUNC">           0 :     for pr in partial_results</span></span>
-<span id="L441"><span class="lineNum">     441</span> <span class="tlaUNC">           0 :         result = g(result, pr)</span></span>
-<span id="L442"><span class="lineNum">     442</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L443"><span class="lineNum">     443</span>              : </span>
-<span id="L444"><span class="lineNum">     444</span> <span class="tlaUNC">           0 :     return result</span></span>
-<span id="L445"><span class="lineNum">     445</span>              : end</span>
-<span id="L446"><span class="lineNum">     446</span>              : </span>
-<span id="L447"><span class="lineNum">     447</span>              : </span>
-<span id="L448"><span class="lineNum">     448</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L449"><span class="lineNum">     449</span>              : #                     Thread Safety Utilities</span>
-<span id="L450"><span class="lineNum">     450</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L451"><span class="lineNum">     451</span>              : </span>
-<span id="L452"><span class="lineNum">     452</span>              : &quot;&quot;&quot;</span>
-<span id="L453"><span class="lineNum">     453</span>              :     atomic_max!(arr::Matrix{T}, ix::Int, iy::Int, val::T)</span>
-<span id="L454"><span class="lineNum">     454</span>              : </span>
-<span id="L455"><span class="lineNum">     455</span>              : Atomically update arr[ix,iy] = max(arr[ix,iy], val).</span>
-<span id="L456"><span class="lineNum">     456</span>              : Note: This is a simplified version that uses locks.</span>
-<span id="L457"><span class="lineNum">     457</span>              : &quot;&quot;&quot;</span>
-<span id="L458"><span class="lineNum">     458</span> <span class="tlaUNC">           0 : function atomic_max!(arr::Matrix{T}, ix::Int, iy::Int, val::T, lock::ReentrantLock) where {T}</span></span>
-<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :     Base.@lock lock begin</span></span>
-<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :         if val &gt; arr[ix, iy]</span></span>
-<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC">           0 :             arr[ix, iy] = val</span></span>
-<span id="L462"><span class="lineNum">     462</span>              :         end</span>
-<span id="L463"><span class="lineNum">     463</span>              :     end</span>
-<span id="L464"><span class="lineNum">     464</span>              : end</span>
+<span id="L417"><span class="lineNum">     417</span>              : &quot;&quot;&quot;</span>
+<span id="L418"><span class="lineNum">     418</span>              :     parallel_reduce(f, g, items::AbstractVector; init, n_threads::Int = 0)</span>
+<span id="L419"><span class="lineNum">     419</span>              : </span>
+<span id="L420"><span class="lineNum">     420</span>              : Apply function f to each item and reduce with g.</span>
+<span id="L421"><span class="lineNum">     421</span>              : </span>
+<span id="L422"><span class="lineNum">     422</span>              : # Arguments</span>
+<span id="L423"><span class="lineNum">     423</span>              : - `f`: Map function to apply to each item</span>
+<span id="L424"><span class="lineNum">     424</span>              : - `g`: Reduce function to combine results (must be associative)</span>
+<span id="L425"><span class="lineNum">     425</span>              : - `items`: Items to process</span>
+<span id="L426"><span class="lineNum">     426</span>              : - `init`: Initial value for reduction</span>
+<span id="L427"><span class="lineNum">     427</span>              : &quot;&quot;&quot;</span>
+<span id="L428"><span class="lineNum">     428</span> <span class="tlaUNC">           0 : function parallel_reduce(f::F, g::G, items::AbstractVector; init, n_threads::Int = 0) where {F, G}</span></span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaUNC">           0 :     n = length(items)</span></span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaUNC">           0 :     if n == 0</span></span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaUNC">           0 :         return init</span></span>
+<span id="L432"><span class="lineNum">     432</span>              :     end</span>
+<span id="L433"><span class="lineNum">     433</span>              : </span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaUNC">           0 :     n_workers = n_threads == 0 ? Threads.nthreads() : n_threads</span></span>
+<span id="L435"><span class="lineNum">     435</span>              : </span>
+<span id="L436"><span class="lineNum">     436</span>              :     # Split work among threads</span>
+<span id="L437"><span class="lineNum">     437</span> <span class="tlaUNC">           0 :     chunk_size = max(1, div(n, n_workers))</span></span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaUNC">           0 :     IT = typeof(init)</span></span>
+<span id="L439"><span class="lineNum">     439</span> <span class="tlaUNC">           0 :     partial_results = Vector{IT}(undef, n_workers)</span></span>
+<span id="L440"><span class="lineNum">     440</span>              : </span>
+<span id="L441"><span class="lineNum">     441</span> <span class="tlaUNC">           0 :     Threads.@threads for tid in 1:n_workers</span></span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaUNC">           0 :         start_idx = (tid - 1) * chunk_size + 1</span></span>
+<span id="L443"><span class="lineNum">     443</span> <span class="tlaUNC">           0 :         end_idx = tid == n_workers ? n : min(tid * chunk_size, n)</span></span>
+<span id="L444"><span class="lineNum">     444</span>              : </span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaUNC">           0 :         if start_idx &lt;= n</span></span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaUNC">           0 :             local_result = init</span></span>
+<span id="L447"><span class="lineNum">     447</span> <span class="tlaUNC">           0 :             for i in start_idx:end_idx</span></span>
+<span id="L448"><span class="lineNum">     448</span> <span class="tlaUNC">           0 :                 local_result = g(local_result, f(items[i]))</span></span>
+<span id="L449"><span class="lineNum">     449</span> <span class="tlaUNC">           0 :             end</span></span>
+<span id="L450"><span class="lineNum">     450</span> <span class="tlaUNC">           0 :             partial_results[tid] = local_result</span></span>
+<span id="L451"><span class="lineNum">     451</span>              :         else</span>
+<span id="L452"><span class="lineNum">     452</span> <span class="tlaUNC">           0 :             partial_results[tid] = init</span></span>
+<span id="L453"><span class="lineNum">     453</span>              :         end</span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L455"><span class="lineNum">     455</span>              : </span>
+<span id="L456"><span class="lineNum">     456</span>              :     # Final reduction</span>
+<span id="L457"><span class="lineNum">     457</span> <span class="tlaUNC">           0 :     result = init</span></span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaUNC">           0 :     for pr in partial_results</span></span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :         result = g(result, pr)</span></span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :     end</span></span>
+<span id="L461"><span class="lineNum">     461</span>              : </span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaUNC">           0 :     return result</span></span>
+<span id="L463"><span class="lineNum">     463</span>              : end</span>
+<span id="L464"><span class="lineNum">     464</span>              : </span>
 <span id="L465"><span class="lineNum">     465</span>              : </span>
-<span id="L466"><span class="lineNum">     466</span>              : </span>
-<span id="L467"><span class="lineNum">     467</span>              : &quot;&quot;&quot;</span>
-<span id="L468"><span class="lineNum">     468</span>              :     atomic_add!(arr::Matrix{T}, ix::Int, iy::Int, val::T)</span>
+<span id="L466"><span class="lineNum">     466</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L467"><span class="lineNum">     467</span>              : #                     Thread Safety Utilities</span>
+<span id="L468"><span class="lineNum">     468</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L469"><span class="lineNum">     469</span>              : </span>
-<span id="L470"><span class="lineNum">     470</span>              : Atomically add val to arr[ix,iy].</span>
-<span id="L471"><span class="lineNum">     471</span>              : &quot;&quot;&quot;</span>
-<span id="L472"><span class="lineNum">     472</span> <span class="tlaUNC">           0 : function atomic_add!(arr::Matrix{T}, ix::Int, iy::Int, val::T, lock::ReentrantLock) where {T}</span></span>
-<span id="L473"><span class="lineNum">     473</span> <span class="tlaUNC">           0 :     Base.@lock lock begin</span></span>
-<span id="L474"><span class="lineNum">     474</span> <span class="tlaUNC">           0 :         arr[ix, iy] += val</span></span>
-<span id="L475"><span class="lineNum">     475</span>              :     end</span>
-<span id="L476"><span class="lineNum">     476</span>              : end</span>
+<span id="L470"><span class="lineNum">     470</span>              : &quot;&quot;&quot;</span>
+<span id="L471"><span class="lineNum">     471</span>              :     atomic_max!(arr::Matrix{T}, ix::Int, iy::Int, val::T)</span>
+<span id="L472"><span class="lineNum">     472</span>              : </span>
+<span id="L473"><span class="lineNum">     473</span>              : Atomically update arr[ix,iy] = max(arr[ix,iy], val).</span>
+<span id="L474"><span class="lineNum">     474</span>              : Note: This is a simplified version that uses locks.</span>
+<span id="L475"><span class="lineNum">     475</span>              : &quot;&quot;&quot;</span>
+<span id="L476"><span class="lineNum">     476</span> <span class="tlaUNC">           0 : function atomic_max!(arr::Matrix{T}, ix::Int, iy::Int, val::T, lock::ReentrantLock) where {T}</span></span>
+<span id="L477"><span class="lineNum">     477</span> <span class="tlaUNC">           0 :     Base.@lock lock begin</span></span>
+<span id="L478"><span class="lineNum">     478</span> <span class="tlaUNC">           0 :         if val &gt; arr[ix, iy]</span></span>
+<span id="L479"><span class="lineNum">     479</span> <span class="tlaUNC">           0 :             arr[ix, iy] = val</span></span>
+<span id="L480"><span class="lineNum">     480</span>              :         end</span>
+<span id="L481"><span class="lineNum">     481</span>              :     end</span>
+<span id="L482"><span class="lineNum">     482</span>              : end</span>
+<span id="L483"><span class="lineNum">     483</span>              : </span>
+<span id="L484"><span class="lineNum">     484</span>              : </span>
+<span id="L485"><span class="lineNum">     485</span>              : &quot;&quot;&quot;</span>
+<span id="L486"><span class="lineNum">     486</span>              :     atomic_add!(arr::Matrix{T}, ix::Int, iy::Int, val::T)</span>
+<span id="L487"><span class="lineNum">     487</span>              : </span>
+<span id="L488"><span class="lineNum">     488</span>              : Atomically add val to arr[ix,iy].</span>
+<span id="L489"><span class="lineNum">     489</span>              : &quot;&quot;&quot;</span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaUNC">           0 : function atomic_add!(arr::Matrix{T}, ix::Int, iy::Int, val::T, lock::ReentrantLock) where {T}</span></span>
+<span id="L491"><span class="lineNum">     491</span> <span class="tlaUNC">           0 :     Base.@lock lock begin</span></span>
+<span id="L492"><span class="lineNum">     492</span> <span class="tlaUNC">           0 :         arr[ix, iy] += val</span></span>
+<span id="L493"><span class="lineNum">     493</span>              :     end</span>
+<span id="L494"><span class="lineNum">     494</span>              : end</span>
         </pre>
               </td>
             </tr>

@@ -31,13 +31,13 @@
             <td class="headerValue">on branch main</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryLo">56.4&nbsp;%</td>
-            <td class="headerCovTableEntry">220</td>
+            <td class="headerCovTableEntryLo">56.1&nbsp;%</td>
+            <td class="headerCovTableEntry">221</td>
             <td class="headerCovTableEntry">124</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:56:25</td>
+            <td class="headerValue">2026-02-20 17:13:14</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -579,182 +579,185 @@
 <span id="L517"><span class="lineNum">     517</span>              :     dt_initial::T = one(T),</span>
 <span id="L518"><span class="lineNum">     518</span>              :     target_cfl::T = T(0.9),</span>
 <span id="L519"><span class="lineNum">     519</span>              :     dt_max::T = T(10),</span>
-<span id="L520"><span class="lineNum">     520</span>              :     callback::Union{Nothing, Function} = nothing</span>
-<span id="L521"><span class="lineNum">     521</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L520"><span class="lineNum">     520</span>              :     callback::CB = nothing</span>
+<span id="L521"><span class="lineNum">     521</span>              : ) where {T&lt;:AbstractFloat, CB}</span>
 <span id="L522"><span class="lineNum">     522</span> <span class="tlaUNC">           0 :     t = t_start</span></span>
 <span id="L523"><span class="lineNum">     523</span> <span class="tlaUNC">           0 :     dt = dt_initial</span></span>
 <span id="L524"><span class="lineNum">     524</span> <span class="tlaUNC">           0 :     iteration = 0</span></span>
 <span id="L525"><span class="lineNum">     525</span>              : </span>
-<span id="L526"><span class="lineNum">     526</span>              :     # Create weather interpolator</span>
-<span id="L527"><span class="lineNum">     527</span> <span class="tlaUNC">           0 :     weather_interp = create_constant_interpolator(weather, state.ncols, state.nrows, state.cellsize)</span></span>
-<span id="L528"><span class="lineNum">     528</span>              : </span>
-<span id="L529"><span class="lineNum">     529</span> <span class="tlaUNC">           0 :     while t &lt; t_stop</span></span>
-<span id="L530"><span class="lineNum">     530</span> <span class="tlaUNC">           0 :         iteration += 1</span></span>
-<span id="L531"><span class="lineNum">     531</span>              : </span>
-<span id="L532"><span class="lineNum">     532</span>              :         # Update suppression state</span>
-<span id="L533"><span class="lineNum">     533</span> <span class="tlaUNC">           0 :         update_suppression_state!(suppression, state, dt, t)</span></span>
-<span id="L534"><span class="lineNum">     534</span>              : </span>
-<span id="L535"><span class="lineNum">     535</span>              :         # Apply containment effects</span>
-<span id="L536"><span class="lineNum">     536</span> <span class="tlaUNC">           0 :         apply_containment!(state, suppression)</span></span>
-<span id="L537"><span class="lineNum">     537</span>              : </span>
-<span id="L538"><span class="lineNum">     538</span>              :         # Get active cells</span>
-<span id="L539"><span class="lineNum">     539</span> <span class="tlaUNC">           0 :         active_cells = get_active_cells(state.narrow_band)</span></span>
-<span id="L540"><span class="lineNum">     540</span>              : </span>
-<span id="L541"><span class="lineNum">     541</span> <span class="tlaUNC">           0 :         if isempty(active_cells)</span></span>
-<span id="L542"><span class="lineNum">     542</span> <span class="tlaUNC">           0 :             break</span></span>
-<span id="L543"><span class="lineNum">     543</span>              :         end</span>
-<span id="L544"><span class="lineNum">     544</span>              : </span>
-<span id="L545"><span class="lineNum">     545</span>              :         # Compute spread rates (similar to simulate_full!)</span>
-<span id="L546"><span class="lineNum">     546</span> <span class="tlaUNC">           0 :         for idx in active_cells</span></span>
-<span id="L547"><span class="lineNum">     547</span> <span class="tlaUNC">           0 :             px, py = idx[1], idx[2]</span></span>
-<span id="L548"><span class="lineNum">     548</span> <span class="tlaUNC">           0 :             ix, iy = padded_to_grid(state, px, py)</span></span>
+<span id="L526"><span class="lineNum">     526</span>              :     # Pre-allocate cells_to_tag buffer</span>
+<span id="L527"><span class="lineNum">     527</span> <span class="tlaUNC">           0 :     cells_to_tag = CartesianIndex{2}[]</span></span>
+<span id="L528"><span class="lineNum">     528</span> <span class="tlaUNC">           0 :     nx_pad = state.ncols + 2*state.padding</span></span>
+<span id="L529"><span class="lineNum">     529</span> <span class="tlaUNC">           0 :     ny_pad = state.nrows + 2*state.padding</span></span>
+<span id="L530"><span class="lineNum">     530</span>              : </span>
+<span id="L531"><span class="lineNum">     531</span>              :     # Create weather interpolator</span>
+<span id="L532"><span class="lineNum">     532</span> <span class="tlaUNC">           0 :     weather_interp = create_constant_interpolator(weather, state.ncols, state.nrows, state.cellsize)</span></span>
+<span id="L533"><span class="lineNum">     533</span>              : </span>
+<span id="L534"><span class="lineNum">     534</span> <span class="tlaUNC">           0 :     while t &lt; t_stop</span></span>
+<span id="L535"><span class="lineNum">     535</span> <span class="tlaUNC">           0 :         iteration += 1</span></span>
+<span id="L536"><span class="lineNum">     536</span>              : </span>
+<span id="L537"><span class="lineNum">     537</span>              :         # Update suppression state</span>
+<span id="L538"><span class="lineNum">     538</span> <span class="tlaUNC">           0 :         update_suppression_state!(suppression, state, dt, t)</span></span>
+<span id="L539"><span class="lineNum">     539</span>              : </span>
+<span id="L540"><span class="lineNum">     540</span>              :         # Apply containment effects</span>
+<span id="L541"><span class="lineNum">     541</span> <span class="tlaUNC">           0 :         apply_containment!(state, suppression)</span></span>
+<span id="L542"><span class="lineNum">     542</span>              : </span>
+<span id="L543"><span class="lineNum">     543</span>              :         # Get active cells</span>
+<span id="L544"><span class="lineNum">     544</span> <span class="tlaUNC">           0 :         active_cells = get_active_cells(state.narrow_band)</span></span>
+<span id="L545"><span class="lineNum">     545</span>              : </span>
+<span id="L546"><span class="lineNum">     546</span> <span class="tlaUNC">           0 :         if isempty(active_cells)</span></span>
+<span id="L547"><span class="lineNum">     547</span> <span class="tlaUNC">           0 :             break</span></span>
+<span id="L548"><span class="lineNum">     548</span>              :         end</span>
 <span id="L549"><span class="lineNum">     549</span>              : </span>
-<span id="L550"><span class="lineNum">     550</span> <span class="tlaUNC">           0 :             if ix &lt; 1 || ix &gt; state.ncols || iy &lt; 1 || iy &gt; state.nrows</span></span>
-<span id="L551"><span class="lineNum">     551</span> <span class="tlaUNC">           0 :                 continue</span></span>
-<span id="L552"><span class="lineNum">     552</span>              :             end</span>
-<span id="L553"><span class="lineNum">     553</span>              : </span>
-<span id="L554"><span class="lineNum">     554</span> <span class="tlaUNC">           0 :             if state.burned[ix, iy]</span></span>
-<span id="L555"><span class="lineNum">     555</span> <span class="tlaUNC">           0 :                 state.ux[px, py] = zero(T)</span></span>
-<span id="L556"><span class="lineNum">     556</span> <span class="tlaUNC">           0 :                 state.uy[px, py] = zero(T)</span></span>
-<span id="L557"><span class="lineNum">     557</span> <span class="tlaUNC">           0 :                 continue</span></span>
-<span id="L558"><span class="lineNum">     558</span>              :             end</span>
-<span id="L559"><span class="lineNum">     559</span>              : </span>
-<span id="L560"><span class="lineNum">     560</span> <span class="tlaUNC">           0 :             w = get_weather_at(weather_interp, ix, iy, t)</span></span>
-<span id="L561"><span class="lineNum">     561</span> <span class="tlaUNC">           0 :             live_moisture_class = clamp(round(Int, T(100) * w.mlh), 30, 120)</span></span>
-<span id="L562"><span class="lineNum">     562</span> <span class="tlaUNC">           0 :             fuel_id = fuel_ids[ix, iy]</span></span>
-<span id="L563"><span class="lineNum">     563</span> <span class="tlaUNC">           0 :             fm = get_fuel_model(fuel_table, fuel_id, live_moisture_class)</span></span>
+<span id="L550"><span class="lineNum">     550</span>              :         # Compute spread rates (similar to simulate_full!)</span>
+<span id="L551"><span class="lineNum">     551</span> <span class="tlaUNC">           0 :         for idx in active_cells</span></span>
+<span id="L552"><span class="lineNum">     552</span> <span class="tlaUNC">           0 :             px, py = idx[1], idx[2]</span></span>
+<span id="L553"><span class="lineNum">     553</span> <span class="tlaUNC">           0 :             ix, iy = padded_to_grid(state, px, py)</span></span>
+<span id="L554"><span class="lineNum">     554</span>              : </span>
+<span id="L555"><span class="lineNum">     555</span> <span class="tlaUNC">           0 :             if ix &lt; 1 || ix &gt; state.ncols || iy &lt; 1 || iy &gt; state.nrows</span></span>
+<span id="L556"><span class="lineNum">     556</span> <span class="tlaUNC">           0 :                 continue</span></span>
+<span id="L557"><span class="lineNum">     557</span>              :             end</span>
+<span id="L558"><span class="lineNum">     558</span>              : </span>
+<span id="L559"><span class="lineNum">     559</span> <span class="tlaUNC">           0 :             if state.burned[ix, iy]</span></span>
+<span id="L560"><span class="lineNum">     560</span> <span class="tlaUNC">           0 :                 state.ux[px, py] = zero(T)</span></span>
+<span id="L561"><span class="lineNum">     561</span> <span class="tlaUNC">           0 :                 state.uy[px, py] = zero(T)</span></span>
+<span id="L562"><span class="lineNum">     562</span> <span class="tlaUNC">           0 :                 continue</span></span>
+<span id="L563"><span class="lineNum">     563</span>              :             end</span>
 <span id="L564"><span class="lineNum">     564</span>              : </span>
-<span id="L565"><span class="lineNum">     565</span> <span class="tlaUNC">           0 :             if isnonburnable(fm)</span></span>
-<span id="L566"><span class="lineNum">     566</span> <span class="tlaUNC">           0 :                 state.ux[px, py] = zero(T)</span></span>
-<span id="L567"><span class="lineNum">     567</span> <span class="tlaUNC">           0 :                 state.uy[px, py] = zero(T)</span></span>
-<span id="L568"><span class="lineNum">     568</span> <span class="tlaUNC">           0 :                 continue</span></span>
-<span id="L569"><span class="lineNum">     569</span>              :             end</span>
-<span id="L570"><span class="lineNum">     570</span>              : </span>
-<span id="L571"><span class="lineNum">     571</span> <span class="tlaUNC">           0 :             waf = wind_adjustment_factor(fm.delta)</span></span>
-<span id="L572"><span class="lineNum">     572</span> <span class="tlaUNC">           0 :             ws20_ftpmin = w.ws * T(88)</span></span>
-<span id="L573"><span class="lineNum">     573</span> <span class="tlaUNC">           0 :             wsmf = ws20_ftpmin * waf</span></span>
-<span id="L574"><span class="lineNum">     574</span> <span class="tlaUNC">           0 :             tanslp2 = calculate_tanslp2(slope[ix, iy])</span></span>
+<span id="L565"><span class="lineNum">     565</span> <span class="tlaUNC">           0 :             w = get_weather_at(weather_interp, ix, iy, t)</span></span>
+<span id="L566"><span class="lineNum">     566</span> <span class="tlaUNC">           0 :             live_moisture_class = clamp(round(Int, T(100) * w.mlh), 30, 120)</span></span>
+<span id="L567"><span class="lineNum">     567</span> <span class="tlaUNC">           0 :             fuel_id = fuel_ids[ix, iy]</span></span>
+<span id="L568"><span class="lineNum">     568</span> <span class="tlaUNC">           0 :             fm = get_fuel_model(fuel_table, fuel_id, live_moisture_class)</span></span>
+<span id="L569"><span class="lineNum">     569</span>              : </span>
+<span id="L570"><span class="lineNum">     570</span> <span class="tlaUNC">           0 :             if isnonburnable(fm)</span></span>
+<span id="L571"><span class="lineNum">     571</span> <span class="tlaUNC">           0 :                 state.ux[px, py] = zero(T)</span></span>
+<span id="L572"><span class="lineNum">     572</span> <span class="tlaUNC">           0 :                 state.uy[px, py] = zero(T)</span></span>
+<span id="L573"><span class="lineNum">     573</span> <span class="tlaUNC">           0 :                 continue</span></span>
+<span id="L574"><span class="lineNum">     574</span>              :             end</span>
 <span id="L575"><span class="lineNum">     575</span>              : </span>
-<span id="L576"><span class="lineNum">     576</span> <span class="tlaUNC">           0 :             result = surface_spread_rate(</span></span>
-<span id="L577"><span class="lineNum">     577</span>              :                 fm,</span>
-<span id="L578"><span class="lineNum">     578</span>              :                 w.m1, w.m10, w.m100,</span>
-<span id="L579"><span class="lineNum">     579</span>              :                 w.mlh, w.mlw,</span>
-<span id="L580"><span class="lineNum">     580</span>              :                 wsmf, tanslp2</span>
-<span id="L581"><span class="lineNum">     581</span>              :             )</span>
-<span id="L582"><span class="lineNum">     582</span>              : </span>
-<span id="L583"><span class="lineNum">     583</span> <span class="tlaUNC">           0 :             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)</span></span>
-<span id="L584"><span class="lineNum">     584</span> <span class="tlaUNC">           0 :             effective_ws_mph = w.ws * waf / T(1.47)</span></span>
-<span id="L585"><span class="lineNum">     585</span> <span class="tlaUNC">           0 :             es = elliptical_spread(result.velocity, effective_ws_mph)</span></span>
-<span id="L586"><span class="lineNum">     586</span> <span class="tlaUNC">           0 :             wind_dir_rad = w.wd * pio180(T)</span></span>
+<span id="L576"><span class="lineNum">     576</span> <span class="tlaUNC">           0 :             waf = wind_adjustment_factor(fm.delta)</span></span>
+<span id="L577"><span class="lineNum">     577</span> <span class="tlaUNC">           0 :             ws20_ftpmin = w.ws * T(88)</span></span>
+<span id="L578"><span class="lineNum">     578</span> <span class="tlaUNC">           0 :             wsmf = ws20_ftpmin * waf</span></span>
+<span id="L579"><span class="lineNum">     579</span> <span class="tlaUNC">           0 :             tanslp2 = calculate_tanslp2(slope[ix, iy])</span></span>
+<span id="L580"><span class="lineNum">     580</span>              : </span>
+<span id="L581"><span class="lineNum">     581</span> <span class="tlaUNC">           0 :             result = surface_spread_rate(</span></span>
+<span id="L582"><span class="lineNum">     582</span>              :                 fm,</span>
+<span id="L583"><span class="lineNum">     583</span>              :                 w.m1, w.m10, w.m100,</span>
+<span id="L584"><span class="lineNum">     584</span>              :                 w.mlh, w.mlw,</span>
+<span id="L585"><span class="lineNum">     585</span>              :                 wsmf, tanslp2</span>
+<span id="L586"><span class="lineNum">     586</span>              :             )</span>
 <span id="L587"><span class="lineNum">     587</span>              : </span>
-<span id="L588"><span class="lineNum">     588</span> <span class="tlaUNC">           0 :             ux, uy = velocity_components(</span></span>
-<span id="L589"><span class="lineNum">     589</span>              :                 es.head, es.back,</span>
-<span id="L590"><span class="lineNum">     590</span>              :                 wind_dir_rad,</span>
-<span id="L591"><span class="lineNum">     591</span>              :                 normal_x, normal_y</span>
-<span id="L592"><span class="lineNum">     592</span>              :             )</span>
-<span id="L593"><span class="lineNum">     593</span>              : </span>
-<span id="L594"><span class="lineNum">     594</span>              :             # Apply containment reduction</span>
-<span id="L595"><span class="lineNum">     595</span> <span class="tlaUNC">           0 :             eff = suppression.containment_effectiveness[ix, iy]</span></span>
-<span id="L596"><span class="lineNum">     596</span> <span class="tlaUNC">           0 :             state.ux[px, py] = ux * eff</span></span>
-<span id="L597"><span class="lineNum">     597</span> <span class="tlaUNC">           0 :             state.uy[px, py] = uy * eff</span></span>
-<span id="L598"><span class="lineNum">     598</span> <span class="tlaUNC">           0 :         end</span></span>
-<span id="L599"><span class="lineNum">     599</span>              : </span>
-<span id="L600"><span class="lineNum">     600</span>              :         # CFL timestep</span>
-<span id="L601"><span class="lineNum">     601</span> <span class="tlaUNC">           0 :         if iteration &gt; 5</span></span>
-<span id="L602"><span class="lineNum">     602</span> <span class="tlaUNC">           0 :             dt = compute_cfl_timestep(</span></span>
-<span id="L603"><span class="lineNum">     603</span>              :                 state.ux, state.uy,</span>
-<span id="L604"><span class="lineNum">     604</span>              :                 active_cells,</span>
-<span id="L605"><span class="lineNum">     605</span>              :                 state.cellsize,</span>
-<span id="L606"><span class="lineNum">     606</span>              :                 dt;</span>
-<span id="L607"><span class="lineNum">     607</span>              :                 target_cfl = target_cfl,</span>
-<span id="L608"><span class="lineNum">     608</span>              :                 dt_max = dt_max</span>
-<span id="L609"><span class="lineNum">     609</span>              :             )</span>
-<span id="L610"><span class="lineNum">     610</span>              :         end</span>
-<span id="L611"><span class="lineNum">     611</span>              : </span>
-<span id="L612"><span class="lineNum">     612</span> <span class="tlaUNC">           0 :         if t + dt &gt; t_stop</span></span>
-<span id="L613"><span class="lineNum">     613</span> <span class="tlaUNC">           0 :             dt = t_stop - t</span></span>
-<span id="L614"><span class="lineNum">     614</span>              :         end</span>
-<span id="L615"><span class="lineNum">     615</span>              : </span>
-<span id="L616"><span class="lineNum">     616</span>              :         # RK2 integration</span>
-<span id="L617"><span class="lineNum">     617</span> <span class="tlaUNC">           0 :         for idx in active_cells</span></span>
-<span id="L618"><span class="lineNum">     618</span> <span class="tlaUNC">           0 :             state.phi_old[idx] = state.phi[idx]</span></span>
-<span id="L619"><span class="lineNum">     619</span> <span class="tlaUNC">           0 :         end</span></span>
+<span id="L588"><span class="lineNum">     588</span> <span class="tlaUNC">           0 :             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)</span></span>
+<span id="L589"><span class="lineNum">     589</span> <span class="tlaUNC">           0 :             effective_ws_mph = w.ws * waf / T(1.47)</span></span>
+<span id="L590"><span class="lineNum">     590</span> <span class="tlaUNC">           0 :             es = elliptical_spread(result.velocity, effective_ws_mph)</span></span>
+<span id="L591"><span class="lineNum">     591</span> <span class="tlaUNC">           0 :             wind_dir_rad = w.wd * pio180(T)</span></span>
+<span id="L592"><span class="lineNum">     592</span>              : </span>
+<span id="L593"><span class="lineNum">     593</span> <span class="tlaUNC">           0 :             ux, uy = velocity_components(</span></span>
+<span id="L594"><span class="lineNum">     594</span>              :                 es.head, es.back,</span>
+<span id="L595"><span class="lineNum">     595</span>              :                 wind_dir_rad,</span>
+<span id="L596"><span class="lineNum">     596</span>              :                 normal_x, normal_y</span>
+<span id="L597"><span class="lineNum">     597</span>              :             )</span>
+<span id="L598"><span class="lineNum">     598</span>              : </span>
+<span id="L599"><span class="lineNum">     599</span>              :             # Apply containment reduction</span>
+<span id="L600"><span class="lineNum">     600</span> <span class="tlaUNC">           0 :             eff = suppression.containment_effectiveness[ix, iy]</span></span>
+<span id="L601"><span class="lineNum">     601</span> <span class="tlaUNC">           0 :             state.ux[px, py] = ux * eff</span></span>
+<span id="L602"><span class="lineNum">     602</span> <span class="tlaUNC">           0 :             state.uy[px, py] = uy * eff</span></span>
+<span id="L603"><span class="lineNum">     603</span> <span class="tlaUNC">           0 :         end</span></span>
+<span id="L604"><span class="lineNum">     604</span>              : </span>
+<span id="L605"><span class="lineNum">     605</span>              :         # CFL timestep</span>
+<span id="L606"><span class="lineNum">     606</span> <span class="tlaUNC">           0 :         if iteration &gt; 5</span></span>
+<span id="L607"><span class="lineNum">     607</span> <span class="tlaUNC">           0 :             dt = compute_cfl_timestep(</span></span>
+<span id="L608"><span class="lineNum">     608</span>              :                 state.ux, state.uy,</span>
+<span id="L609"><span class="lineNum">     609</span>              :                 active_cells,</span>
+<span id="L610"><span class="lineNum">     610</span>              :                 state.cellsize,</span>
+<span id="L611"><span class="lineNum">     611</span>              :                 dt;</span>
+<span id="L612"><span class="lineNum">     612</span>              :                 target_cfl = target_cfl,</span>
+<span id="L613"><span class="lineNum">     613</span>              :                 dt_max = dt_max</span>
+<span id="L614"><span class="lineNum">     614</span>              :             )</span>
+<span id="L615"><span class="lineNum">     615</span>              :         end</span>
+<span id="L616"><span class="lineNum">     616</span>              : </span>
+<span id="L617"><span class="lineNum">     617</span> <span class="tlaUNC">           0 :         if t + dt &gt; t_stop</span></span>
+<span id="L618"><span class="lineNum">     618</span> <span class="tlaUNC">           0 :             dt = t_stop - t</span></span>
+<span id="L619"><span class="lineNum">     619</span>              :         end</span>
 <span id="L620"><span class="lineNum">     620</span>              : </span>
-<span id="L621"><span class="lineNum">     621</span> <span class="tlaUNC">           0 :         rk2_step!(state.phi, state.phi_old, state.ux, state.uy, active_cells, dt, state.cellsize, 1)</span></span>
-<span id="L622"><span class="lineNum">     622</span> <span class="tlaUNC">           0 :         rk2_step!(state.phi, state.phi_old, state.ux, state.uy, active_cells, dt, state.cellsize, 2)</span></span>
-<span id="L623"><span class="lineNum">     623</span>              : </span>
-<span id="L624"><span class="lineNum">     624</span>              :         # Update burned cells</span>
-<span id="L625"><span class="lineNum">     625</span> <span class="tlaUNC">           0 :         cells_to_tag = CartesianIndex{2}[]</span></span>
-<span id="L626"><span class="lineNum">     626</span> <span class="tlaUNC">           0 :         for idx in active_cells</span></span>
-<span id="L627"><span class="lineNum">     627</span> <span class="tlaUNC">           0 :             px, py = idx[1], idx[2]</span></span>
-<span id="L628"><span class="lineNum">     628</span> <span class="tlaUNC">           0 :             ix, iy = padded_to_grid(state, px, py)</span></span>
-<span id="L629"><span class="lineNum">     629</span>              : </span>
-<span id="L630"><span class="lineNum">     630</span> <span class="tlaUNC">           0 :             if ix &lt; 1 || ix &gt; state.ncols || iy &lt; 1 || iy &gt; state.nrows</span></span>
-<span id="L631"><span class="lineNum">     631</span> <span class="tlaUNC">           0 :                 continue</span></span>
-<span id="L632"><span class="lineNum">     632</span>              :             end</span>
-<span id="L633"><span class="lineNum">     633</span>              : </span>
-<span id="L634"><span class="lineNum">     634</span> <span class="tlaUNC">           0 :             if state.phi[px, py] &lt;= zero(T) &amp;&amp; !state.burned[ix, iy]</span></span>
-<span id="L635"><span class="lineNum">     635</span> <span class="tlaUNC">           0 :                 state.burned[ix, iy] = true</span></span>
-<span id="L636"><span class="lineNum">     636</span> <span class="tlaUNC">           0 :                 state.time_of_arrival[ix, iy] = t + dt</span></span>
-<span id="L637"><span class="lineNum">     637</span> <span class="tlaUNC">           0 :                 push!(cells_to_tag, idx)</span></span>
-<span id="L638"><span class="lineNum">     638</span>              :             end</span>
-<span id="L639"><span class="lineNum">     639</span> <span class="tlaUNC">           0 :         end</span></span>
-<span id="L640"><span class="lineNum">     640</span>              : </span>
-<span id="L641"><span class="lineNum">     641</span>              :         # Update narrow band</span>
-<span id="L642"><span class="lineNum">     642</span> <span class="tlaUNC">           0 :         nx_pad = state.ncols + 2*state.padding</span></span>
-<span id="L643"><span class="lineNum">     643</span> <span class="tlaUNC">           0 :         ny_pad = state.nrows + 2*state.padding</span></span>
-<span id="L644"><span class="lineNum">     644</span> <span class="tlaUNC">           0 :         for idx in cells_to_tag</span></span>
-<span id="L645"><span class="lineNum">     645</span> <span class="tlaUNC">           0 :             tag_band!(state.narrow_band, idx, nx_pad, ny_pad, state.padding)</span></span>
-<span id="L646"><span class="lineNum">     646</span> <span class="tlaUNC">           0 :         end</span></span>
-<span id="L647"><span class="lineNum">     647</span> <span class="tlaUNC">           0 :         untag_isolated!(state.narrow_band, state.phi, state.burned, state.padding)</span></span>
-<span id="L648"><span class="lineNum">     648</span>              : </span>
-<span id="L649"><span class="lineNum">     649</span> <span class="tlaUNC">           0 :         t += dt</span></span>
-<span id="L650"><span class="lineNum">     650</span>              : </span>
-<span id="L651"><span class="lineNum">     651</span> <span class="tlaUNC">           0 :         if callback !== nothing</span></span>
-<span id="L652"><span class="lineNum">     652</span> <span class="tlaUNC">           0 :             callback(state, t, dt, iteration)</span></span>
-<span id="L653"><span class="lineNum">     653</span>              :         end</span>
-<span id="L654"><span class="lineNum">     654</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L655"><span class="lineNum">     655</span>              : </span>
-<span id="L656"><span class="lineNum">     656</span> <span class="tlaUNC">           0 :     return nothing</span></span>
-<span id="L657"><span class="lineNum">     657</span>              : end</span>
+<span id="L621"><span class="lineNum">     621</span>              :         # RK2 integration</span>
+<span id="L622"><span class="lineNum">     622</span> <span class="tlaUNC">           0 :         for idx in active_cells</span></span>
+<span id="L623"><span class="lineNum">     623</span> <span class="tlaUNC">           0 :             state.phi_old[idx] = state.phi[idx]</span></span>
+<span id="L624"><span class="lineNum">     624</span> <span class="tlaUNC">           0 :         end</span></span>
+<span id="L625"><span class="lineNum">     625</span>              : </span>
+<span id="L626"><span class="lineNum">     626</span> <span class="tlaUNC">           0 :         rk2_step!(state.phi, state.phi_old, state.ux, state.uy, active_cells, dt, state.cellsize, 1)</span></span>
+<span id="L627"><span class="lineNum">     627</span> <span class="tlaUNC">           0 :         rk2_step!(state.phi, state.phi_old, state.ux, state.uy, active_cells, dt, state.cellsize, 2)</span></span>
+<span id="L628"><span class="lineNum">     628</span>              : </span>
+<span id="L629"><span class="lineNum">     629</span>              :         # Update burned cells</span>
+<span id="L630"><span class="lineNum">     630</span> <span class="tlaUNC">           0 :         empty!(cells_to_tag)</span></span>
+<span id="L631"><span class="lineNum">     631</span> <span class="tlaUNC">           0 :         for idx in active_cells</span></span>
+<span id="L632"><span class="lineNum">     632</span> <span class="tlaUNC">           0 :             px, py = idx[1], idx[2]</span></span>
+<span id="L633"><span class="lineNum">     633</span> <span class="tlaUNC">           0 :             ix, iy = padded_to_grid(state, px, py)</span></span>
+<span id="L634"><span class="lineNum">     634</span>              : </span>
+<span id="L635"><span class="lineNum">     635</span> <span class="tlaUNC">           0 :             if ix &lt; 1 || ix &gt; state.ncols || iy &lt; 1 || iy &gt; state.nrows</span></span>
+<span id="L636"><span class="lineNum">     636</span> <span class="tlaUNC">           0 :                 continue</span></span>
+<span id="L637"><span class="lineNum">     637</span>              :             end</span>
+<span id="L638"><span class="lineNum">     638</span>              : </span>
+<span id="L639"><span class="lineNum">     639</span> <span class="tlaUNC">           0 :             if state.phi[px, py] &lt;= zero(T) &amp;&amp; !state.burned[ix, iy]</span></span>
+<span id="L640"><span class="lineNum">     640</span> <span class="tlaUNC">           0 :                 state.burned[ix, iy] = true</span></span>
+<span id="L641"><span class="lineNum">     641</span> <span class="tlaUNC">           0 :                 state.time_of_arrival[ix, iy] = t + dt</span></span>
+<span id="L642"><span class="lineNum">     642</span> <span class="tlaUNC">           0 :                 push!(cells_to_tag, idx)</span></span>
+<span id="L643"><span class="lineNum">     643</span>              :             end</span>
+<span id="L644"><span class="lineNum">     644</span> <span class="tlaUNC">           0 :         end</span></span>
+<span id="L645"><span class="lineNum">     645</span>              : </span>
+<span id="L646"><span class="lineNum">     646</span>              :         # Update narrow band</span>
+<span id="L647"><span class="lineNum">     647</span> <span class="tlaUNC">           0 :         for idx in cells_to_tag</span></span>
+<span id="L648"><span class="lineNum">     648</span> <span class="tlaUNC">           0 :             tag_band!(state.narrow_band, idx, nx_pad, ny_pad, state.padding)</span></span>
+<span id="L649"><span class="lineNum">     649</span> <span class="tlaUNC">           0 :         end</span></span>
+<span id="L650"><span class="lineNum">     650</span> <span class="tlaUNC">           0 :         untag_isolated!(state.narrow_band, state.phi, state.burned, state.padding)</span></span>
+<span id="L651"><span class="lineNum">     651</span>              : </span>
+<span id="L652"><span class="lineNum">     652</span> <span class="tlaUNC">           0 :         t += dt</span></span>
+<span id="L653"><span class="lineNum">     653</span>              : </span>
+<span id="L654"><span class="lineNum">     654</span> <span class="tlaUNC">           0 :         if callback !== nothing</span></span>
+<span id="L655"><span class="lineNum">     655</span> <span class="tlaUNC">           0 :             callback(state, t, dt, iteration)</span></span>
+<span id="L656"><span class="lineNum">     656</span>              :         end</span>
+<span id="L657"><span class="lineNum">     657</span> <span class="tlaUNC">           0 :     end</span></span>
 <span id="L658"><span class="lineNum">     658</span>              : </span>
-<span id="L659"><span class="lineNum">     659</span>              : </span>
-<span id="L660"><span class="lineNum">     660</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L661"><span class="lineNum">     661</span>              : #                     Suppression Statistics</span>
-<span id="L662"><span class="lineNum">     662</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L663"><span class="lineNum">     663</span>              : </span>
-<span id="L664"><span class="lineNum">     664</span>              : &quot;&quot;&quot;</span>
-<span id="L665"><span class="lineNum">     665</span>              :     get_suppression_statistics(suppression::SuppressionState{T}) -&gt; NamedTuple</span>
+<span id="L659"><span class="lineNum">     659</span> <span class="tlaUNC">           0 :     return nothing</span></span>
+<span id="L660"><span class="lineNum">     660</span>              : end</span>
+<span id="L661"><span class="lineNum">     661</span>              : </span>
+<span id="L662"><span class="lineNum">     662</span>              : </span>
+<span id="L663"><span class="lineNum">     663</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L664"><span class="lineNum">     664</span>              : #                     Suppression Statistics</span>
+<span id="L665"><span class="lineNum">     665</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L666"><span class="lineNum">     666</span>              : </span>
-<span id="L667"><span class="lineNum">     667</span>              : Get summary statistics for suppression activities.</span>
-<span id="L668"><span class="lineNum">     668</span>              : &quot;&quot;&quot;</span>
-<span id="L669"><span class="lineNum">     669</span> <span class="tlaGNC tlaBgGNC">           1 : function get_suppression_statistics(suppression::SuppressionState{T}) where {T&lt;:AbstractFloat}</span></span>
-<span id="L670"><span class="lineNum">     670</span> <span class="tlaGNC">           1 :     n_resources = length(suppression.resources)</span></span>
-<span id="L671"><span class="lineNum">     671</span> <span class="tlaGNC">           5 :     n_available = count(r -&gt; r.status == :available, suppression.resources)</span></span>
-<span id="L672"><span class="lineNum">     672</span> <span class="tlaGNC">           5 :     n_deployed = count(r -&gt; r.status == :deployed, suppression.resources)</span></span>
-<span id="L673"><span class="lineNum">     673</span> <span class="tlaGNC">           5 :     n_resting = count(r -&gt; r.status == :resting, suppression.resources)</span></span>
-<span id="L674"><span class="lineNum">     674</span>              : </span>
-<span id="L675"><span class="lineNum">     675</span> <span class="tlaGNC">           1 :     n_lines = length(suppression.containment_lines)</span></span>
-<span id="L676"><span class="lineNum">     676</span> <span class="tlaGNC">          40 :     n_contained_cells = count(suppression.contained_cells)</span></span>
+<span id="L667"><span class="lineNum">     667</span>              : &quot;&quot;&quot;</span>
+<span id="L668"><span class="lineNum">     668</span>              :     get_suppression_statistics(suppression::SuppressionState{T}) -&gt; NamedTuple</span>
+<span id="L669"><span class="lineNum">     669</span>              : </span>
+<span id="L670"><span class="lineNum">     670</span>              : Get summary statistics for suppression activities.</span>
+<span id="L671"><span class="lineNum">     671</span>              : &quot;&quot;&quot;</span>
+<span id="L672"><span class="lineNum">     672</span> <span class="tlaGNC tlaBgGNC">           1 : function get_suppression_statistics(suppression::SuppressionState{T}) where {T&lt;:AbstractFloat}</span></span>
+<span id="L673"><span class="lineNum">     673</span> <span class="tlaGNC">           1 :     n_resources = length(suppression.resources)</span></span>
+<span id="L674"><span class="lineNum">     674</span> <span class="tlaGNC">           5 :     n_available = count(r -&gt; r.status == :available, suppression.resources)</span></span>
+<span id="L675"><span class="lineNum">     675</span> <span class="tlaGNC">           5 :     n_deployed = count(r -&gt; r.status == :deployed, suppression.resources)</span></span>
+<span id="L676"><span class="lineNum">     676</span> <span class="tlaGNC">           5 :     n_resting = count(r -&gt; r.status == :resting, suppression.resources)</span></span>
 <span id="L677"><span class="lineNum">     677</span>              : </span>
-<span id="L678"><span class="lineNum">     678</span> <span class="tlaGNC">           1 :     mean_fatigue = if n_resources &gt; 0</span></span>
-<span id="L679"><span class="lineNum">     679</span> <span class="tlaGNC">           2 :         sum(r.fatigue for r in suppression.resources) / T(n_resources)</span></span>
-<span id="L680"><span class="lineNum">     680</span>              :     else</span>
-<span id="L681"><span class="lineNum">     681</span> <span class="tlaGNC">           1 :         zero(T)</span></span>
-<span id="L682"><span class="lineNum">     682</span>              :     end</span>
-<span id="L683"><span class="lineNum">     683</span>              : </span>
-<span id="L684"><span class="lineNum">     684</span> <span class="tlaGNC">           1 :     return (</span></span>
-<span id="L685"><span class="lineNum">     685</span>              :         total_resources = n_resources,</span>
-<span id="L686"><span class="lineNum">     686</span>              :         available = n_available,</span>
-<span id="L687"><span class="lineNum">     687</span>              :         deployed = n_deployed,</span>
-<span id="L688"><span class="lineNum">     688</span>              :         resting = n_resting,</span>
-<span id="L689"><span class="lineNum">     689</span>              :         containment_lines = n_lines,</span>
-<span id="L690"><span class="lineNum">     690</span>              :         contained_cells = n_contained_cells,</span>
-<span id="L691"><span class="lineNum">     691</span>              :         total_line_feet = suppression.total_line_constructed,</span>
-<span id="L692"><span class="lineNum">     692</span>              :         total_line_miles = suppression.total_line_constructed / T(5280),</span>
-<span id="L693"><span class="lineNum">     693</span>              :         mean_fatigue = mean_fatigue</span>
-<span id="L694"><span class="lineNum">     694</span>              :     )</span>
-<span id="L695"><span class="lineNum">     695</span>              : end</span>
+<span id="L678"><span class="lineNum">     678</span> <span class="tlaGNC">           1 :     n_lines = length(suppression.containment_lines)</span></span>
+<span id="L679"><span class="lineNum">     679</span> <span class="tlaGNC">          40 :     n_contained_cells = count(suppression.contained_cells)</span></span>
+<span id="L680"><span class="lineNum">     680</span>              : </span>
+<span id="L681"><span class="lineNum">     681</span> <span class="tlaGNC">           1 :     mean_fatigue = if n_resources &gt; 0</span></span>
+<span id="L682"><span class="lineNum">     682</span> <span class="tlaGNC">           2 :         sum(r.fatigue for r in suppression.resources) / T(n_resources)</span></span>
+<span id="L683"><span class="lineNum">     683</span>              :     else</span>
+<span id="L684"><span class="lineNum">     684</span> <span class="tlaGNC">           1 :         zero(T)</span></span>
+<span id="L685"><span class="lineNum">     685</span>              :     end</span>
+<span id="L686"><span class="lineNum">     686</span>              : </span>
+<span id="L687"><span class="lineNum">     687</span> <span class="tlaGNC">           1 :     return (</span></span>
+<span id="L688"><span class="lineNum">     688</span>              :         total_resources = n_resources,</span>
+<span id="L689"><span class="lineNum">     689</span>              :         available = n_available,</span>
+<span id="L690"><span class="lineNum">     690</span>              :         deployed = n_deployed,</span>
+<span id="L691"><span class="lineNum">     691</span>              :         resting = n_resting,</span>
+<span id="L692"><span class="lineNum">     692</span>              :         containment_lines = n_lines,</span>
+<span id="L693"><span class="lineNum">     693</span>              :         contained_cells = n_contained_cells,</span>
+<span id="L694"><span class="lineNum">     694</span>              :         total_line_feet = suppression.total_line_constructed,</span>
+<span id="L695"><span class="lineNum">     695</span>              :         total_line_miles = suppression.total_line_constructed / T(5280),</span>
+<span id="L696"><span class="lineNum">     696</span>              :         mean_fatigue = mean_fatigue</span>
+<span id="L697"><span class="lineNum">     697</span>              :     )</span>
+<span id="L698"><span class="lineNum">     698</span>              : end</span>
         </pre>
               </td>
             </tr>

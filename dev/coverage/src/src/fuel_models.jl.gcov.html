@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:56:25</td>
+            <td class="headerValue">2026-02-20 17:13:14</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -434,8 +434,8 @@
 <span id="L372"><span class="lineNum">     372</span>              : Get the fuel model for the given fuel ID and live moisture class (30-120).</span>
 <span id="L373"><span class="lineNum">     373</span>              : &quot;&quot;&quot;</span>
 <span id="L374"><span class="lineNum">     374</span> <span class="tlaGNC">         119 : function get_fuel_model(table::FuelModelTable, fuel_id::Int, live_moisture_class::Int)</span></span>
-<span id="L375"><span class="lineNum">     375</span> <span class="tlaGNC">      680660 :     ilh = clamp(live_moisture_class, 30, 120)</span></span>
-<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC">      340330 :     return table.models[(fuel_id, ilh)]</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaGNC">      574960 :     ilh = clamp(live_moisture_class, 30, 120)</span></span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC">      287480 :     return table.models[(fuel_id, ilh)]</span></span>
 <span id="L377"><span class="lineNum">     377</span>              : end</span>
 <span id="L378"><span class="lineNum">     378</span>              : </span>
 <span id="L379"><span class="lineNum">     379</span>              : </span>
@@ -447,7 +447,7 @@
 <span id="L385"><span class="lineNum">     385</span>              : </span>
 <span id="L386"><span class="lineNum">     386</span>              : Check if a fuel model is non-burnable (fuel model 256 or similar).</span>
 <span id="L387"><span class="lineNum">     387</span>              : &quot;&quot;&quot;</span>
-<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">     1341986 : isnonburnable(fm::FuelModel{T}) where {T} = fm.id == FUEL_MODEL_NONBURNABLE || fm.W0[1] &lt; T(1e-6)</span></span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">     1349868 : isnonburnable(fm::FuelModel{T}) where {T} = fm.id == FUEL_MODEL_NONBURNABLE || fm.W0[1] &lt; T(1e-6)</span></span>
 <span id="L389"><span class="lineNum">     389</span>              : </span>
 <span id="L390"><span class="lineNum">     390</span>              : </span>
 <span id="L391"><span class="lineNum">     391</span>              : #-----------------------------------------------------------------------------#</span>
