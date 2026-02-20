@@ -31,13 +31,13 @@
             <td class="headerValue">on branch main</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryHi">90.4&nbsp;%</td>
+            <td class="headerCovTableEntryHi">93.6&nbsp;%</td>
             <td class="headerCovTableEntry">187</td>
-            <td class="headerCovTableEntry">169</td>
+            <td class="headerCovTableEntry">175</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:05:07</td>
+            <td class="headerValue">2026-02-20 13:56:25</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -397,12 +397,12 @@
 <span id="L335"><span class="lineNum">     335</span>              : (where φ changes sign).</span>
 <span id="L336"><span class="lineNum">     336</span>              : &quot;&quot;&quot;</span>
 <span id="L337"><span class="lineNum">     337</span>              : mutable struct NarrowBand</span>
-<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">          27 :     active::Set{CartesianIndex{2}}      # Currently active cells</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">          33 :     active::Set{CartesianIndex{2}}      # Currently active cells</span></span>
 <span id="L339"><span class="lineNum">     339</span>              :     ever_tagged::Set{CartesianIndex{2}} # Cells that have ever been in the band</span>
 <span id="L340"><span class="lineNum">     340</span>              :     band_thickness::Int                  # Half-width of the narrow band</span>
 <span id="L341"><span class="lineNum">     341</span>              : end</span>
 <span id="L342"><span class="lineNum">     342</span>              : </span>
-<span id="L343"><span class="lineNum">     343</span> <span class="tlaGNC">          27 : NarrowBand(thickness::Int=5) = NarrowBand(Set{CartesianIndex{2}}(), Set{CartesianIndex{2}}(), thickness)</span></span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaGNC">          33 : NarrowBand(thickness::Int=5) = NarrowBand(Set{CartesianIndex{2}}(), Set{CartesianIndex{2}}(), thickness)</span></span>
 <span id="L344"><span class="lineNum">     344</span>              : </span>
 <span id="L345"><span class="lineNum">     345</span>              : </span>
 <span id="L346"><span class="lineNum">     346</span>              : &quot;&quot;&quot;</span>
@@ -410,25 +410,25 @@
 <span id="L348"><span class="lineNum">     348</span>              : </span>
 <span id="L349"><span class="lineNum">     349</span>              : Add cells within band_thickness of center to the active set.</span>
 <span id="L350"><span class="lineNum">     350</span>              : &quot;&quot;&quot;</span>
-<span id="L351"><span class="lineNum">     351</span> <span class="tlaGNC">        7074 : function tag_band!(nb::NarrowBand, center::CartesianIndex{2}, nx::Int, ny::Int, padding::Int=2)</span></span>
-<span id="L352"><span class="lineNum">     352</span> <span class="tlaGNC">        7074 :     bt = nb.band_thickness</span></span>
-<span id="L353"><span class="lineNum">     353</span> <span class="tlaGNC">        7074 :     ix, iy = center[1], center[2]</span></span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaGNC">        8966 : function tag_band!(nb::NarrowBand, center::CartesianIndex{2}, nx::Int, ny::Int, padding::Int=2)</span></span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaGNC">        8966 :     bt = nb.band_thickness</span></span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaGNC">        8966 :     ix, iy = center[1], center[2]</span></span>
 <span id="L354"><span class="lineNum">     354</span>              : </span>
 <span id="L355"><span class="lineNum">     355</span>              :     # Define bounds with padding consideration</span>
-<span id="L356"><span class="lineNum">     356</span> <span class="tlaGNC">        7074 :     ixstart = max(ix - bt, 1 + padding)</span></span>
-<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">        7074 :     ixstop = min(ix + bt, nx - padding)</span></span>
-<span id="L358"><span class="lineNum">     358</span> <span class="tlaGNC">        7074 :     iystart = max(iy - bt, 1 + padding)</span></span>
-<span id="L359"><span class="lineNum">     359</span> <span class="tlaGNC">        7074 :     iystop = min(iy + bt, ny - padding)</span></span>
+<span id="L356"><span class="lineNum">     356</span> <span class="tlaGNC">        8966 :     ixstart = max(ix - bt, 1 + padding)</span></span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">        8966 :     ixstop = min(ix + bt, nx - padding)</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaGNC">        8966 :     iystart = max(iy - bt, 1 + padding)</span></span>
+<span id="L359"><span class="lineNum">     359</span> <span class="tlaGNC">        8966 :     iystop = min(iy + bt, ny - padding)</span></span>
 <span id="L360"><span class="lineNum">     360</span>              : </span>
-<span id="L361"><span class="lineNum">     361</span> <span class="tlaGNC">        7074 :     for jx in ixstart:ixstop</span></span>
-<span id="L362"><span class="lineNum">     362</span> <span class="tlaGNC">       73577 :         for jy in iystart:iystop</span></span>
-<span id="L363"><span class="lineNum">     363</span> <span class="tlaGNC">      781203 :             idx = CartesianIndex(jx, jy)</span></span>
-<span id="L364"><span class="lineNum">     364</span> <span class="tlaGNC">      781203 :             push!(nb.active, idx)</span></span>
-<span id="L365"><span class="lineNum">     365</span> <span class="tlaGNC">      781203 :             push!(nb.ever_tagged, idx)</span></span>
-<span id="L366"><span class="lineNum">     366</span> <span class="tlaGNC">     1488829 :         end</span></span>
-<span id="L367"><span class="lineNum">     367</span> <span class="tlaGNC">      140080 :     end</span></span>
+<span id="L361"><span class="lineNum">     361</span> <span class="tlaGNC">        8966 :     for jx in ixstart:ixstop</span></span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaGNC">       93869 :         for jy in iystart:iystop</span></span>
+<span id="L363"><span class="lineNum">     363</span> <span class="tlaGNC">      997052 :             idx = CartesianIndex(jx, jy)</span></span>
+<span id="L364"><span class="lineNum">     364</span> <span class="tlaGNC">      997052 :             push!(nb.active, idx)</span></span>
+<span id="L365"><span class="lineNum">     365</span> <span class="tlaGNC">      997052 :             push!(nb.ever_tagged, idx)</span></span>
+<span id="L366"><span class="lineNum">     366</span> <span class="tlaGNC">     1900235 :         end</span></span>
+<span id="L367"><span class="lineNum">     367</span> <span class="tlaGNC">      178772 :     end</span></span>
 <span id="L368"><span class="lineNum">     368</span>              : </span>
-<span id="L369"><span class="lineNum">     369</span> <span class="tlaGNC">        7074 :     return nothing</span></span>
+<span id="L369"><span class="lineNum">     369</span> <span class="tlaGNC">        8966 :     return nothing</span></span>
 <span id="L370"><span class="lineNum">     370</span>              : end</span>
 <span id="L371"><span class="lineNum">     371</span>              : </span>
 <span id="L372"><span class="lineNum">     372</span>              : </span>
@@ -447,53 +447,53 @@
 <span id="L385"><span class="lineNum">     385</span>              : Note: The active set uses padded coordinates if padding &gt; 0, but the burned</span>
 <span id="L386"><span class="lineNum">     386</span>              : matrix uses grid coordinates. This function handles the conversion.</span>
 <span id="L387"><span class="lineNum">     387</span>              : &quot;&quot;&quot;</span>
-<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">         772 : function untag_isolated!(</span></span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">         932 : function untag_isolated!(</span></span>
 <span id="L389"><span class="lineNum">     389</span>              :     nb::NarrowBand,</span>
 <span id="L390"><span class="lineNum">     390</span>              :     phi::AbstractMatrix{T},</span>
 <span id="L391"><span class="lineNum">     391</span>              :     burned::Union{AbstractMatrix{Bool}, BitMatrix},</span>
 <span id="L392"><span class="lineNum">     392</span>              :     padding::Int = 0</span>
 <span id="L393"><span class="lineNum">     393</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L394"><span class="lineNum">     394</span> <span class="tlaGNC">         772 :     to_remove = CartesianIndex{2}[]</span></span>
-<span id="L395"><span class="lineNum">     395</span> <span class="tlaGNC">         772 :     ncols, nrows = size(burned)</span></span>
+<span id="L394"><span class="lineNum">     394</span> <span class="tlaGNC">         932 :     to_remove = CartesianIndex{2}[]</span></span>
+<span id="L395"><span class="lineNum">     395</span> <span class="tlaGNC">         932 :     ncols, nrows = size(burned)</span></span>
 <span id="L396"><span class="lineNum">     396</span>              : </span>
-<span id="L397"><span class="lineNum">     397</span> <span class="tlaGNC">        1544 :     for idx in nb.active</span></span>
-<span id="L398"><span class="lineNum">     398</span> <span class="tlaGNC">      511401 :         px, py = idx[1], idx[2]</span></span>
+<span id="L397"><span class="lineNum">     397</span> <span class="tlaGNC">        1864 :     for idx in nb.active</span></span>
+<span id="L398"><span class="lineNum">     398</span> <span class="tlaGNC">      606013 :         px, py = idx[1], idx[2]</span></span>
 <span id="L399"><span class="lineNum">     399</span>              : </span>
 <span id="L400"><span class="lineNum">     400</span>              :         # Convert to grid coordinates</span>
-<span id="L401"><span class="lineNum">     401</span> <span class="tlaGNC">      511401 :         ix, iy = px - padding, py - padding</span></span>
+<span id="L401"><span class="lineNum">     401</span> <span class="tlaGNC">      606013 :         ix, iy = px - padding, py - padding</span></span>
 <span id="L402"><span class="lineNum">     402</span>              : </span>
 <span id="L403"><span class="lineNum">     403</span>              :         # Skip if out of bounds for the burned grid</span>
-<span id="L404"><span class="lineNum">     404</span> <span class="tlaGNC">     1022802 :         if ix &lt; 1 || ix &gt; ncols || iy &lt; 1 || iy &gt; nrows</span></span>
+<span id="L404"><span class="lineNum">     404</span> <span class="tlaGNC">     1212026 :         if ix &lt; 1 || ix &gt; ncols || iy &lt; 1 || iy &gt; nrows</span></span>
 <span id="L405"><span class="lineNum">     405</span> <span class="tlaUNC tlaBgUNC">           0 :             continue</span></span>
 <span id="L406"><span class="lineNum">     406</span>              :         end</span>
 <span id="L407"><span class="lineNum">     407</span>              : </span>
 <span id="L408"><span class="lineNum">     408</span>              :         # Skip if not burned (use phi to check, or burned grid)</span>
-<span id="L409"><span class="lineNum">     409</span> <span class="tlaGNC tlaBgGNC">      511401 :         if !burned[ix, iy]</span></span>
-<span id="L410"><span class="lineNum">     410</span> <span class="tlaGNC">      328504 :             continue</span></span>
+<span id="L409"><span class="lineNum">     409</span> <span class="tlaGNC tlaBgGNC">      606013 :         if !burned[ix, iy]</span></span>
+<span id="L410"><span class="lineNum">     410</span> <span class="tlaGNC">      398337 :             continue</span></span>
 <span id="L411"><span class="lineNum">     411</span>              :         end</span>
 <span id="L412"><span class="lineNum">     412</span>              : </span>
 <span id="L413"><span class="lineNum">     413</span>              :         # Check if any neighbor is not burned (in grid coordinates)</span>
-<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">      182897 :         has_unburned_neighbor = false</span></span>
-<span id="L415"><span class="lineNum">     415</span> <span class="tlaGNC">      182897 :         for (dx, dy) in ((1,0), (-1,0), (0,1), (0,-1))</span></span>
-<span id="L416"><span class="lineNum">     416</span> <span class="tlaGNC">      536752 :             nx, ny = ix + dx, iy + dy</span></span>
-<span id="L417"><span class="lineNum">     417</span> <span class="tlaGNC">      536752 :             if 1 &lt;= nx &lt;= ncols &amp;&amp; 1 &lt;= ny &lt;= nrows</span></span>
-<span id="L418"><span class="lineNum">     418</span> <span class="tlaGNC">      530265 :                 if !burned[nx, ny]</span></span>
-<span id="L419"><span class="lineNum">     419</span> <span class="tlaGNC">      106643 :                     has_unburned_neighbor = true</span></span>
-<span id="L420"><span class="lineNum">     420</span> <span class="tlaGNC">      106643 :                     break</span></span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">      207676 :         has_unburned_neighbor = false</span></span>
+<span id="L415"><span class="lineNum">     415</span> <span class="tlaGNC">      207676 :         for (dx, dy) in ((1,0), (-1,0), (0,1), (0,-1))</span></span>
+<span id="L416"><span class="lineNum">     416</span> <span class="tlaGNC">      612326 :             nx, ny = ix + dx, iy + dy</span></span>
+<span id="L417"><span class="lineNum">     417</span> <span class="tlaGNC">      612326 :             if 1 &lt;= nx &lt;= ncols &amp;&amp; 1 &lt;= ny &lt;= nrows</span></span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaGNC">      605550 :                 if !burned[nx, ny]</span></span>
+<span id="L419"><span class="lineNum">     419</span> <span class="tlaGNC">      118785 :                     has_unburned_neighbor = true</span></span>
+<span id="L420"><span class="lineNum">     420</span> <span class="tlaGNC">      118785 :                     break</span></span>
 <span id="L421"><span class="lineNum">     421</span>              :                 end</span>
 <span id="L422"><span class="lineNum">     422</span>              :             end</span>
-<span id="L423"><span class="lineNum">     423</span> <span class="tlaGNC">      430109 :         end</span></span>
+<span id="L423"><span class="lineNum">     423</span> <span class="tlaGNC">      493541 :         end</span></span>
 <span id="L424"><span class="lineNum">     424</span>              : </span>
-<span id="L425"><span class="lineNum">     425</span> <span class="tlaGNC">      182897 :         if !has_unburned_neighbor</span></span>
-<span id="L426"><span class="lineNum">     426</span> <span class="tlaGNC">       76254 :             push!(to_remove, idx)</span></span>
+<span id="L425"><span class="lineNum">     425</span> <span class="tlaGNC">      207676 :         if !has_unburned_neighbor</span></span>
+<span id="L426"><span class="lineNum">     426</span> <span class="tlaGNC">       88891 :             push!(to_remove, idx)</span></span>
 <span id="L427"><span class="lineNum">     427</span>              :         end</span>
-<span id="L428"><span class="lineNum">     428</span> <span class="tlaGNC">     1022802 :     end</span></span>
+<span id="L428"><span class="lineNum">     428</span> <span class="tlaGNC">     1212026 :     end</span></span>
 <span id="L429"><span class="lineNum">     429</span>              : </span>
-<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC">         772 :     for idx in to_remove</span></span>
-<span id="L431"><span class="lineNum">     431</span> <span class="tlaGNC">      103215 :         delete!(nb.active, idx)</span></span>
-<span id="L432"><span class="lineNum">     432</span> <span class="tlaGNC">       76254 :     end</span></span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC">         932 :     for idx in to_remove</span></span>
+<span id="L431"><span class="lineNum">     431</span> <span class="tlaGNC">      120232 :         delete!(nb.active, idx)</span></span>
+<span id="L432"><span class="lineNum">     432</span> <span class="tlaGNC">       88891 :     end</span></span>
 <span id="L433"><span class="lineNum">     433</span>              : </span>
-<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">         772 :     return nothing</span></span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">         932 :     return nothing</span></span>
 <span id="L435"><span class="lineNum">     435</span>              : end</span>
 <span id="L436"><span class="lineNum">     436</span>              : </span>
 <span id="L437"><span class="lineNum">     437</span>              : </span>
@@ -503,7 +503,7 @@
 <span id="L441"><span class="lineNum">     441</span>              : Get a vector of active cell indices for iteration.</span>
 <span id="L442"><span class="lineNum">     442</span>              : &quot;&quot;&quot;</span>
 <span id="L443"><span class="lineNum">     443</span>              : function get_active_cells(nb::NarrowBand)</span>
-<span id="L444"><span class="lineNum">     444</span> <span class="tlaGNC">         772 :     return collect(nb.active)</span></span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaGNC">         932 :     return collect(nb.active)</span></span>
 <span id="L445"><span class="lineNum">     445</span>              : end</span>
 <span id="L446"><span class="lineNum">     446</span>              : </span>
 <span id="L447"><span class="lineNum">     447</span>              : </span>
@@ -517,12 +517,12 @@
 <span id="L455"><span class="lineNum">     455</span>              : </span>
 <span id="L456"><span class="lineNum">     456</span>              :     mask = active_mask(state.narrow_band, size(state.phi)...)</span>
 <span id="L457"><span class="lineNum">     457</span>              : &quot;&quot;&quot;</span>
-<span id="L458"><span class="lineNum">     458</span> <span class="tlaUNC tlaBgUNC">           0 : function active_mask(nb::NarrowBand, nx::Int, ny::Int)</span></span>
-<span id="L459"><span class="lineNum">     459</span> <span class="tlaUNC">           0 :     mask = falses(nx, ny)</span></span>
-<span id="L460"><span class="lineNum">     460</span> <span class="tlaUNC">           0 :     for idx in nb.active</span></span>
-<span id="L461"><span class="lineNum">     461</span> <span class="tlaUNC">           0 :         mask[idx] = true</span></span>
-<span id="L462"><span class="lineNum">     462</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L463"><span class="lineNum">     463</span> <span class="tlaUNC">           0 :     return mask</span></span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaGNC">         160 : function active_mask(nb::NarrowBand, nx::Int, ny::Int)</span></span>
+<span id="L459"><span class="lineNum">     459</span> <span class="tlaGNC">         160 :     mask = falses(nx, ny)</span></span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaGNC">         320 :     for idx in nb.active</span></span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaGNC">       79506 :         mask[idx] = true</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaGNC">      159012 :     end</span></span>
+<span id="L463"><span class="lineNum">     463</span> <span class="tlaGNC">         160 :     return mask</span></span>
 <span id="L464"><span class="lineNum">     464</span>              : end</span>
 <span id="L465"><span class="lineNum">     465</span>              : </span>
 <span id="L466"><span class="lineNum">     466</span>              : </span>
@@ -547,7 +547,7 @@
 <span id="L485"><span class="lineNum">     485</span>              : 2. Perform RK2 stage 1</span>
 <span id="L486"><span class="lineNum">     486</span>              : 3. Perform RK2 stage 2</span>
 <span id="L487"><span class="lineNum">     487</span>              : &quot;&quot;&quot;</span>
-<span id="L488"><span class="lineNum">     488</span> <span class="tlaUNC">           0 : function level_set_step!(</span></span>
+<span id="L488"><span class="lineNum">     488</span> <span class="tlaUNC tlaBgUNC">           0 : function level_set_step!(</span></span>
 <span id="L489"><span class="lineNum">     489</span>              :     phi::AbstractMatrix{T},</span>
 <span id="L490"><span class="lineNum">     490</span>              :     phi_old::AbstractMatrix{T},</span>
 <span id="L491"><span class="lineNum">     491</span>              :     ux::AbstractMatrix{T},</span>

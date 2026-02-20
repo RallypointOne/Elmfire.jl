@@ -367,6 +367,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <a href="../comparison.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Comparison with Original ELMFIRE</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../gpu.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">GPU Acceleration</span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -910,7 +915,7 @@ Mean burned area: 58.41 ± 3.35 acres</code></pre>
 <span id="cb19-30"><a href="#cb19-30" aria-hidden="true" tabindex="-1"></a><span class="fu">println</span>(<span class="st">"Threaded ensemble mean area: </span><span class="sc">$</span>(<span class="fu">round</span>(result_parallel.mean_burned_area, digits<span class="op">=</span><span class="fl">2</span>))<span class="st"> acres"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Available threads: 1
-  7.199032 seconds (1.18 M allocations: 449.515 MiB, 0.56% gc time, 8.39% compilation time)
+  7.216226 seconds (1.18 M allocations: 449.518 MiB, 0.48% gc time, 8.47% compilation time)
 Threaded ensemble mean area: 55.94 acres</code></pre>
 </div>
 </div>

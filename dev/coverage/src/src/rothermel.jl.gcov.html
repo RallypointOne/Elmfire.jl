@@ -31,13 +31,13 @@
             <td class="headerValue">on branch main</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryLo">54.7&nbsp;%</td>
-            <td class="headerCovTableEntry">137</td>
-            <td class="headerCovTableEntry">75</td>
+            <td class="headerCovTableEntryHi">98.5&nbsp;%</td>
+            <td class="headerCovTableEntry">136</td>
+            <td class="headerCovTableEntry">134</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:05:07</td>
+            <td class="headerValue">2026-02-20 13:56:25</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -93,11 +93,11 @@
 <span id="L31"><span class="lineNum">      31</span>              : Implementation follows Rothermel (1972) equation.</span>
 <span id="L32"><span class="lineNum">      32</span>              : &quot;&quot;&quot;</span>
 <span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">           5 : @inline function moisture_damping(r::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">     1330321 :     r = clamp(r, zero(T), one(T))</span></span>
-<span id="L35"><span class="lineNum">      35</span> <span class="tlaGNC">      665161 :     r2 = r * r</span></span>
-<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">      665161 :     r3 = r2 * r</span></span>
-<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">      665161 :     eta = one(T) - T(2.59)*r + T(5.11)*r2 - T(3.52)*r3</span></span>
-<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">     1330317 :     return clamp(eta, zero(T), one(T))</span></span>
+<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">     1337865 :     r = clamp(r, zero(T), one(T))</span></span>
+<span id="L35"><span class="lineNum">      35</span> <span class="tlaGNC">      668933 :     r2 = r * r</span></span>
+<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">      668933 :     r3 = r2 * r</span></span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">      668933 :     eta = one(T) - T(2.59)*r + T(5.11)*r2 - T(3.52)*r3</span></span>
+<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">     1337861 :     return clamp(eta, zero(T), one(T))</span></span>
 <span id="L39"><span class="lineNum">      39</span>              : end</span>
 <span id="L40"><span class="lineNum">      40</span>              : </span>
 <span id="L41"><span class="lineNum">      41</span>              : </span>
@@ -265,96 +265,96 @@
 <span id="L203"><span class="lineNum">     203</span>              : - `tanslp2`: tan²(slope angle)</span>
 <span id="L204"><span class="lineNum">     204</span>              : - `adj`: Spread rate adjustment factor</span>
 <span id="L205"><span class="lineNum">     205</span>              : &quot;&quot;&quot;</span>
-<span id="L206"><span class="lineNum">     206</span> <span class="tlaUNC tlaBgUNC">           0 : @inline function surface_spread_rate_flat(</span></span>
+<span id="L206"><span class="lineNum">     206</span>              : @inline function surface_spread_rate_flat(</span>
 <span id="L207"><span class="lineNum">     207</span>              :     fuel_arr::FuelModelArray{T},</span>
 <span id="L208"><span class="lineNum">     208</span>              :     fuel_index::Int, mc_index::Int,</span>
 <span id="L209"><span class="lineNum">     209</span>              :     M1::T, M10::T, M100::T, MLH::T, MLW::T,</span>
 <span id="L210"><span class="lineNum">     210</span>              :     wsmf::T, tanslp2::T, adj::T</span>
 <span id="L211"><span class="lineNum">     211</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :     fi = fuel_index</span></span>
-<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :     mi = mc_index</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">        1886 :     fi = fuel_index</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">        1886 :     mi = mc_index</span></span>
 <span id="L214"><span class="lineNum">     214</span>              : </span>
 <span id="L215"><span class="lineNum">     215</span>              :     # Check nonburnable</span>
-<span id="L216"><span class="lineNum">     216</span> <span class="tlaUNC">           0 :     if fuel_arr.nonburnable[fi, mi]</span></span>
-<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :         return (zero(T), zero(T), zero(T))</span></span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaGNC">        1886 :     if fuel_arr.nonburnable[fi, mi]</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC tlaBgUNC">           0 :         return (zero(T), zero(T), zero(T))</span></span>
 <span id="L218"><span class="lineNum">     218</span>              :     end</span>
 <span id="L219"><span class="lineNum">     219</span>              : </span>
 <span id="L220"><span class="lineNum">     220</span>              :     # Load coefficients from arrays</span>
-<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :     rhob = fuel_arr.rhob[fi, mi]</span></span>
-<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC">           0 :     xi = fuel_arr.xi[fi, mi]</span></span>
-<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :     B = fuel_arr.B[fi, mi]</span></span>
-<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :     GP_WND_ETAS_HOC = fuel_arr.GP_WND_ETAS_HOC[fi, mi]</span></span>
-<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :     GP_WNL_ETAS_HOC = fuel_arr.GP_WNL_ETAS_HOC[fi, mi]</span></span>
-<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :     phisterm = fuel_arr.phisterm[fi, mi]</span></span>
-<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 :     phiwterm = fuel_arr.phiwterm[fi, mi]</span></span>
-<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :     R_MPRIMEDENOME14SUM_MEX_DEAD = fuel_arr.R_MPRIMEDENOME14SUM_MEX_DEAD[fi, mi]</span></span>
-<span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :     F_dead = fuel_arr.F_dead[fi, mi]</span></span>
-<span id="L230"><span class="lineNum">     230</span> <span class="tlaUNC">           0 :     F_live = fuel_arr.F_live[fi, mi]</span></span>
-<span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC">           0 :     mex_dead = fuel_arr.mex_dead[fi, mi]</span></span>
-<span id="L232"><span class="lineNum">     232</span> <span class="tlaUNC">           0 :     mex_live_base = fuel_arr.mex_live[fi, mi]</span></span>
-<span id="L233"><span class="lineNum">     233</span> <span class="tlaUNC">           0 :     tr = fuel_arr.tr[fi, mi]</span></span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaGNC tlaBgGNC">        1886 :     rhob = fuel_arr.rhob[fi, mi]</span></span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC">        1886 :     xi = fuel_arr.xi[fi, mi]</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">        1886 :     B = fuel_arr.B[fi, mi]</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC">        1886 :     GP_WND_ETAS_HOC = fuel_arr.GP_WND_ETAS_HOC[fi, mi]</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">        1886 :     GP_WNL_ETAS_HOC = fuel_arr.GP_WNL_ETAS_HOC[fi, mi]</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">        1886 :     phisterm = fuel_arr.phisterm[fi, mi]</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">        1886 :     phiwterm = fuel_arr.phiwterm[fi, mi]</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaGNC">        1886 :     R_MPRIMEDENOME14SUM_MEX_DEAD = fuel_arr.R_MPRIMEDENOME14SUM_MEX_DEAD[fi, mi]</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">        1886 :     F_dead = fuel_arr.F_dead[fi, mi]</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">        1886 :     F_live = fuel_arr.F_live[fi, mi]</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaGNC">        1886 :     mex_dead = fuel_arr.mex_dead[fi, mi]</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">        1886 :     mex_live_base = fuel_arr.mex_live[fi, mi]</span></span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaGNC">        1886 :     tr = fuel_arr.tr[fi, mi]</span></span>
 <span id="L234"><span class="lineNum">     234</span>              : </span>
 <span id="L235"><span class="lineNum">     235</span>              :     # Moisture array</span>
-<span id="L236"><span class="lineNum">     236</span> <span class="tlaUNC">           0 :     M = (M1, M10, M100, M1, MLH, MLW)</span></span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaGNC">        1886 :     M = (M1, M10, M100, M1, MLH, MLW)</span></span>
 <span id="L237"><span class="lineNum">     237</span>              : </span>
 <span id="L238"><span class="lineNum">     238</span>              :     # Live fuel moisture of extinction (dynamic)</span>
-<span id="L239"><span class="lineNum">     239</span> <span class="tlaUNC">           0 :     SUM_MPRIMENUMER = zero(T)</span></span>
-<span id="L240"><span class="lineNum">     240</span> <span class="tlaUNC">           0 :     for k in 1:4</span></span>
-<span id="L241"><span class="lineNum">     241</span> <span class="tlaUNC">           0 :         SUM_MPRIMENUMER += fuel_arr.WPRIMENUMER[fi, mi, k] * M[k]</span></span>
-<span id="L242"><span class="lineNum">     242</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 :     mex_live = mex_live_base * (one(T) - R_MPRIMEDENOME14SUM_MEX_DEAD * SUM_MPRIMENUMER) - T(0.226)</span></span>
-<span id="L244"><span class="lineNum">     244</span> <span class="tlaUNC">           0 :     mex_live = max(mex_live, mex_dead)</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">        1886 :     SUM_MPRIMENUMER = zero(T)</span></span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaGNC">        1886 :     for k in 1:4</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">        7544 :         SUM_MPRIMENUMER += fuel_arr.WPRIMENUMER[fi, mi, k] * M[k]</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">       13202 :     end</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">        1886 :     mex_live = mex_live_base * (one(T) - R_MPRIMEDENOME14SUM_MEX_DEAD * SUM_MPRIMENUMER) - T(0.226)</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">        1886 :     mex_live = max(mex_live, mex_dead)</span></span>
 <span id="L245"><span class="lineNum">     245</span>              : </span>
 <span id="L246"><span class="lineNum">     246</span>              :     # Heat of pre-ignition and effective heating</span>
-<span id="L247"><span class="lineNum">     247</span> <span class="tlaUNC">           0 :     RHOBEPSQIG_DEAD = zero(T)</span></span>
-<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC">           0 :     RHOBEPSQIG_LIVE = zero(T)</span></span>
-<span id="L249"><span class="lineNum">     249</span> <span class="tlaUNC">           0 :     for k in 1:4</span></span>
-<span id="L250"><span class="lineNum">     250</span> <span class="tlaUNC">           0 :         RHOBEPSQIG_DEAD += fuel_arr.FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])</span></span>
-<span id="L251"><span class="lineNum">     251</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :     for k in 5:6</span></span>
-<span id="L253"><span class="lineNum">     253</span> <span class="tlaUNC">           0 :         RHOBEPSQIG_LIVE += fuel_arr.FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])</span></span>
-<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L255"><span class="lineNum">     255</span> <span class="tlaUNC">           0 :     RHOBEPSQIG_DEAD *= rhob</span></span>
-<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 :     RHOBEPSQIG_LIVE *= rhob</span></span>
-<span id="L257"><span class="lineNum">     257</span> <span class="tlaUNC">           0 :     RHOBEPSQIG = F_dead * RHOBEPSQIG_DEAD + F_live * RHOBEPSQIG_LIVE</span></span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">        1886 :     RHOBEPSQIG_DEAD = zero(T)</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">        1886 :     RHOBEPSQIG_LIVE = zero(T)</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">        1886 :     for k in 1:4</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">        7544 :         RHOBEPSQIG_DEAD += fuel_arr.FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">       13202 :     end</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">        1886 :     for k in 5:6</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">        3772 :         RHOBEPSQIG_LIVE += fuel_arr.FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">        5658 :     end</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">        1886 :     RHOBEPSQIG_DEAD *= rhob</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">        1886 :     RHOBEPSQIG_LIVE *= rhob</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">        1886 :     RHOBEPSQIG = F_dead * RHOBEPSQIG_DEAD + F_live * RHOBEPSQIG_LIVE</span></span>
 <span id="L258"><span class="lineNum">     258</span>              : </span>
 <span id="L259"><span class="lineNum">     259</span>              :     # Moisture damping</span>
-<span id="L260"><span class="lineNum">     260</span> <span class="tlaUNC">           0 :     M_dead = zero(T)</span></span>
-<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 :     for k in 1:4</span></span>
-<span id="L262"><span class="lineNum">     262</span> <span class="tlaUNC">           0 :         M_dead += fuel_arr.F[fi, mi, k] * M[k]</span></span>
-<span id="L263"><span class="lineNum">     263</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :     etam_dead = moisture_damping(M_dead / mex_dead)</span></span>
-<span id="L265"><span class="lineNum">     265</span> <span class="tlaUNC">           0 :     IR_dead = GP_WND_ETAS_HOC * etam_dead</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">        1886 :     M_dead = zero(T)</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaGNC">        1886 :     for k in 1:4</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">        7544 :         M_dead += fuel_arr.F[fi, mi, k] * M[k]</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">       13202 :     end</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">        3772 :     etam_dead = moisture_damping(M_dead / mex_dead)</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">        1886 :     IR_dead = GP_WND_ETAS_HOC * etam_dead</span></span>
 <span id="L266"><span class="lineNum">     266</span>              : </span>
-<span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC">           0 :     M_live = zero(T)</span></span>
-<span id="L268"><span class="lineNum">     268</span> <span class="tlaUNC">           0 :     for k in 5:6</span></span>
-<span id="L269"><span class="lineNum">     269</span> <span class="tlaUNC">           0 :         M_live += fuel_arr.F[fi, mi, k] * M[k]</span></span>
-<span id="L270"><span class="lineNum">     270</span> <span class="tlaUNC">           0 :     end</span></span>
-<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC">           0 :     etam_live = moisture_damping(M_live / mex_live)</span></span>
-<span id="L272"><span class="lineNum">     272</span> <span class="tlaUNC">           0 :     IR_live = GP_WNL_ETAS_HOC * etam_live</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">        1886 :     M_live = zero(T)</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaGNC">        1886 :     for k in 5:6</span></span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaGNC">        3772 :         M_live += fuel_arr.F[fi, mi, k] * M[k]</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">        5658 :     end</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">        3772 :     etam_live = moisture_damping(M_live / mex_live)</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">        1886 :     IR_live = GP_WNL_ETAS_HOC * etam_live</span></span>
 <span id="L273"><span class="lineNum">     273</span>              : </span>
-<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :     IR_btupft2min = IR_dead + IR_live</span></span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">        1886 :     IR_btupft2min = IR_dead + IR_live</span></span>
 <span id="L275"><span class="lineNum">     275</span>              : </span>
 <span id="L276"><span class="lineNum">     276</span>              :     # Wind/slope factors</span>
-<span id="L277"><span class="lineNum">     277</span> <span class="tlaUNC">           0 :     WS_LIMIT = T(0.9) * IR_btupft2min</span></span>
-<span id="L278"><span class="lineNum">     278</span> <span class="tlaUNC">           0 :     wsmf_limited = min(wsmf, WS_LIMIT)</span></span>
-<span id="L279"><span class="lineNum">     279</span> <span class="tlaUNC">           0 :     phiw = phiwterm * wsmf_limited^B</span></span>
-<span id="L280"><span class="lineNum">     280</span> <span class="tlaUNC">           0 :     phis_max = phiwterm * WS_LIMIT^B</span></span>
-<span id="L281"><span class="lineNum">     281</span> <span class="tlaUNC">           0 :     phis = min(phisterm * tanslp2, phis_max)</span></span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">        1886 :     WS_LIMIT = T(0.9) * IR_btupft2min</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">        1886 :     wsmf_limited = min(wsmf, WS_LIMIT)</span></span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">        1886 :     phiw = phiwterm * wsmf_limited^B</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">        1886 :     phis_max = phiwterm * WS_LIMIT^B</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">        1886 :     phis = min(phisterm * tanslp2, phis_max)</span></span>
 <span id="L282"><span class="lineNum">     282</span>              : </span>
 <span id="L283"><span class="lineNum">     283</span>              :     # Spread rate</span>
-<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 :     vs0 = if RHOBEPSQIG &gt; T(1e-9)</span></span>
-<span id="L285"><span class="lineNum">     285</span> <span class="tlaUNC">           0 :         adj * IR_btupft2min * xi / RHOBEPSQIG</span></span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaGNC">        1886 :     vs0 = if RHOBEPSQIG &gt; T(1e-9)</span></span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">        1886 :         adj * IR_btupft2min * xi / RHOBEPSQIG</span></span>
 <span id="L286"><span class="lineNum">     286</span>              :     else</span>
-<span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 :         zero(T)</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC">        1886 :         zero(T)</span></span>
 <span id="L288"><span class="lineNum">     288</span>              :     end</span>
-<span id="L289"><span class="lineNum">     289</span> <span class="tlaUNC">           0 :     velocity = vs0 * (one(T) + phis + phiw)</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">        1886 :     velocity = vs0 * (one(T) + phis + phiw)</span></span>
 <span id="L290"><span class="lineNum">     290</span>              : </span>
 <span id="L291"><span class="lineNum">     291</span>              :     # Fireline intensity</span>
-<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :     IR = IR_btupft2min * btupft2min_to_kwpm2(T)</span></span>
-<span id="L293"><span class="lineNum">     293</span> <span class="tlaUNC">           0 :     flin = tr * IR * velocity * ft_to_m(T)</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">        1886 :     IR = IR_btupft2min * btupft2min_to_kwpm2(T)</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">        1886 :     flin = tr * IR * velocity * ft_to_m(T)</span></span>
 <span id="L294"><span class="lineNum">     294</span>              : </span>
-<span id="L295"><span class="lineNum">     295</span> <span class="tlaUNC">           0 :     return (velocity, vs0, flin)</span></span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaGNC">        1886 :     return (velocity, vs0, flin)</span></span>
 <span id="L296"><span class="lineNum">     296</span>              : end</span>
 <span id="L297"><span class="lineNum">     297</span>              : </span>
 <span id="L298"><span class="lineNum">     298</span>              : </span>
@@ -368,7 +368,7 @@
 <span id="L306"><span class="lineNum">     306</span>              : Elliptical fire spread parameters following Anderson (1982).</span>
 <span id="L307"><span class="lineNum">     307</span>              : &quot;&quot;&quot;</span>
 <span id="L308"><span class="lineNum">     308</span>              : struct EllipticalSpread{T&lt;:AbstractFloat}</span>
-<span id="L309"><span class="lineNum">     309</span> <span class="tlaGNC tlaBgGNC">      325599 :     head::T           # Head fire spread rate (ft/min)</span></span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaGNC">      325599 :     head::T           # Head fire spread rate (ft/min)</span></span>
 <span id="L310"><span class="lineNum">     310</span>              :     back::T           # Backing fire spread rate (ft/min)</span>
 <span id="L311"><span class="lineNum">     311</span>              :     flank::T          # Flanking fire spread rate (ft/min)</span>
 <span id="L312"><span class="lineNum">     312</span>              :     eccentricity::T   # Ellipse eccentricity</span>

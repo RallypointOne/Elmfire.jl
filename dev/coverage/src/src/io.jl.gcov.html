@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:05:07</td>
+            <td class="headerValue">2026-02-20 13:56:25</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -197,18 +197,18 @@
 <span id="L135"><span class="lineNum">     135</span>              : </span>
 <span id="L136"><span class="lineNum">     136</span>              : Create a fuel model table with the standard FBFM 1-13 models plus non-burnable.</span>
 <span id="L137"><span class="lineNum">     137</span>              : &quot;&quot;&quot;</span>
-<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC tlaBgGNC">          26 : function create_standard_fuel_table(::Type{T}) where {T&lt;:AbstractFloat}</span></span>
-<span id="L139"><span class="lineNum">     139</span> <span class="tlaGNC">          26 :     table = FuelModelTable{T}()</span></span>
-<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">          26 :     for (id, name, dyn, w1, w10, w100, wh, ww, s1, sh, sw, d, mex, hoc) in STANDARD_FUEL_MODELS_DATA</span></span>
-<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">         364 :         raw = RawFuelModel{T}(id, name, dyn,</span></span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC tlaBgGNC">          32 : function create_standard_fuel_table(::Type{T}) where {T&lt;:AbstractFloat}</span></span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaGNC">          32 :     table = FuelModelTable{T}()</span></span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">          32 :     for (id, name, dyn, w1, w10, w100, wh, ww, s1, sh, sw, d, mex, hoc) in STANDARD_FUEL_MODELS_DATA</span></span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">         448 :         raw = RawFuelModel{T}(id, name, dyn,</span></span>
 <span id="L142"><span class="lineNum">     142</span>              :             T(w1), T(w10), T(w100), T(wh), T(ww),</span>
 <span id="L143"><span class="lineNum">     143</span>              :             T(s1), T(sh), T(sw), T(d), T(mex), T(hoc))</span>
-<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">         364 :         add_raw_model!(table, raw)</span></span>
-<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">         364 :     end</span></span>
-<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">          26 :     return table</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">         448 :         add_raw_model!(table, raw)</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">         448 :     end</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">          32 :     return table</span></span>
 <span id="L147"><span class="lineNum">     147</span>              : end</span>
 <span id="L148"><span class="lineNum">     148</span>              : </span>
-<span id="L149"><span class="lineNum">     149</span> <span class="tlaGNC">          19 : create_standard_fuel_table() = create_standard_fuel_table(DefaultFloat)</span></span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaGNC">          25 : create_standard_fuel_table() = create_standard_fuel_table(DefaultFloat)</span></span>
         </pre>
               </td>
             </tr>

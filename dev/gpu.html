@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Coverage – Elmfire.jl</title>
+<title>GPU Acceleration – Elmfire.jl</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -30,7 +65,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./changelog.html" rel="prev">
+<link href="./tutorials/index.html" rel="next">
+<link href="./comparison.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -284,7 +320,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./changelog.html">Reference</a></li><li class="breadcrumb-item"><a href="./coverage.html"><span class="chapter-title">Coverage</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Docs</a></li><li class="breadcrumb-item"><a href="./gpu.html"><span class="chapter-title">GPU Acceleration</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -330,7 +366,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./gpu.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">GPU Acceleration</span></a>
+  <a href="./gpu.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">GPU Acceleration</span></a>
   </div>
 </li>
       </ul>
@@ -474,7 +510,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./coverage.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">Coverage</span></a>
+  <a href="./coverage.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Coverage</span></a>
   </div>
 </li>
       </ul>
@@ -484,16 +520,37 @@ ul.task-list li input[type="checkbox"] {
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
-        
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#status" id="toc-status" class="nav-link active" data-scroll-target="#status">Status</a></li>
+  <li><a href="#computational-profile" id="toc-computational-profile" class="nav-link" data-scroll-target="#computational-profile">Computational Profile</a></li>
+  <li><a href="#approach" id="toc-approach" class="nav-link" data-scroll-target="#approach">Approach</a>
+  <ul class="collapse">
+  <li><a href="#kernelabstractions.jl" id="toc-kernelabstractions.jl" class="nav-link" data-scroll-target="#kernelabstractions.jl">KernelAbstractions.jl</a></li>
+  <li><a href="#package-extension" id="toc-package-extension" class="nav-link" data-scroll-target="#package-extension">Package Extension</a></li>
+  <li><a href="#cpugpu-boundary" id="toc-cpugpu-boundary" class="nav-link" data-scroll-target="#cpugpu-boundary">CPU/GPU Boundary</a></li>
+  </ul></li>
+  <li><a href="#planned-phases" id="toc-planned-phases" class="nav-link" data-scroll-target="#planned-phases">Planned Phases</a>
+  <ul class="collapse">
+  <li><a href="#phase-1-gpu-velocity-kernel" id="toc-phase-1-gpu-velocity-kernel" class="nav-link" data-scroll-target="#phase-1-gpu-velocity-kernel">Phase 1: GPU Velocity Kernel</a></li>
+  <li><a href="#phase-2-gpu-ensemble-support" id="toc-phase-2-gpu-ensemble-support" class="nav-link" data-scroll-target="#phase-2-gpu-ensemble-support">Phase 2: GPU Ensemble Support</a></li>
+  <li><a href="#phase-3-optimization" id="toc-phase-3-optimization" class="nav-link" data-scroll-target="#phase-3-optimization">Phase 3: Optimization</a></li>
+  </ul></li>
+  <li><a href="#projected-performance" id="toc-projected-performance" class="nav-link" data-scroll-target="#projected-performance">Projected Performance</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./changelog.html">Reference</a></li><li class="breadcrumb-item"><a href="./coverage.html"><span class="chapter-title">Coverage</span></a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Docs</a></li><li class="breadcrumb-item"><a href="./gpu.html"><span class="chapter-title">GPU Acceleration</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-title">Coverage</span></h1>
+<h1 class="title"><span class="chapter-title">GPU Acceleration</span></h1>
+<p class="subtitle lead">Roadmap for GPU Support in Elmfire.jl</p>
 </div>
 
 
@@ -510,22 +567,181 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<iframe id="coverage-iframe" src="coverage/index.html" width="100%" style="border:none; overflow:hidden;" scrolling="no">
-</iframe>
-<script>
-(function() {
-    var iframe = document.getElementById('coverage-iframe');
-    function resize() {
-        try {
-            iframe.style.height = iframe.contentDocument.documentElement.scrollHeight + 'px';
-        } catch(e) {}
-    }
-    iframe.addEventListener('load', resize);
-    window.addEventListener('resize', resize);
-})();
-</script>
+<p>Elmfire.jl is designed with GPU acceleration in mind. This page describes the current state, the planned approach, and the computational profile that motivates the work.</p>
+<section id="status" class="level2">
+<h2 class="anchored" data-anchor-id="status">Status</h2>
+<p><strong>Phase 0 (complete):</strong> Core types have been refactored to support GPU arrays.</p>
+<ul>
+<li><code>FireState{T, A}</code> is parameterized on array type <code>A</code>, so it can hold either <code>Matrix{T}</code> (CPU) or GPU arrays.</li>
+<li><code>FuelModelArray{T}</code> provides a dense struct-of-arrays fuel model lookup, replacing the <code>Dict</code>-based <code>FuelModelTable</code> which cannot run on GPU.</li>
+<li><code>active_mask()</code> converts the narrow band’s <code>Set</code> to a dense <code>BitMatrix</code> for GPU kernel masking.</li>
+<li><code>surface_spread_rate_flat()</code> computes Rothermel spread rates from <code>FuelModelArray</code> using array indexing instead of struct access.</li>
+</ul>
+<p><strong>Phase 1+ (planned):</strong> GPU kernels, ensemble support, and optimization. See below.</p>
+</section>
+<section id="computational-profile" class="level2">
+<h2 class="anchored" data-anchor-id="computational-profile">Computational Profile</h2>
+<p>On a 512x512 grid with ~1,000 active cells in the narrow band, each simulation timestep breaks down roughly as:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Time</th>
+<th>Parallelizable?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Velocity calculation (Rothermel + wind)</td>
+<td>~100 ms</td>
+<td>Yes (per-cell, independent)</td>
+</tr>
+<tr class="even">
+<td>Crown fire</td>
+<td>~70 ms</td>
+<td>Yes (per-cell, independent)</td>
+</tr>
+<tr class="odd">
+<td>Level set RK2</td>
+<td>~10 ms</td>
+<td>Yes (stencil, structured)</td>
+</tr>
+<tr class="even">
+<td>Weather interpolation</td>
+<td>~10 ms</td>
+<td>Yes (per-cell lookup)</td>
+</tr>
+<tr class="odd">
+<td>Narrow band updates</td>
+<td>~10 ms</td>
+<td>No (set operations)</td>
+</tr>
+</tbody>
+</table>
+<p>The first four components (~190 ms) are candidates for GPU offloading. The narrow band management (~10 ms) stays on the CPU.</p>
+</section>
+<section id="approach" class="level2">
+<h2 class="anchored" data-anchor-id="approach">Approach</h2>
+<section id="kernelabstractions.jl" class="level3">
+<h3 class="anchored" data-anchor-id="kernelabstractions.jl">KernelAbstractions.jl</h3>
+<p>GPU kernels will be written with <a href="https://github.com/JuliaGPU/KernelAbstractions.jl">KernelAbstractions.jl</a> (KA), which provides a vendor-agnostic <code>@kernel</code> macro. The same kernel code runs on:</p>
+<ul>
+<li>NVIDIA GPUs (via CUDA.jl)</li>
+<li>AMD GPUs (via AMDGPU.jl)</li>
+<li>Apple Silicon (via Metal.jl)</li>
+<li>CPU (for testing without GPU hardware)</li>
+</ul>
+</section>
+<section id="package-extension" class="level3">
+<h3 class="anchored" data-anchor-id="package-extension">Package Extension</h3>
+<p>GPU support will be shipped as a package extension so that users without GPUs pay no dependency cost:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode toml code-with-copy"><code class="sourceCode toml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Project.toml</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">[weakdeps]</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">KernelAbstractions</span> <span class="op">=</span> <span class="st">"..."</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="dt">Adapt</span> <span class="op">=</span> <span class="st">"..."</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="kw">[extensions]</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="dt">ElmfireKAExt</span> <span class="op">=</span> <span class="op">[</span><span class="st">"KernelAbstractions"</span><span class="op">,</span> <span class="st">"Adapt"</span><span class="op">]</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="cpugpu-boundary" class="level3">
+<h3 class="anchored" data-anchor-id="cpugpu-boundary">CPU/GPU Boundary</h3>
+<p>The narrow band is managed on the CPU (it uses <code>Set</code> operations). Each timestep:</p>
+<ol type="1">
+<li>CPU collects active cells and builds a mask</li>
+<li>Mask is uploaded to GPU</li>
+<li>GPU runs velocity, CFL, and RK2 kernels</li>
+<li>Newly burned cell indices are downloaded to CPU</li>
+<li>CPU updates narrow band and burned status</li>
+</ol>
+<p>Grid arrays (<code>phi</code>, <code>ux</code>, <code>uy</code>) stay resident on the GPU between timesteps to minimize transfers.</p>
+</section>
+</section>
+<section id="planned-phases" class="level2">
+<h2 class="anchored" data-anchor-id="planned-phases">Planned Phases</h2>
+<section id="phase-1-gpu-velocity-kernel" class="level3">
+<h3 class="anchored" data-anchor-id="phase-1-gpu-velocity-kernel">Phase 1: GPU Velocity Kernel</h3>
+<p>The velocity calculation (Rothermel + elliptical spread + normal computation) dominates runtime. A single <code>@kernel</code> computes spread rate and velocity components for all active cells in parallel:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@kernel</span> <span class="kw">function</span> <span class="fu">velocity_kernel!</span>(ux, uy, phi, active_mask, fuel_ids,</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>                                   fuel_array, slope, aspect, weather_fields,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>                                   cellsize, padding, ncols, nrows)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    px, py <span class="op">=</span> <span class="pp">@index</span>(Global, <span class="dt">NTuple</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    active_mask[px, py] <span class="op">||</span> <span class="cf">return</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Rothermel spread rate from fuel_array</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Normal vector from phi stencil</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Elliptical spread + velocity components</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    ux[px, py] <span class="op">=</span> <span class="op">...</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    uy[px, py] <span class="op">=</span> <span class="op">...</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This phase also includes CFL reduction and RK2 stencil kernels.</p>
+</section>
+<section id="phase-2-gpu-ensemble-support" class="level3">
+<h3 class="anchored" data-anchor-id="phase-2-gpu-ensemble-support">Phase 2: GPU Ensemble Support</h3>
+<p>Multiple ensemble members run concurrently using GPU streams. Each stream executes an independent simulation, reusing the <code>run_ensemble_threaded!</code> pattern with GPU-accelerated inner loops.</p>
+</section>
+<section id="phase-3-optimization" class="level3">
+<h3 class="anchored" data-anchor-id="phase-3-optimization">Phase 3: Optimization</h3>
+<ul>
+<li><strong>Dual-mode launch:</strong> 1D kernel over an index list for small fires (&lt;5K active cells); 2D grid kernel with mask for large fires.</li>
+<li><strong>Persistent GPU state:</strong> Eliminate per-timestep mask uploads by detecting newly burned cells on GPU.</li>
+<li><strong>Float32 fast path:</strong> Already supported by the type system; validate precision on GPU.</li>
+</ul>
+</section>
+</section>
+<section id="projected-performance" class="level2">
+<h2 class="anchored" data-anchor-id="projected-performance">Projected Performance</h2>
+<p>Estimates assume a mid-to-high-end GPU (e.g.&nbsp;NVIDIA A100) on a 512x512 grid:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>CPU</th>
+<th>GPU (est.)</th>
+<th>Speedup</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Velocity calculation</td>
+<td>~170 ms</td>
+<td>~2-5 ms</td>
+<td>30-80x</td>
+</tr>
+<tr class="even">
+<td>RK2 level set</td>
+<td>~10 ms</td>
+<td>~0.2 ms</td>
+<td>50x</td>
+</tr>
+<tr class="odd">
+<td>CFL reduction</td>
+<td>~1 ms</td>
+<td>~0.1 ms</td>
+<td>10x</td>
+</tr>
+<tr class="even">
+<td>Narrow band (CPU)</td>
+<td>~10 ms</td>
+<td>~10 ms</td>
+<td>1x</td>
+</tr>
+<tr class="odd">
+<td><strong>Total per timestep</strong></td>
+<td><strong>~200 ms</strong></td>
+<td><strong>~15-20 ms</strong></td>
+<td><strong>10-15x</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The narrow band management on CPU becomes the bottleneck on GPU. For larger grids or more active cells, the GPU advantage grows because the CPU-side cost is proportionally smaller.</p>
+<p>These are projections, not benchmarks. Actual performance will depend on hardware, grid size, and fire characteristics.</p>
 
 
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -943,11 +1159,14 @@ ul.task-list li input[type="checkbox"] {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./changelog.html" class="pagination-link" aria-label="Changelog">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">Changelog</span></span>
+      <a href="./comparison.html" class="pagination-link" aria-label="Comparison with Original ELMFIRE">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">Comparison with Original ELMFIRE</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
+      <a href="./tutorials/index.html" class="pagination-link" aria-label="Tutorials">
+        <span class="nav-page-text"><span class="chapter-title">Tutorials</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
   </div>
 </nav>
 </div> <!-- /content -->

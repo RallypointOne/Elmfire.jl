@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-02-20 13:05:07</td>
+            <td class="headerValue">2026-02-20 13:56:25</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -80,13 +80,13 @@
 <span id="L18"><span class="lineNum">      18</span>              : For sheltered conditions (with canopy), use a lookup table or more complex formula.</span>
 <span id="L19"><span class="lineNum">      19</span>              : &quot;&quot;&quot;</span>
 <span id="L20"><span class="lineNum">      20</span> <span class="tlaGNC tlaBgGNC">           3 : function wind_adjustment_factor(fuel_bed_depth::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L21"><span class="lineNum">      21</span> <span class="tlaGNC">      332570 :     if fuel_bed_depth &lt; T(0.1)</span></span>
+<span id="L21"><span class="lineNum">      21</span> <span class="tlaGNC">      334456 :     if fuel_bed_depth &lt; T(0.1)</span></span>
 <span id="L22"><span class="lineNum">      22</span> <span class="tlaUNC tlaBgUNC">           0 :         return T(0.1)</span></span>
 <span id="L23"><span class="lineNum">      23</span>              :     end</span>
 <span id="L24"><span class="lineNum">      24</span>              : </span>
-<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC tlaBgGNC">      332570 :     H = fuel_bed_depth</span></span>
-<span id="L26"><span class="lineNum">      26</span> <span class="tlaGNC">      332570 :     waf = T(1.83) / log((T(20) + T(0.36)*H) / (T(0.13)*H))</span></span>
-<span id="L27"><span class="lineNum">      27</span> <span class="tlaGNC">      332570 :     return clamp(waf, T(0.1), one(T))</span></span>
+<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC tlaBgGNC">      334456 :     H = fuel_bed_depth</span></span>
+<span id="L26"><span class="lineNum">      26</span> <span class="tlaGNC">      334456 :     waf = T(1.83) / log((T(20) + T(0.36)*H) / (T(0.13)*H))</span></span>
+<span id="L27"><span class="lineNum">      27</span> <span class="tlaGNC">      334456 :     return clamp(waf, T(0.1), one(T))</span></span>
 <span id="L28"><span class="lineNum">      28</span>              : end</span>
 <span id="L29"><span class="lineNum">      29</span>              : </span>
 <span id="L30"><span class="lineNum">      30</span>              : </span>
@@ -100,8 +100,8 @@
 <span id="L38"><span class="lineNum">      38</span>              : Calculate tan²(slope) from slope in degrees.</span>
 <span id="L39"><span class="lineNum">      39</span>              : &quot;&quot;&quot;</span>
 <span id="L40"><span class="lineNum">      40</span>              : function calculate_tanslp2(slope_degrees::T) where {T&lt;:AbstractFloat}</span>
-<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC">      332567 :     slope_rad = slope_degrees * pio180(T)</span></span>
-<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">      332567 :     return tan(slope_rad)^2</span></span>
+<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC">      334453 :     slope_rad = slope_degrees * pio180(T)</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">      334453 :     return tan(slope_rad)^2</span></span>
 <span id="L43"><span class="lineNum">      43</span>              : end</span>
 <span id="L44"><span class="lineNum">      44</span>              : </span>
 <span id="L45"><span class="lineNum">      45</span>              : </span>
@@ -117,7 +117,7 @@
 <span id="L55"><span class="lineNum">      55</span>              : &quot;&quot;&quot;</span>
 <span id="L56"><span class="lineNum">      56</span>              : mutable struct FireState{T&lt;:AbstractFloat, A&lt;:AbstractMatrix{T}}</span>
 <span id="L57"><span class="lineNum">      57</span>              :     # Level set field (with 2-cell padding for stencil operations)</span>
-<span id="L58"><span class="lineNum">      58</span> <span class="tlaGNC">          26 :     phi::A</span></span>
+<span id="L58"><span class="lineNum">      58</span> <span class="tlaGNC">          32 :     phi::A</span></span>
 <span id="L59"><span class="lineNum">      59</span>              :     phi_old::A</span>
 <span id="L60"><span class="lineNum">      60</span>              : </span>
 <span id="L61"><span class="lineNum">      61</span>              :     # Output fields (no padding, matches grid dimensions)</span>
@@ -160,7 +160,7 @@
 <span id="L98"><span class="lineNum">      98</span>              :     ncols::Int, nrows::Int, cellsize::T, xllcorner::T, yllcorner::T,</span>
 <span id="L99"><span class="lineNum">      99</span>              :     padding::Int</span>
 <span id="L100"><span class="lineNum">     100</span>              : ) where {T&lt;:AbstractFloat, A&lt;:AbstractMatrix{T}}</span>
-<span id="L101"><span class="lineNum">     101</span> <span class="tlaGNC">          26 :     return FireState{T, A}(</span></span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaGNC">          32 :     return FireState{T, A}(</span></span>
 <span id="L102"><span class="lineNum">     102</span>              :         phi, phi_old,</span>
 <span id="L103"><span class="lineNum">     103</span>              :         time_of_arrival, burned, spread_rate, fireline_intensity, flame_length,</span>
 <span id="L104"><span class="lineNum">     104</span>              :         ux, uy,</span>
@@ -184,7 +184,7 @@
 <span id="L122"><span class="lineNum">     122</span>              : - `padding`: Boundary padding for stencil operations (default 2)</span>
 <span id="L123"><span class="lineNum">     123</span>              : - `band_thickness`: Narrow band half-width (default 5)</span>
 <span id="L124"><span class="lineNum">     124</span>              : &quot;&quot;&quot;</span>
-<span id="L125"><span class="lineNum">     125</span> <span class="tlaGNC">          46 : function FireState{T}(</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaGNC">          58 : function FireState{T}(</span></span>
 <span id="L126"><span class="lineNum">     126</span>              :     ncols::Int, nrows::Int, cellsize::T;</span>
 <span id="L127"><span class="lineNum">     127</span>              :     xllcorner::T = zero(T),</span>
 <span id="L128"><span class="lineNum">     128</span>              :     yllcorner::T = zero(T),</span>
@@ -192,28 +192,28 @@
 <span id="L130"><span class="lineNum">     130</span>              :     band_thickness::Int = 5</span>
 <span id="L131"><span class="lineNum">     131</span>              : ) where {T&lt;:AbstractFloat}</span>
 <span id="L132"><span class="lineNum">     132</span>              :     # Padded dimensions</span>
-<span id="L133"><span class="lineNum">     133</span> <span class="tlaGNC">          23 :     nx_pad = ncols + 2*padding</span></span>
-<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">          23 :     ny_pad = nrows + 2*padding</span></span>
+<span id="L133"><span class="lineNum">     133</span> <span class="tlaGNC">          29 :     nx_pad = ncols + 2*padding</span></span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">          29 :     ny_pad = nrows + 2*padding</span></span>
 <span id="L135"><span class="lineNum">     135</span>              : </span>
 <span id="L136"><span class="lineNum">     136</span>              :     # Initialize level set with large positive value (unburned)</span>
-<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">       49388 :     phi = fill(T(100), nx_pad, ny_pad)</span></span>
-<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC">       49388 :     phi_old = fill(T(100), nx_pad, ny_pad)</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">       59064 :     phi = fill(T(100), nx_pad, ny_pad)</span></span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC">       59064 :     phi_old = fill(T(100), nx_pad, ny_pad)</span></span>
 <span id="L139"><span class="lineNum">     139</span>              : </span>
 <span id="L140"><span class="lineNum">     140</span>              :     # Initialize output fields (no padding)</span>
-<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">       41900 :     time_of_arrival = fill(-one(T), ncols, nrows)</span></span>
-<span id="L142"><span class="lineNum">     142</span> <span class="tlaGNC">          23 :     burned = falses(ncols, nrows)</span></span>
-<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">       41900 :     spread_rate = zeros(T, ncols, nrows)</span></span>
-<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">       41900 :     fireline_intensity = zeros(T, ncols, nrows)</span></span>
-<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">       41900 :     flame_length = zeros(T, ncols, nrows)</span></span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">       49800 :     time_of_arrival = fill(-one(T), ncols, nrows)</span></span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaGNC">          29 :     burned = falses(ncols, nrows)</span></span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">       49800 :     spread_rate = zeros(T, ncols, nrows)</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">       49800 :     fireline_intensity = zeros(T, ncols, nrows)</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">       49800 :     flame_length = zeros(T, ncols, nrows)</span></span>
 <span id="L146"><span class="lineNum">     146</span>              : </span>
 <span id="L147"><span class="lineNum">     147</span>              :     # Initialize velocity components (with padding)</span>
-<span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">       49388 :     ux = zeros(T, nx_pad, ny_pad)</span></span>
-<span id="L149"><span class="lineNum">     149</span> <span class="tlaGNC">       49388 :     uy = zeros(T, nx_pad, ny_pad)</span></span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">       59064 :     ux = zeros(T, nx_pad, ny_pad)</span></span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaGNC">       59064 :     uy = zeros(T, nx_pad, ny_pad)</span></span>
 <span id="L150"><span class="lineNum">     150</span>              : </span>
 <span id="L151"><span class="lineNum">     151</span>              :     # Initialize narrow band</span>
-<span id="L152"><span class="lineNum">     152</span> <span class="tlaGNC">          23 :     narrow_band = NarrowBand(band_thickness)</span></span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaGNC">          29 :     narrow_band = NarrowBand(band_thickness)</span></span>
 <span id="L153"><span class="lineNum">     153</span>              : </span>
-<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">          23 :     return FireState{T}(</span></span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">          29 :     return FireState{T}(</span></span>
 <span id="L155"><span class="lineNum">     155</span>              :         phi, phi_old,</span>
 <span id="L156"><span class="lineNum">     156</span>              :         time_of_arrival, burned, spread_rate, fireline_intensity, flame_length,</span>
 <span id="L157"><span class="lineNum">     157</span>              :         ux, uy,</span>
@@ -223,14 +223,14 @@
 <span id="L161"><span class="lineNum">     161</span>              : end</span>
 <span id="L162"><span class="lineNum">     162</span>              : </span>
 <span id="L163"><span class="lineNum">     163</span>              : # Default to Float64 for backwards compatibility</span>
-<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">          15 : function FireState(</span></span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">          21 : function FireState(</span></span>
 <span id="L165"><span class="lineNum">     165</span>              :     ncols::Int, nrows::Int, cellsize::Float64;</span>
 <span id="L166"><span class="lineNum">     166</span>              :     xllcorner::Float64 = 0.0,</span>
 <span id="L167"><span class="lineNum">     167</span>              :     yllcorner::Float64 = 0.0,</span>
 <span id="L168"><span class="lineNum">     168</span>              :     padding::Int = 2,</span>
 <span id="L169"><span class="lineNum">     169</span>              :     band_thickness::Int = 5</span>
 <span id="L170"><span class="lineNum">     170</span>              : )</span>
-<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC">          15 :     FireState{Float64}(ncols, nrows, cellsize;</span></span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC">          21 :     FireState{Float64}(ncols, nrows, cellsize;</span></span>
 <span id="L172"><span class="lineNum">     172</span>              :         xllcorner=xllcorner, yllcorner=yllcorner,</span>
 <span id="L173"><span class="lineNum">     173</span>              :         padding=padding, band_thickness=band_thickness)</span>
 <span id="L174"><span class="lineNum">     174</span>              : end</span>
@@ -298,7 +298,7 @@
 <span id="L236"><span class="lineNum">     236</span>              : Convert grid coordinates to padded array coordinates.</span>
 <span id="L237"><span class="lineNum">     237</span>              : &quot;&quot;&quot;</span>
 <span id="L238"><span class="lineNum">     238</span> <span class="tlaGNC">         403 : @inline function grid_to_padded(state::FireState, ix::Int, iy::Int)</span></span>
-<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">         504 :     return (ix + state.padding, iy + state.padding)</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">         510 :     return (ix + state.padding, iy + state.padding)</span></span>
 <span id="L240"><span class="lineNum">     240</span>              : end</span>
 <span id="L241"><span class="lineNum">     241</span>              : </span>
 <span id="L242"><span class="lineNum">     242</span>              : </span>
@@ -308,7 +308,7 @@
 <span id="L246"><span class="lineNum">     246</span>              : Convert padded array coordinates to grid coordinates.</span>
 <span id="L247"><span class="lineNum">     247</span>              : &quot;&quot;&quot;</span>
 <span id="L248"><span class="lineNum">     248</span>              : @inline function padded_to_grid(state::FireState, px::Int, py::Int)</span>
-<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">      861332 :     return (px - state.padding, py - state.padding)</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">      940838 :     return (px - state.padding, py - state.padding)</span></span>
 <span id="L250"><span class="lineNum">     250</span>              : end</span>
 <span id="L251"><span class="lineNum">     251</span>              : </span>
 <span id="L252"><span class="lineNum">     252</span>              : </span>
@@ -322,40 +322,40 @@
 <span id="L260"><span class="lineNum">     260</span>              : Ignite a cell at grid coordinates (ix, iy) at time t.</span>
 <span id="L261"><span class="lineNum">     261</span>              : Sets up the level set as a signed distance function near the ignition point.</span>
 <span id="L262"><span class="lineNum">     262</span>              : &quot;&quot;&quot;</span>
-<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">         100 : function ignite!(state::FireState{T}, ix::Int, iy::Int, t::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">         100 :     px, py = grid_to_padded(state, ix, iy)</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">         106 : function ignite!(state::FireState{T}, ix::Int, iy::Int, t::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">         106 :     px, py = grid_to_padded(state, ix, iy)</span></span>
 <span id="L265"><span class="lineNum">     265</span>              : </span>
 <span id="L266"><span class="lineNum">     266</span>              :     # Set level set to negative (inside fire) - distance to boundary is ~half cell</span>
-<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">         100 :     state.phi[px, py] = -T(0.5) * state.cellsize</span></span>
-<span id="L268"><span class="lineNum">     268</span> <span class="tlaGNC">         100 :     state.phi_old[px, py] = -T(0.5) * state.cellsize</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">         106 :     state.phi[px, py] = -T(0.5) * state.cellsize</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaGNC">         106 :     state.phi_old[px, py] = -T(0.5) * state.cellsize</span></span>
 <span id="L269"><span class="lineNum">     269</span>              : </span>
 <span id="L270"><span class="lineNum">     270</span>              :     # Mark as burned</span>
-<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">         100 :     state.burned[ix, iy] = true</span></span>
-<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">         100 :     state.time_of_arrival[ix, iy] = t</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">         106 :     state.burned[ix, iy] = true</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">         106 :     state.time_of_arrival[ix, iy] = t</span></span>
 <span id="L273"><span class="lineNum">     273</span>              : </span>
 <span id="L274"><span class="lineNum">     274</span>              :     # Initialize signed distance for nearby cells (approximate)</span>
 <span id="L275"><span class="lineNum">     275</span>              :     # This ensures proper gradients at the fire front</span>
-<span id="L276"><span class="lineNum">     276</span> <span class="tlaGNC">         100 :     for di in -3:3, dj in -3:3</span></span>
-<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">        4900 :         if di == 0 &amp;&amp; dj == 0</span></span>
-<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">         100 :             continue</span></span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaGNC">         106 :     for di in -3:3, dj in -3:3</span></span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">        5194 :         if di == 0 &amp;&amp; dj == 0</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">         106 :             continue</span></span>
 <span id="L279"><span class="lineNum">     279</span>              :         end</span>
-<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">        4800 :         npx, npy = px + di, py + dj</span></span>
-<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">        4800 :         if 1 &lt;= npx &lt;= size(state.phi, 1) &amp;&amp; 1 &lt;= npy &lt;= size(state.phi, 2)</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">        5088 :         npx, npy = px + di, py + dj</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">        5088 :         if 1 &lt;= npx &lt;= size(state.phi, 1) &amp;&amp; 1 &lt;= npy &lt;= size(state.phi, 2)</span></span>
 <span id="L282"><span class="lineNum">     282</span>              :             # Distance from center (in grid units) * cellsize - half cell</span>
-<span id="L283"><span class="lineNum">     283</span> <span class="tlaGNC">        4440 :             dist = sqrt(T(di^2 + dj^2)) * state.cellsize - T(0.5) * state.cellsize</span></span>
+<span id="L283"><span class="lineNum">     283</span> <span class="tlaGNC">        4728 :             dist = sqrt(T(di^2 + dj^2)) * state.cellsize - T(0.5) * state.cellsize</span></span>
 <span id="L284"><span class="lineNum">     284</span>              :             # Only update if this gives a smaller (closer to fire) value</span>
-<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">        4440 :             if dist &lt; state.phi[npx, npy]</span></span>
-<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC">        2221 :                 state.phi[npx, npy] = dist</span></span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">        4728 :             if dist &lt; state.phi[npx, npy]</span></span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC">        2509 :                 state.phi[npx, npy] = dist</span></span>
 <span id="L287"><span class="lineNum">     287</span>              :             end</span>
 <span id="L288"><span class="lineNum">     288</span>              :         end</span>
-<span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">        5500 :     end</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">        5830 :     end</span></span>
 <span id="L290"><span class="lineNum">     290</span>              : </span>
 <span id="L291"><span class="lineNum">     291</span>              :     # Add to narrow band</span>
-<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">         100 :     nx_pad = state.ncols + 2*state.padding</span></span>
-<span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">         100 :     ny_pad = state.nrows + 2*state.padding</span></span>
-<span id="L294"><span class="lineNum">     294</span> <span class="tlaGNC">         100 :     tag_band!(state.narrow_band, CartesianIndex(px, py), nx_pad, ny_pad, state.padding)</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">         106 :     nx_pad = state.ncols + 2*state.padding</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">         106 :     ny_pad = state.nrows + 2*state.padding</span></span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaGNC">         106 :     tag_band!(state.narrow_band, CartesianIndex(px, py), nx_pad, ny_pad, state.padding)</span></span>
 <span id="L295"><span class="lineNum">     295</span>              : </span>
-<span id="L296"><span class="lineNum">     296</span> <span class="tlaGNC">         100 :     return nothing</span></span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaGNC">         106 :     return nothing</span></span>
 <span id="L297"><span class="lineNum">     297</span>              : end</span>
 <span id="L298"><span class="lineNum">     298</span>              : </span>
 <span id="L299"><span class="lineNum">     299</span>              : </span>
@@ -707,9 +707,9 @@
 <span id="L645"><span class="lineNum">     645</span>              : </span>
 <span id="L646"><span class="lineNum">     646</span>              : Get the total burned area in square feet.</span>
 <span id="L647"><span class="lineNum">     647</span>              : &quot;&quot;&quot;</span>
-<span id="L648"><span class="lineNum">     648</span> <span class="tlaGNC">           6 : function get_burned_area(state::FireState{T}) where {T&lt;:AbstractFloat}</span></span>
-<span id="L649"><span class="lineNum">     649</span> <span class="tlaGNC">         174 :     burned_cells = count(state.burned)</span></span>
-<span id="L650"><span class="lineNum">     650</span> <span class="tlaGNC">          11 :     return T(burned_cells) * state.cellsize^2</span></span>
+<span id="L648"><span class="lineNum">     648</span> <span class="tlaGNC">           8 : function get_burned_area(state::FireState{T}) where {T&lt;:AbstractFloat}</span></span>
+<span id="L649"><span class="lineNum">     649</span> <span class="tlaGNC">         214 :     burned_cells = count(state.burned)</span></span>
+<span id="L650"><span class="lineNum">     650</span> <span class="tlaGNC">          13 :     return T(burned_cells) * state.cellsize^2</span></span>
 <span id="L651"><span class="lineNum">     651</span>              : end</span>
 <span id="L652"><span class="lineNum">     652</span>              : </span>
 <span id="L653"><span class="lineNum">     653</span>              : </span>
@@ -1226,6 +1226,56 @@
 <span id="L1164"><span class="lineNum">    1164</span>              :         kwargs...</span>
 <span id="L1165"><span class="lineNum">    1165</span>              :     )</span>
 <span id="L1166"><span class="lineNum">    1166</span>              : end</span>
+<span id="L1167"><span class="lineNum">    1167</span>              : </span>
+<span id="L1168"><span class="lineNum">    1168</span>              : </span>
+<span id="L1169"><span class="lineNum">    1169</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L1170"><span class="lineNum">    1170</span>              : #                     GPU Simulation (requires ElmfireKAExt)</span>
+<span id="L1171"><span class="lineNum">    1171</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L1172"><span class="lineNum">    1172</span>              : </span>
+<span id="L1173"><span class="lineNum">    1173</span>              : &quot;&quot;&quot;</span>
+<span id="L1174"><span class="lineNum">    1174</span>              :     simulate_gpu!(</span>
+<span id="L1175"><span class="lineNum">    1175</span>              :         state::FireState{T},</span>
+<span id="L1176"><span class="lineNum">    1176</span>              :         fuel_ids::AbstractMatrix{Int},</span>
+<span id="L1177"><span class="lineNum">    1177</span>              :         fuel_array::FuelModelArray{T},</span>
+<span id="L1178"><span class="lineNum">    1178</span>              :         weather::ConstantWeather{T},</span>
+<span id="L1179"><span class="lineNum">    1179</span>              :         slope::AbstractMatrix{T},</span>
+<span id="L1180"><span class="lineNum">    1180</span>              :         aspect::AbstractMatrix{T},</span>
+<span id="L1181"><span class="lineNum">    1181</span>              :         t_start::T,</span>
+<span id="L1182"><span class="lineNum">    1182</span>              :         t_stop::T;</span>
+<span id="L1183"><span class="lineNum">    1183</span>              :         kwargs...</span>
+<span id="L1184"><span class="lineNum">    1184</span>              :     )</span>
+<span id="L1185"><span class="lineNum">    1185</span>              : </span>
+<span id="L1186"><span class="lineNum">    1186</span>              : GPU-accelerated fire simulation. Requires loading KernelAbstractions and Adapt:</span>
+<span id="L1187"><span class="lineNum">    1187</span>              : </span>
+<span id="L1188"><span class="lineNum">    1188</span>              :     using KernelAbstractions, Adapt</span>
+<span id="L1189"><span class="lineNum">    1189</span>              : </span>
+<span id="L1190"><span class="lineNum">    1190</span>              : Uses KernelAbstractions.jl kernels for velocity calculation, CFL reduction, and</span>
+<span id="L1191"><span class="lineNum">    1191</span>              : RK2 level set integration. The narrow band is managed on the CPU, with an active</span>
+<span id="L1192"><span class="lineNum">    1192</span>              : mask uploaded to GPU each timestep.</span>
+<span id="L1193"><span class="lineNum">    1193</span>              : </span>
+<span id="L1194"><span class="lineNum">    1194</span>              : See also: [`simulate!`](@ref), [`simulate_gpu_uniform!`](@ref)</span>
+<span id="L1195"><span class="lineNum">    1195</span>              : &quot;&quot;&quot;</span>
+<span id="L1196"><span class="lineNum">    1196</span>              : function simulate_gpu! end</span>
+<span id="L1197"><span class="lineNum">    1197</span>              : </span>
+<span id="L1198"><span class="lineNum">    1198</span>              : &quot;&quot;&quot;</span>
+<span id="L1199"><span class="lineNum">    1199</span>              :     simulate_gpu_uniform!(</span>
+<span id="L1200"><span class="lineNum">    1200</span>              :         state::FireState{T},</span>
+<span id="L1201"><span class="lineNum">    1201</span>              :         fuel_id::Int,</span>
+<span id="L1202"><span class="lineNum">    1202</span>              :         fuel_array::FuelModelArray{T},</span>
+<span id="L1203"><span class="lineNum">    1203</span>              :         weather::ConstantWeather{T},</span>
+<span id="L1204"><span class="lineNum">    1204</span>              :         slope_deg::T,</span>
+<span id="L1205"><span class="lineNum">    1205</span>              :         aspect_deg::T,</span>
+<span id="L1206"><span class="lineNum">    1206</span>              :         t_start::T,</span>
+<span id="L1207"><span class="lineNum">    1207</span>              :         t_stop::T;</span>
+<span id="L1208"><span class="lineNum">    1208</span>              :         kwargs...</span>
+<span id="L1209"><span class="lineNum">    1209</span>              :     )</span>
+<span id="L1210"><span class="lineNum">    1210</span>              : </span>
+<span id="L1211"><span class="lineNum">    1211</span>              : GPU-accelerated simulation with uniform fuel, slope, and aspect. Requires loading</span>
+<span id="L1212"><span class="lineNum">    1212</span>              : KernelAbstractions and Adapt.</span>
+<span id="L1213"><span class="lineNum">    1213</span>              : </span>
+<span id="L1214"><span class="lineNum">    1214</span>              : See also: [`simulate_gpu!`](@ref)</span>
+<span id="L1215"><span class="lineNum">    1215</span>              : &quot;&quot;&quot;</span>
+<span id="L1216"><span class="lineNum">    1216</span>              : function simulate_gpu_uniform! end</span>
         </pre>
               </td>
             </tr>

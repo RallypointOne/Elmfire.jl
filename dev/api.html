@@ -364,6 +364,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <a href="./comparison.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">Comparison with Original ELMFIRE</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./gpu.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">GPU Acceleration</span></a>
+  </div>
+</li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
@@ -647,6 +652,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#simulate-simulate" id="toc-simulate-simulate" class="nav-link" data-scroll-target="#simulate-simulate"><code>simulate!</code> {#simulate!}</a></li>
   <li><a href="#simulate_full-simulate_full" id="toc-simulate_full-simulate_full" class="nav-link" data-scroll-target="#simulate_full-simulate_full"><code>simulate_full!</code> {#simulate_full!}</a></li>
   <li><a href="#simulate_full_uniform-simulate_full_uniform" id="toc-simulate_full_uniform-simulate_full_uniform" class="nav-link" data-scroll-target="#simulate_full_uniform-simulate_full_uniform"><code>simulate_full_uniform!</code> {#simulate_full_uniform!}</a></li>
+  <li><a href="#simulate_gpu-simulate_gpu" id="toc-simulate_gpu-simulate_gpu" class="nav-link" data-scroll-target="#simulate_gpu-simulate_gpu"><code>simulate_gpu!</code> {#simulate_gpu!}</a></li>
+  <li><a href="#simulate_gpu_uniform-simulate_gpu_uniform" id="toc-simulate_gpu_uniform-simulate_gpu_uniform" class="nav-link" data-scroll-target="#simulate_gpu_uniform-simulate_gpu_uniform"><code>simulate_gpu_uniform!</code> {#simulate_gpu_uniform!}</a></li>
   <li><a href="#simulate_uniform-simulate_uniform" id="toc-simulate_uniform-simulate_uniform" class="nav-link" data-scroll-target="#simulate_uniform-simulate_uniform"><code>simulate_uniform!</code> {#simulate_uniform!}</a></li>
   <li><a href="#simulate_with_suppression-simulate_with_suppression" id="toc-simulate_with_suppression-simulate_with_suppression" class="nav-link" data-scroll-target="#simulate_with_suppression-simulate_with_suppression"><code>simulate_with_suppression!</code> {#simulate_with_suppression!}</a></li>
   <li><a href="#surface_spread_rate" id="toc-surface_spread_rate" class="nav-link" data-scroll-target="#surface_spread_rate"><code>surface_spread_rate</code></a></li>
@@ -2401,21 +2408,63 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="simulate_uniform-simulate_uniform" class="level4">
-<h4 class="anchored" data-anchor-id="simulate_uniform-simulate_uniform"><code>simulate_uniform!</code> {#simulate_uniform!}</h4>
+<section id="simulate_gpu-simulate_gpu" class="level4">
+<h4 class="anchored" data-anchor-id="simulate_gpu-simulate_gpu"><code>simulate_gpu!</code> {#simulate_gpu!}</h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb142"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb142-1"><a href="#cb142-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb142"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb142-1"><a href="#cb142-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_gpu!</span>(</span>
 <span id="cb142-2"><a href="#cb142-2" aria-hidden="true" tabindex="-1"></a>    state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
-<span id="cb142-3"><a href="#cb142-3" aria-hidden="true" tabindex="-1"></a>    fuel_id<span class="op">::</span><span class="dt">Int</span>,</span>
-<span id="cb142-4"><a href="#cb142-4" aria-hidden="true" tabindex="-1"></a>    fuel_table<span class="op">::</span><span class="dt">FuelModelTable{T}</span>,</span>
+<span id="cb142-3"><a href="#cb142-3" aria-hidden="true" tabindex="-1"></a>    fuel_ids<span class="op">::</span><span class="dt">AbstractMatrix{Int}</span>,</span>
+<span id="cb142-4"><a href="#cb142-4" aria-hidden="true" tabindex="-1"></a>    fuel_array<span class="op">::</span><span class="dt">FuelModelArray{T}</span>,</span>
 <span id="cb142-5"><a href="#cb142-5" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
-<span id="cb142-6"><a href="#cb142-6" aria-hidden="true" tabindex="-1"></a>    slope_deg<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb142-7"><a href="#cb142-7" aria-hidden="true" tabindex="-1"></a>    aspect_deg<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb142-6"><a href="#cb142-6" aria-hidden="true" tabindex="-1"></a>    slope<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
+<span id="cb142-7"><a href="#cb142-7" aria-hidden="true" tabindex="-1"></a>    aspect<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
 <span id="cb142-8"><a href="#cb142-8" aria-hidden="true" tabindex="-1"></a>    t_start<span class="op">::</span><span class="dt">T</span>,</span>
 <span id="cb142-9"><a href="#cb142-9" aria-hidden="true" tabindex="-1"></a>    t_stop<span class="op">::</span><span class="dt">T</span>;</span>
 <span id="cb142-10"><a href="#cb142-10" aria-hidden="true" tabindex="-1"></a>    kwargs<span class="op">...</span></span>
 <span id="cb142-11"><a href="#cb142-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>GPU-accelerated fire simulation. Requires loading KernelAbstractions and Adapt:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb143"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb143-1"><a href="#cb143-1" aria-hidden="true" tabindex="-1"></a><span class="im">using</span> <span class="bu">KernelAbstractions</span>, <span class="bu">Adapt</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Uses KernelAbstractions.jl kernels for velocity calculation, CFL reduction, and RK2 level set integration. The narrow band is managed on the CPU, with an active mask uploaded to GPU each timestep.</p>
+<p>See also: <a href="@ref"><code>simulate!</code></a>, <a href="@ref"><code>simulate_gpu_uniform!</code></a></p>
+</div>
+</div>
+</section>
+<section id="simulate_gpu_uniform-simulate_gpu_uniform" class="level4">
+<h4 class="anchored" data-anchor-id="simulate_gpu_uniform-simulate_gpu_uniform"><code>simulate_gpu_uniform!</code> {#simulate_gpu_uniform!}</h4>
+<div class="card mb-3">
+<div class="card-body">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb144"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb144-1"><a href="#cb144-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_gpu_uniform!</span>(</span>
+<span id="cb144-2"><a href="#cb144-2" aria-hidden="true" tabindex="-1"></a>    state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
+<span id="cb144-3"><a href="#cb144-3" aria-hidden="true" tabindex="-1"></a>    fuel_id<span class="op">::</span><span class="dt">Int</span>,</span>
+<span id="cb144-4"><a href="#cb144-4" aria-hidden="true" tabindex="-1"></a>    fuel_array<span class="op">::</span><span class="dt">FuelModelArray{T}</span>,</span>
+<span id="cb144-5"><a href="#cb144-5" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
+<span id="cb144-6"><a href="#cb144-6" aria-hidden="true" tabindex="-1"></a>    slope_deg<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb144-7"><a href="#cb144-7" aria-hidden="true" tabindex="-1"></a>    aspect_deg<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb144-8"><a href="#cb144-8" aria-hidden="true" tabindex="-1"></a>    t_start<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb144-9"><a href="#cb144-9" aria-hidden="true" tabindex="-1"></a>    t_stop<span class="op">::</span><span class="dt">T</span>;</span>
+<span id="cb144-10"><a href="#cb144-10" aria-hidden="true" tabindex="-1"></a>    kwargs<span class="op">...</span></span>
+<span id="cb144-11"><a href="#cb144-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>GPU-accelerated simulation with uniform fuel, slope, and aspect. Requires loading KernelAbstractions and Adapt.</p>
+<p>See also: <a href="@ref"><code>simulate_gpu!</code></a></p>
+</div>
+</div>
+</section>
+<section id="simulate_uniform-simulate_uniform" class="level4">
+<h4 class="anchored" data-anchor-id="simulate_uniform-simulate_uniform"><code>simulate_uniform!</code> {#simulate_uniform!}</h4>
+<div class="card mb-3">
+<div class="card-body">
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb145"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb145-1"><a href="#cb145-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_uniform!</span>(</span>
+<span id="cb145-2"><a href="#cb145-2" aria-hidden="true" tabindex="-1"></a>    state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
+<span id="cb145-3"><a href="#cb145-3" aria-hidden="true" tabindex="-1"></a>    fuel_id<span class="op">::</span><span class="dt">Int</span>,</span>
+<span id="cb145-4"><a href="#cb145-4" aria-hidden="true" tabindex="-1"></a>    fuel_table<span class="op">::</span><span class="dt">FuelModelTable{T}</span>,</span>
+<span id="cb145-5"><a href="#cb145-5" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
+<span id="cb145-6"><a href="#cb145-6" aria-hidden="true" tabindex="-1"></a>    slope_deg<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb145-7"><a href="#cb145-7" aria-hidden="true" tabindex="-1"></a>    aspect_deg<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb145-8"><a href="#cb145-8" aria-hidden="true" tabindex="-1"></a>    t_start<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb145-9"><a href="#cb145-9" aria-hidden="true" tabindex="-1"></a>    t_stop<span class="op">::</span><span class="dt">T</span>;</span>
+<span id="cb145-10"><a href="#cb145-10" aria-hidden="true" tabindex="-1"></a>    kwargs<span class="op">...</span></span>
+<span id="cb145-11"><a href="#cb145-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Run simulation with uniform fuel, slope, and aspect across the domain.</p>
 </div>
 </div>
@@ -2424,21 +2473,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="simulate_with_suppression-simulate_with_suppression"><code>simulate_with_suppression!</code> {#simulate_with_suppression!}</h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb143"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb143-1"><a href="#cb143-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_with_suppression!</span>(</span>
-<span id="cb143-2"><a href="#cb143-2" aria-hidden="true" tabindex="-1"></a>    state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
-<span id="cb143-3"><a href="#cb143-3" aria-hidden="true" tabindex="-1"></a>    suppression<span class="op">::</span><span class="dt">SuppressionState{T}</span>,</span>
-<span id="cb143-4"><a href="#cb143-4" aria-hidden="true" tabindex="-1"></a>    fuel_ids<span class="op">::</span><span class="dt">AbstractMatrix{Int}</span>,</span>
-<span id="cb143-5"><a href="#cb143-5" aria-hidden="true" tabindex="-1"></a>    fuel_table<span class="op">::</span><span class="dt">FuelModelTable{T}</span>,</span>
-<span id="cb143-6"><a href="#cb143-6" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
-<span id="cb143-7"><a href="#cb143-7" aria-hidden="true" tabindex="-1"></a>    slope<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
-<span id="cb143-8"><a href="#cb143-8" aria-hidden="true" tabindex="-1"></a>    aspect<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
-<span id="cb143-9"><a href="#cb143-9" aria-hidden="true" tabindex="-1"></a>    t_start<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb143-10"><a href="#cb143-10" aria-hidden="true" tabindex="-1"></a>    t_stop<span class="op">::</span><span class="dt">T</span>;</span>
-<span id="cb143-11"><a href="#cb143-11" aria-hidden="true" tabindex="-1"></a>    dt_initial<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">one</span>(T),</span>
-<span id="cb143-12"><a href="#cb143-12" aria-hidden="true" tabindex="-1"></a>    target_cfl<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">T</span>(<span class="fl">0.9</span>),</span>
-<span id="cb143-13"><a href="#cb143-13" aria-hidden="true" tabindex="-1"></a>    dt_max<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">T</span>(<span class="fl">10</span>),</span>
-<span id="cb143-14"><a href="#cb143-14" aria-hidden="true" tabindex="-1"></a>    callback<span class="op">::</span><span class="dt">Union{Nothing, Function} </span><span class="op">=</span> <span class="cn">nothing</span></span>
-<span id="cb143-15"><a href="#cb143-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb146"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb146-1"><a href="#cb146-1" aria-hidden="true" tabindex="-1"></a><span class="fu">simulate_with_suppression!</span>(</span>
+<span id="cb146-2"><a href="#cb146-2" aria-hidden="true" tabindex="-1"></a>    state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
+<span id="cb146-3"><a href="#cb146-3" aria-hidden="true" tabindex="-1"></a>    suppression<span class="op">::</span><span class="dt">SuppressionState{T}</span>,</span>
+<span id="cb146-4"><a href="#cb146-4" aria-hidden="true" tabindex="-1"></a>    fuel_ids<span class="op">::</span><span class="dt">AbstractMatrix{Int}</span>,</span>
+<span id="cb146-5"><a href="#cb146-5" aria-hidden="true" tabindex="-1"></a>    fuel_table<span class="op">::</span><span class="dt">FuelModelTable{T}</span>,</span>
+<span id="cb146-6"><a href="#cb146-6" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
+<span id="cb146-7"><a href="#cb146-7" aria-hidden="true" tabindex="-1"></a>    slope<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
+<span id="cb146-8"><a href="#cb146-8" aria-hidden="true" tabindex="-1"></a>    aspect<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
+<span id="cb146-9"><a href="#cb146-9" aria-hidden="true" tabindex="-1"></a>    t_start<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb146-10"><a href="#cb146-10" aria-hidden="true" tabindex="-1"></a>    t_stop<span class="op">::</span><span class="dt">T</span>;</span>
+<span id="cb146-11"><a href="#cb146-11" aria-hidden="true" tabindex="-1"></a>    dt_initial<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">one</span>(T),</span>
+<span id="cb146-12"><a href="#cb146-12" aria-hidden="true" tabindex="-1"></a>    target_cfl<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">T</span>(<span class="fl">0.9</span>),</span>
+<span id="cb146-13"><a href="#cb146-13" aria-hidden="true" tabindex="-1"></a>    dt_max<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">T</span>(<span class="fl">10</span>),</span>
+<span id="cb146-14"><a href="#cb146-14" aria-hidden="true" tabindex="-1"></a>    callback<span class="op">::</span><span class="dt">Union{Nothing, Function} </span><span class="op">=</span> <span class="cn">nothing</span></span>
+<span id="cb146-15"><a href="#cb146-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Run fire simulation with active suppression.</p>
 </div>
 </div>
@@ -2447,14 +2496,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="surface_spread_rate"><code>surface_spread_rate</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb144"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb144-1"><a href="#cb144-1" aria-hidden="true" tabindex="-1"></a><span class="fu">surface_spread_rate</span>(</span>
-<span id="cb144-2"><a href="#cb144-2" aria-hidden="true" tabindex="-1"></a>    fm<span class="op">::</span><span class="dt">FuelModel{T}</span>,</span>
-<span id="cb144-3"><a href="#cb144-3" aria-hidden="true" tabindex="-1"></a>    M1<span class="op">::</span><span class="dt">T</span>, M10<span class="op">::</span><span class="dt">T</span>, M100<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb144-4"><a href="#cb144-4" aria-hidden="true" tabindex="-1"></a>    MLH<span class="op">::</span><span class="dt">T</span>, MLW<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb144-5"><a href="#cb144-5" aria-hidden="true" tabindex="-1"></a>    wsmf<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb144-6"><a href="#cb144-6" aria-hidden="true" tabindex="-1"></a>    tanslp2<span class="op">::</span><span class="dt">T</span>;</span>
-<span id="cb144-7"><a href="#cb144-7" aria-hidden="true" tabindex="-1"></a>    adj<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">one</span>(T)</span>
-<span id="cb144-8"><a href="#cb144-8" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> SpreadResult{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb147"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb147-1"><a href="#cb147-1" aria-hidden="true" tabindex="-1"></a><span class="fu">surface_spread_rate</span>(</span>
+<span id="cb147-2"><a href="#cb147-2" aria-hidden="true" tabindex="-1"></a>    fm<span class="op">::</span><span class="dt">FuelModel{T}</span>,</span>
+<span id="cb147-3"><a href="#cb147-3" aria-hidden="true" tabindex="-1"></a>    M1<span class="op">::</span><span class="dt">T</span>, M10<span class="op">::</span><span class="dt">T</span>, M100<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb147-4"><a href="#cb147-4" aria-hidden="true" tabindex="-1"></a>    MLH<span class="op">::</span><span class="dt">T</span>, MLW<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb147-5"><a href="#cb147-5" aria-hidden="true" tabindex="-1"></a>    wsmf<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb147-6"><a href="#cb147-6" aria-hidden="true" tabindex="-1"></a>    tanslp2<span class="op">::</span><span class="dt">T</span>;</span>
+<span id="cb147-7"><a href="#cb147-7" aria-hidden="true" tabindex="-1"></a>    adj<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">one</span>(T)</span>
+<span id="cb147-8"><a href="#cb147-8" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> SpreadResult{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Calculate surface fire spread rate using the Rothermel (1972) model.</p>
 <section id="arguments-21" class="level1">
 <h1>Arguments</h1>
@@ -2476,13 +2525,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>SpreadResult</code> with velocity, reaction intensity, heat per unit area, and fireline intensity</li>
 </ul>
 <p>Implementation follows <code>elmfire_spread_rate.f90:13-132</code>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb145"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb145-1"><a href="#cb145-1" aria-hidden="true" tabindex="-1"></a><span class="fu">surface_spread_rate</span>(</span>
-<span id="cb145-2"><a href="#cb145-2" aria-hidden="true" tabindex="-1"></a>    fm<span class="op">::</span><span class="dt">FuelModel{T}</span>,</span>
-<span id="cb145-3"><a href="#cb145-3" aria-hidden="true" tabindex="-1"></a>    moisture<span class="op">::</span><span class="dt">NTuple{5,T}</span>,</span>
-<span id="cb145-4"><a href="#cb145-4" aria-hidden="true" tabindex="-1"></a>    wsmf<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb145-5"><a href="#cb145-5" aria-hidden="true" tabindex="-1"></a>    tanslp2<span class="op">::</span><span class="dt">T</span>;</span>
-<span id="cb145-6"><a href="#cb145-6" aria-hidden="true" tabindex="-1"></a>    adj<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">one</span>(T)</span>
-<span id="cb145-7"><a href="#cb145-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> SpreadResult{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb148"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb148-1"><a href="#cb148-1" aria-hidden="true" tabindex="-1"></a><span class="fu">surface_spread_rate</span>(</span>
+<span id="cb148-2"><a href="#cb148-2" aria-hidden="true" tabindex="-1"></a>    fm<span class="op">::</span><span class="dt">FuelModel{T}</span>,</span>
+<span id="cb148-3"><a href="#cb148-3" aria-hidden="true" tabindex="-1"></a>    moisture<span class="op">::</span><span class="dt">NTuple{5,T}</span>,</span>
+<span id="cb148-4"><a href="#cb148-4" aria-hidden="true" tabindex="-1"></a>    wsmf<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb148-5"><a href="#cb148-5" aria-hidden="true" tabindex="-1"></a>    tanslp2<span class="op">::</span><span class="dt">T</span>;</span>
+<span id="cb148-6"><a href="#cb148-6" aria-hidden="true" tabindex="-1"></a>    adj<span class="op">::</span><span class="dt">T </span><span class="op">=</span> <span class="fu">one</span>(T)</span>
+<span id="cb148-7"><a href="#cb148-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> SpreadResult{T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Convenience method accepting moisture as tuple (M1, M10, M100, MLH, MLW).</p>
 </section>
 </div>
@@ -2492,11 +2541,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored"><code>surface_spread_rate_flat</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb146"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb146-1"><a href="#cb146-1" aria-hidden="true" tabindex="-1"></a><span class="fu">surface_spread_rate_flat</span>(</span>
-<span id="cb146-2"><a href="#cb146-2" aria-hidden="true" tabindex="-1"></a>    fuel_arr<span class="op">::</span><span class="dt">FuelModelArray{T}</span>, fuel_index<span class="op">::</span><span class="dt">Int</span>, mc_index<span class="op">::</span><span class="dt">Int</span>,</span>
-<span id="cb146-3"><a href="#cb146-3" aria-hidden="true" tabindex="-1"></a>    M1<span class="op">::</span><span class="dt">T</span>, M10<span class="op">::</span><span class="dt">T</span>, M100<span class="op">::</span><span class="dt">T</span>, MLH<span class="op">::</span><span class="dt">T</span>, MLW<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb146-4"><a href="#cb146-4" aria-hidden="true" tabindex="-1"></a>    wsmf<span class="op">::</span><span class="dt">T</span>, tanslp2<span class="op">::</span><span class="dt">T</span>, adj<span class="op">::</span><span class="dt">T</span></span>
-<span id="cb146-5"><a href="#cb146-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Tuple</span>{T, T, T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb149"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb149-1"><a href="#cb149-1" aria-hidden="true" tabindex="-1"></a><span class="fu">surface_spread_rate_flat</span>(</span>
+<span id="cb149-2"><a href="#cb149-2" aria-hidden="true" tabindex="-1"></a>    fuel_arr<span class="op">::</span><span class="dt">FuelModelArray{T}</span>, fuel_index<span class="op">::</span><span class="dt">Int</span>, mc_index<span class="op">::</span><span class="dt">Int</span>,</span>
+<span id="cb149-3"><a href="#cb149-3" aria-hidden="true" tabindex="-1"></a>    M1<span class="op">::</span><span class="dt">T</span>, M10<span class="op">::</span><span class="dt">T</span>, M100<span class="op">::</span><span class="dt">T</span>, MLH<span class="op">::</span><span class="dt">T</span>, MLW<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb149-4"><a href="#cb149-4" aria-hidden="true" tabindex="-1"></a>    wsmf<span class="op">::</span><span class="dt">T</span>, tanslp2<span class="op">::</span><span class="dt">T</span>, adj<span class="op">::</span><span class="dt">T</span></span>
+<span id="cb149-5"><a href="#cb149-5" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Tuple</span>{T, T, T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Compute surface fire spread rate from a <code>FuelModelArray</code> using dense array indexing. This variant is designed for GPU kernels where <code>Dict</code>-based <code>FuelModel</code> lookup is not available.</p>
 <p>Returns <code>(velocity, vs0, flin)</code> as a tuple instead of a <code>SpreadResult</code> struct.</p>
 <section id="arguments-22" class="level3">
@@ -2518,7 +2567,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="tag_band-tag_band"><code>tag_band!</code> {#tag_band!}</h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb147"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb147-1"><a href="#cb147-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tag_band!</span>(nb<span class="op">::</span><span class="dt">NarrowBand</span>, center<span class="op">::</span><span class="dt">CartesianIndex{2}</span>, nx<span class="op">::</span><span class="dt">Int</span>, ny<span class="op">::</span><span class="dt">Int</span>, padding<span class="op">::</span><span class="dt">Int</span>=<span class="fl">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb150"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb150-1"><a href="#cb150-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tag_band!</span>(nb<span class="op">::</span><span class="dt">NarrowBand</span>, center<span class="op">::</span><span class="dt">CartesianIndex{2}</span>, nx<span class="op">::</span><span class="dt">Int</span>, ny<span class="op">::</span><span class="dt">Int</span>, padding<span class="op">::</span><span class="dt">Int</span>=<span class="fl">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Add cells within band_thickness of center to the active set.</p>
 </div>
 </div>
@@ -2527,15 +2576,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="transport_ember"><code>transport_ember</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb148"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb148-1"><a href="#cb148-1" aria-hidden="true" tabindex="-1"></a><span class="fu">transport_ember</span>(</span>
-<span id="cb148-2"><a href="#cb148-2" aria-hidden="true" tabindex="-1"></a>    x0<span class="op">::</span><span class="dt">T</span>, y0<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb148-3"><a href="#cb148-3" aria-hidden="true" tabindex="-1"></a>    ws20<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb148-4"><a href="#cb148-4" aria-hidden="true" tabindex="-1"></a>    wd20<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb148-5"><a href="#cb148-5" aria-hidden="true" tabindex="-1"></a>    spotting_distance<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb148-6"><a href="#cb148-6" aria-hidden="true" tabindex="-1"></a>    cellsize<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb148-7"><a href="#cb148-7" aria-hidden="true" tabindex="-1"></a>    ncols<span class="op">::</span><span class="dt">Int</span>, nrows<span class="op">::</span><span class="dt">Int</span>;</span>
-<span id="cb148-8"><a href="#cb148-8" aria-hidden="true" tabindex="-1"></a>    rng<span class="op">::</span><span class="dt">AbstractRNG </span><span class="op">=</span> <span class="bu">Random</span>.<span class="fu">default_rng</span>()</span>
-<span id="cb148-9"><a href="#cb148-9" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Tuple</span>{<span class="dt">Int</span>, <span class="dt">Int</span>, T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb151"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb151-1"><a href="#cb151-1" aria-hidden="true" tabindex="-1"></a><span class="fu">transport_ember</span>(</span>
+<span id="cb151-2"><a href="#cb151-2" aria-hidden="true" tabindex="-1"></a>    x0<span class="op">::</span><span class="dt">T</span>, y0<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb151-3"><a href="#cb151-3" aria-hidden="true" tabindex="-1"></a>    ws20<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb151-4"><a href="#cb151-4" aria-hidden="true" tabindex="-1"></a>    wd20<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb151-5"><a href="#cb151-5" aria-hidden="true" tabindex="-1"></a>    spotting_distance<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb151-6"><a href="#cb151-6" aria-hidden="true" tabindex="-1"></a>    cellsize<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb151-7"><a href="#cb151-7" aria-hidden="true" tabindex="-1"></a>    ncols<span class="op">::</span><span class="dt">Int</span>, nrows<span class="op">::</span><span class="dt">Int</span>;</span>
+<span id="cb151-8"><a href="#cb151-8" aria-hidden="true" tabindex="-1"></a>    rng<span class="op">::</span><span class="dt">AbstractRNG </span><span class="op">=</span> <span class="bu">Random</span>.<span class="fu">default_rng</span>()</span>
+<span id="cb151-9"><a href="#cb151-9" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Tuple</span>{<span class="dt">Int</span>, <span class="dt">Int</span>, T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Transport a single ember from source location to landing location.</p>
 <section id="arguments-23" class="level1">
 <h1>Arguments</h1>
@@ -2561,12 +2610,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="untag_isolated-untag_isolated"><code>untag_isolated!</code> {#untag_isolated!}</h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb149"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb149-1"><a href="#cb149-1" aria-hidden="true" tabindex="-1"></a><span class="fu">untag_isolated!</span>(</span>
-<span id="cb149-2"><a href="#cb149-2" aria-hidden="true" tabindex="-1"></a>    nb<span class="op">::</span><span class="dt">NarrowBand</span>,</span>
-<span id="cb149-3"><a href="#cb149-3" aria-hidden="true" tabindex="-1"></a>    phi<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
-<span id="cb149-4"><a href="#cb149-4" aria-hidden="true" tabindex="-1"></a>    burned<span class="op">::</span><span class="dt">Union{AbstractMatrix{Bool}, BitMatrix}</span>,</span>
-<span id="cb149-5"><a href="#cb149-5" aria-hidden="true" tabindex="-1"></a>    padding<span class="op">::</span><span class="dt">Int </span><span class="op">=</span> <span class="fl">0</span></span>
-<span id="cb149-6"><a href="#cb149-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb152"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb152-1"><a href="#cb152-1" aria-hidden="true" tabindex="-1"></a><span class="fu">untag_isolated!</span>(</span>
+<span id="cb152-2"><a href="#cb152-2" aria-hidden="true" tabindex="-1"></a>    nb<span class="op">::</span><span class="dt">NarrowBand</span>,</span>
+<span id="cb152-3"><a href="#cb152-3" aria-hidden="true" tabindex="-1"></a>    phi<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>,</span>
+<span id="cb152-4"><a href="#cb152-4" aria-hidden="true" tabindex="-1"></a>    burned<span class="op">::</span><span class="dt">Union{AbstractMatrix{Bool}, BitMatrix}</span>,</span>
+<span id="cb152-5"><a href="#cb152-5" aria-hidden="true" tabindex="-1"></a>    padding<span class="op">::</span><span class="dt">Int </span><span class="op">=</span> <span class="fl">0</span></span>
+<span id="cb152-6"><a href="#cb152-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Remove cells from the active set that are:</p>
 <ol type="1">
 <li>Already burned (φ ≤ 0) and have no unburned neighbors</li>
@@ -2580,12 +2629,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="update_suppression_state-update_suppression_state"><code>update_suppression_state!</code> {#update_suppression_state!}</h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb150"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb150-1"><a href="#cb150-1" aria-hidden="true" tabindex="-1"></a><span class="fu">update_suppression_state!</span>(</span>
-<span id="cb150-2"><a href="#cb150-2" aria-hidden="true" tabindex="-1"></a>    suppression<span class="op">::</span><span class="dt">SuppressionState{T}</span>,</span>
-<span id="cb150-3"><a href="#cb150-3" aria-hidden="true" tabindex="-1"></a>    fire_state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
-<span id="cb150-4"><a href="#cb150-4" aria-hidden="true" tabindex="-1"></a>    dt<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb150-5"><a href="#cb150-5" aria-hidden="true" tabindex="-1"></a>    t<span class="op">::</span><span class="dt">T</span></span>
-<span id="cb150-6"><a href="#cb150-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb153"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb153-1"><a href="#cb153-1" aria-hidden="true" tabindex="-1"></a><span class="fu">update_suppression_state!</span>(</span>
+<span id="cb153-2"><a href="#cb153-2" aria-hidden="true" tabindex="-1"></a>    suppression<span class="op">::</span><span class="dt">SuppressionState{T}</span>,</span>
+<span id="cb153-3"><a href="#cb153-3" aria-hidden="true" tabindex="-1"></a>    fire_state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
+<span id="cb153-4"><a href="#cb153-4" aria-hidden="true" tabindex="-1"></a>    dt<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb153-5"><a href="#cb153-5" aria-hidden="true" tabindex="-1"></a>    t<span class="op">::</span><span class="dt">T</span></span>
+<span id="cb153-6"><a href="#cb153-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Update suppression state: move resources, construct lines, etc.</p>
 </div>
 </div>
@@ -2594,14 +2643,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="update_wui_state-update_wui_state"><code>update_wui_state!</code> {#update_wui_state!}</h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb151"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb151-1"><a href="#cb151-1" aria-hidden="true" tabindex="-1"></a><span class="fu">update_wui_state!</span>(</span>
-<span id="cb151-2"><a href="#cb151-2" aria-hidden="true" tabindex="-1"></a>    wui_grid<span class="op">::</span><span class="dt">WUIGrid{T}</span>,</span>
-<span id="cb151-3"><a href="#cb151-3" aria-hidden="true" tabindex="-1"></a>    fire_state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
-<span id="cb151-4"><a href="#cb151-4" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
-<span id="cb151-5"><a href="#cb151-5" aria-hidden="true" tabindex="-1"></a>    t<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb151-6"><a href="#cb151-6" aria-hidden="true" tabindex="-1"></a>    dt<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb151-7"><a href="#cb151-7" aria-hidden="true" tabindex="-1"></a>    rng<span class="op">::</span><span class="dt">AbstractRNG</span></span>
-<span id="cb151-8"><a href="#cb151-8" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Vector</span>{BuildingIgnitionResult{T}}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb154"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb154-1"><a href="#cb154-1" aria-hidden="true" tabindex="-1"></a><span class="fu">update_wui_state!</span>(</span>
+<span id="cb154-2"><a href="#cb154-2" aria-hidden="true" tabindex="-1"></a>    wui_grid<span class="op">::</span><span class="dt">WUIGrid{T}</span>,</span>
+<span id="cb154-3"><a href="#cb154-3" aria-hidden="true" tabindex="-1"></a>    fire_state<span class="op">::</span><span class="dt">FireState{T}</span>,</span>
+<span id="cb154-4"><a href="#cb154-4" aria-hidden="true" tabindex="-1"></a>    weather<span class="op">::</span><span class="dt">ConstantWeather{T}</span>,</span>
+<span id="cb154-5"><a href="#cb154-5" aria-hidden="true" tabindex="-1"></a>    t<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb154-6"><a href="#cb154-6" aria-hidden="true" tabindex="-1"></a>    dt<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb154-7"><a href="#cb154-7" aria-hidden="true" tabindex="-1"></a>    rng<span class="op">::</span><span class="dt">AbstractRNG</span></span>
+<span id="cb154-8"><a href="#cb154-8" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Vector</span>{BuildingIgnitionResult{T}}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Update the WUI grid based on fire state and check for building ignitions.</p>
 <section id="arguments-24" class="level1">
 <h1>Arguments</h1>
@@ -2627,7 +2676,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="velocity_at_angle"><code>velocity_at_angle</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb152"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb152-1"><a href="#cb152-1" aria-hidden="true" tabindex="-1"></a><span class="fu">velocity_at_angle</span>(es<span class="op">::</span><span class="dt">EllipticalSpread{T}</span>, theta<span class="op">::</span><span class="dt">T</span>) <span class="op">-&gt;</span> T</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb155"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb155-1"><a href="#cb155-1" aria-hidden="true" tabindex="-1"></a><span class="fu">velocity_at_angle</span>(es<span class="op">::</span><span class="dt">EllipticalSpread{T}</span>, theta<span class="op">::</span><span class="dt">T</span>) <span class="op">-&gt;</span> T</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Calculate fire spread rate at angle theta from the wind direction. theta = 0 is head fire (downwind), theta = π is backing fire (upwind).</p>
 </div>
 </div>
@@ -2636,13 +2685,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="velocity_components"><code>velocity_components</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb153"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb153-1"><a href="#cb153-1" aria-hidden="true" tabindex="-1"></a><span class="fu">velocity_components</span>(</span>
-<span id="cb153-2"><a href="#cb153-2" aria-hidden="true" tabindex="-1"></a>    head_velocity<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb153-3"><a href="#cb153-3" aria-hidden="true" tabindex="-1"></a>    back_velocity<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb153-4"><a href="#cb153-4" aria-hidden="true" tabindex="-1"></a>    wind_direction_rad<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb153-5"><a href="#cb153-5" aria-hidden="true" tabindex="-1"></a>    normal_x<span class="op">::</span><span class="dt">T</span>,</span>
-<span id="cb153-6"><a href="#cb153-6" aria-hidden="true" tabindex="-1"></a>    normal_y<span class="op">::</span><span class="dt">T</span></span>
-<span id="cb153-7"><a href="#cb153-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Tuple</span>{T, T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb156"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb156-1"><a href="#cb156-1" aria-hidden="true" tabindex="-1"></a><span class="fu">velocity_components</span>(</span>
+<span id="cb156-2"><a href="#cb156-2" aria-hidden="true" tabindex="-1"></a>    head_velocity<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb156-3"><a href="#cb156-3" aria-hidden="true" tabindex="-1"></a>    back_velocity<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb156-4"><a href="#cb156-4" aria-hidden="true" tabindex="-1"></a>    wind_direction_rad<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb156-5"><a href="#cb156-5" aria-hidden="true" tabindex="-1"></a>    normal_x<span class="op">::</span><span class="dt">T</span>,</span>
+<span id="cb156-6"><a href="#cb156-6" aria-hidden="true" tabindex="-1"></a>    normal_y<span class="op">::</span><span class="dt">T</span></span>
+<span id="cb156-7"><a href="#cb156-7" aria-hidden="true" tabindex="-1"></a>) <span class="op">-&gt;</span> <span class="dt">Tuple</span>{T, T}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Calculate velocity components (ux, uy) in grid coordinates from fire spread parameters.</p>
 <section id="arguments-25" class="level1">
 <h1>Arguments</h1>
@@ -2666,7 +2715,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="wind_adjustment_factor"><code>wind_adjustment_factor</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb154"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb154-1"><a href="#cb154-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wind_adjustment_factor</span>(fuel_bed_depth<span class="op">::</span><span class="dt">T</span>) <span class="op">-&gt;</span> T</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb157"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb157-1"><a href="#cb157-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wind_adjustment_factor</span>(fuel_bed_depth<span class="op">::</span><span class="dt">T</span>) <span class="op">-&gt;</span> T</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Calculate wind adjustment factor (WAF) from 20-ft wind to mid-flame wind.</p>
 <p>Uses the unsheltered (no canopy) formula: WAF = 1.83 / ln((20 + 0.36<em>H) / (0.13</em>H)) where H is the fuel bed depth in feet.</p>
 <p>For sheltered conditions (with canopy), use a lookup table or more complex formula.</p>
@@ -2677,8 +2726,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="write_fire_perimeter"><code>write_fire_perimeter</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb155"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb155-1"><a href="#cb155-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_fire_perimeter</span>(path<span class="op">::</span><span class="dt">String</span>, state<span class="op">::</span><span class="dt">FireState</span>, metadata<span class="op">::</span><span class="dt">GeoMetadata</span>;</span>
-<span id="cb155-2"><a href="#cb155-2" aria-hidden="true" tabindex="-1"></a>                     format<span class="op">::</span><span class="dt">Symbol</span>=<span class="op">:</span>geojson)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb158"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb158-1"><a href="#cb158-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_fire_perimeter</span>(path<span class="op">::</span><span class="dt">String</span>, state<span class="op">::</span><span class="dt">FireState</span>, metadata<span class="op">::</span><span class="dt">GeoMetadata</span>;</span>
+<span id="cb158-2"><a href="#cb158-2" aria-hidden="true" tabindex="-1"></a>                     format<span class="op">::</span><span class="dt">Symbol</span>=<span class="op">:</span>geojson)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write the fire perimeter to a GeoJSON or other format.</p>
 <section id="arguments-26" class="level1">
 <h1>Arguments</h1>
@@ -2696,9 +2745,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="write_geotiff"><code>write_geotiff</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb156"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb156-1"><a href="#cb156-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_geotiff</span>(path<span class="op">::</span><span class="dt">String</span>, data<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>, metadata<span class="op">::</span><span class="dt">GeoMetadata{T}</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb159"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb159-1"><a href="#cb159-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_geotiff</span>(path<span class="op">::</span><span class="dt">String</span>, data<span class="op">::</span><span class="dt">AbstractMatrix{T}</span>, metadata<span class="op">::</span><span class="dt">GeoMetadata{T}</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write a matrix to a GeoTIFF file with the given metadata.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb157"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb157-1"><a href="#cb157-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_geotiff</span>(path<span class="op">::</span><span class="dt">String</span>, raster<span class="op">::</span><span class="dt">GeoRaster{T}</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb160"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb160-1"><a href="#cb160-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_geotiff</span>(path<span class="op">::</span><span class="dt">String</span>, raster<span class="op">::</span><span class="dt">GeoRaster{T}</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Write a GeoRaster to a GeoTIFF file.</p>
 </div>
 </div>
@@ -2710,12 +2759,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h4 class="anchored" data-anchor-id="btupft2min_to_kwpm2"><code>BTUPFT2MIN_TO_KWPM2</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb158"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb158-1"><a href="#cb158-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb161"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb161-1"><a href="#cb161-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>64-bit floating point number type (IEEE 754 standard). Binary format is 1 sign, 11 exponent, 52 fraction bits. See <a href="@ref"><code>bitstring</code></a>, <a href="@ref"><code>signbit</code></a>, <a href="@ref"><code>exponent</code></a>, <a href="@ref"><code>frexp</code></a>, and <a href="@ref"><code>significand</code></a> to access various bits.</p>
 <p>This is the default for floating point literals, <code>1.0 isa Float64</code>, and for many operations such as <code>1/2, 2pi, log(2), range(0,90,length=4)</code>. Unlike integers, this default does not change with <code>Sys.WORD_SIZE</code>.</p>
 <p>The exponent for scientific notation can be entered as <code>e</code> or <code>E</code>, thus <code>2e3 === 2.0E3 === 2.0 * 10^3</code>. Doing so is strongly preferred over <code>10^n</code> because integers overflow, thus <code>2.0 * 10^19 &lt; 0</code> but <code>2e19 &gt; 0</code>.</p>
 <p>See also <a href="@ref"><code>Inf</code></a>, <a href="@ref"><code>NaN</code></a>, <a href="@ref"><code>floatmax</code></a>, <a href="@ref"><code>Float32</code></a>, <a href="@ref"><code>Complex</code></a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb159"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb159-1"><a href="#cb159-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb162"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb162-1"><a href="#cb162-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Create a <code>Float64</code> from <code>x</code>. If <code>x</code> is not exactly representable then <code>mode</code> determines how <code>x</code> is rounded.</p>
 <section id="examples-2" class="level1">
 <h1>Examples</h1>
@@ -2733,12 +2782,12 @@ julia&gt; Float64(pi, RoundUp)
 <h4 class="anchored" data-anchor-id="ft_to_m"><code>FT_TO_M</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb161"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb161-1"><a href="#cb161-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb164"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb164-1"><a href="#cb164-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>64-bit floating point number type (IEEE 754 standard). Binary format is 1 sign, 11 exponent, 52 fraction bits. See <a href="@ref"><code>bitstring</code></a>, <a href="@ref"><code>signbit</code></a>, <a href="@ref"><code>exponent</code></a>, <a href="@ref"><code>frexp</code></a>, and <a href="@ref"><code>significand</code></a> to access various bits.</p>
 <p>This is the default for floating point literals, <code>1.0 isa Float64</code>, and for many operations such as <code>1/2, 2pi, log(2), range(0,90,length=4)</code>. Unlike integers, this default does not change with <code>Sys.WORD_SIZE</code>.</p>
 <p>The exponent for scientific notation can be entered as <code>e</code> or <code>E</code>, thus <code>2e3 === 2.0E3 === 2.0 * 10^3</code>. Doing so is strongly preferred over <code>10^n</code> because integers overflow, thus <code>2.0 * 10^19 &lt; 0</code> but <code>2e19 &gt; 0</code>.</p>
 <p>See also <a href="@ref"><code>Inf</code></a>, <a href="@ref"><code>NaN</code></a>, <a href="@ref"><code>floatmax</code></a>, <a href="@ref"><code>Float32</code></a>, <a href="@ref"><code>Complex</code></a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb162"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb162-1"><a href="#cb162-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb165"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb165-1"><a href="#cb165-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Create a <code>Float64</code> from <code>x</code>. If <code>x</code> is not exactly representable then <code>mode</code> determines how <code>x</code> is rounded.</p>
 <section id="examples-3" class="level1">
 <h1>Examples</h1>
@@ -2756,12 +2805,12 @@ julia&gt; Float64(pi, RoundUp)
 <h4 class="anchored" data-anchor-id="m_to_ft"><code>M_TO_FT</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb164"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb164-1"><a href="#cb164-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb167"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb167-1"><a href="#cb167-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>64-bit floating point number type (IEEE 754 standard). Binary format is 1 sign, 11 exponent, 52 fraction bits. See <a href="@ref"><code>bitstring</code></a>, <a href="@ref"><code>signbit</code></a>, <a href="@ref"><code>exponent</code></a>, <a href="@ref"><code>frexp</code></a>, and <a href="@ref"><code>significand</code></a> to access various bits.</p>
 <p>This is the default for floating point literals, <code>1.0 isa Float64</code>, and for many operations such as <code>1/2, 2pi, log(2), range(0,90,length=4)</code>. Unlike integers, this default does not change with <code>Sys.WORD_SIZE</code>.</p>
 <p>The exponent for scientific notation can be entered as <code>e</code> or <code>E</code>, thus <code>2e3 === 2.0E3 === 2.0 * 10^3</code>. Doing so is strongly preferred over <code>10^n</code> because integers overflow, thus <code>2.0 * 10^19 &lt; 0</code> but <code>2e19 &gt; 0</code>.</p>
 <p>See also <a href="@ref"><code>Inf</code></a>, <a href="@ref"><code>NaN</code></a>, <a href="@ref"><code>floatmax</code></a>, <a href="@ref"><code>Float32</code></a>, <a href="@ref"><code>Complex</code></a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb165"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb165-1"><a href="#cb165-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb168"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb168-1"><a href="#cb168-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Create a <code>Float64</code> from <code>x</code>. If <code>x</code> is not exactly representable then <code>mode</code> determines how <code>x</code> is rounded.</p>
 <section id="examples-4" class="level1">
 <h1>Examples</h1>
@@ -2779,12 +2828,12 @@ julia&gt; Float64(pi, RoundUp)
 <h4 class="anchored" data-anchor-id="pi"><code>PI</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb167"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb167-1"><a href="#cb167-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb170"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb170-1"><a href="#cb170-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>64-bit floating point number type (IEEE 754 standard). Binary format is 1 sign, 11 exponent, 52 fraction bits. See <a href="@ref"><code>bitstring</code></a>, <a href="@ref"><code>signbit</code></a>, <a href="@ref"><code>exponent</code></a>, <a href="@ref"><code>frexp</code></a>, and <a href="@ref"><code>significand</code></a> to access various bits.</p>
 <p>This is the default for floating point literals, <code>1.0 isa Float64</code>, and for many operations such as <code>1/2, 2pi, log(2), range(0,90,length=4)</code>. Unlike integers, this default does not change with <code>Sys.WORD_SIZE</code>.</p>
 <p>The exponent for scientific notation can be entered as <code>e</code> or <code>E</code>, thus <code>2e3 === 2.0E3 === 2.0 * 10^3</code>. Doing so is strongly preferred over <code>10^n</code> because integers overflow, thus <code>2.0 * 10^19 &lt; 0</code> but <code>2e19 &gt; 0</code>.</p>
 <p>See also <a href="@ref"><code>Inf</code></a>, <a href="@ref"><code>NaN</code></a>, <a href="@ref"><code>floatmax</code></a>, <a href="@ref"><code>Float32</code></a>, <a href="@ref"><code>Complex</code></a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb168"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb168-1"><a href="#cb168-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb171"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb171-1"><a href="#cb171-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Create a <code>Float64</code> from <code>x</code>. If <code>x</code> is not exactly representable then <code>mode</code> determines how <code>x</code> is rounded.</p>
 <section id="examples-5" class="level1">
 <h1>Examples</h1>
@@ -2802,12 +2851,12 @@ julia&gt; Float64(pi, RoundUp)
 <h4 class="anchored" data-anchor-id="pio180"><code>PIO180</code></h4>
 <div class="card mb-3">
 <div class="card-body">
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb170"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb170-1"><a href="#cb170-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb173"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb173-1"><a href="#cb173-1" aria-hidden="true" tabindex="-1"></a><span class="dt">Float64</span> <span class="op">&lt;:</span><span class="dt"> AbstractFloat </span><span class="op">&lt;:</span><span class="dt"> Real</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>64-bit floating point number type (IEEE 754 standard). Binary format is 1 sign, 11 exponent, 52 fraction bits. See <a href="@ref"><code>bitstring</code></a>, <a href="@ref"><code>signbit</code></a>, <a href="@ref"><code>exponent</code></a>, <a href="@ref"><code>frexp</code></a>, and <a href="@ref"><code>significand</code></a> to access various bits.</p>
 <p>This is the default for floating point literals, <code>1.0 isa Float64</code>, and for many operations such as <code>1/2, 2pi, log(2), range(0,90,length=4)</code>. Unlike integers, this default does not change with <code>Sys.WORD_SIZE</code>.</p>
 <p>The exponent for scientific notation can be entered as <code>e</code> or <code>E</code>, thus <code>2e3 === 2.0E3 === 2.0 * 10^3</code>. Doing so is strongly preferred over <code>10^n</code> because integers overflow, thus <code>2.0 * 10^19 &lt; 0</code> but <code>2e19 &gt; 0</code>.</p>
 <p>See also <a href="@ref"><code>Inf</code></a>, <a href="@ref"><code>NaN</code></a>, <a href="@ref"><code>floatmax</code></a>, <a href="@ref"><code>Float32</code></a>, <a href="@ref"><code>Complex</code></a>.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb171"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb171-1"><a href="#cb171-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb174"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb174-1"><a href="#cb174-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Float64</span>(x [, mode<span class="op">::</span><span class="dt">RoundingMode</span>])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Create a <code>Float64</code> from <code>x</code>. If <code>x</code> is not exactly representable then <code>mode</code> determines how <code>x</code> is rounded.</p>
 <section id="examples-6" class="level1">
 <h1>Examples</h1>
