@@ -483,9 +483,9 @@ function Elmfire.simulate_gpu!(
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
-    callback::Union{Nothing, Function} = nothing,
+    callback::CB = nothing,
     backend::KernelAbstractions.Backend = KernelAbstractions.CPU()
-) where {T<:AbstractFloat}
+) where {T<:AbstractFloat, CB}
     t = t_start
     dt = dt_initial
     iteration = 0
@@ -579,13 +579,14 @@ function Elmfire.simulate_gpu!(
     while t < t_stop
         iteration += 1
 
-        # Fill active cell list from Set directly (avoids collect allocation)
-        n_active = 0
-        for idx in state.narrow_band.active
-            n_active += 1
-            h_active[n_active] = idx
-            h_px[n_active] = idx[1]
-            h_py[n_active] = idx[2]
+        # Fill active cell list from NarrowBand (zero-allocation)
+        nb = state.narrow_band
+        n_active = nb.n_active
+        for i in 1:n_active
+            idx = nb.active_list[i]
+            h_active[i] = idx
+            h_px[i] = idx[1]
+            h_py[i] = idx[2]
         end
         if n_active == 0
             break

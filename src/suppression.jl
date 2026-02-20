@@ -517,11 +517,16 @@ function simulate_with_suppression!(
     dt_initial::T = one(T),
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
-    callback::Union{Nothing, Function} = nothing
-) where {T<:AbstractFloat}
+    callback::CB = nothing
+) where {T<:AbstractFloat, CB}
     t = t_start
     dt = dt_initial
     iteration = 0
+
+    # Pre-allocate cells_to_tag buffer
+    cells_to_tag = CartesianIndex{2}[]
+    nx_pad = state.ncols + 2*state.padding
+    ny_pad = state.nrows + 2*state.padding
 
     # Create weather interpolator
     weather_interp = create_constant_interpolator(weather, state.ncols, state.nrows, state.cellsize)
@@ -622,7 +627,7 @@ function simulate_with_suppression!(
         rk2_step!(state.phi, state.phi_old, state.ux, state.uy, active_cells, dt, state.cellsize, 2)
 
         # Update burned cells
-        cells_to_tag = CartesianIndex{2}[]
+        empty!(cells_to_tag)
         for idx in active_cells
             px, py = idx[1], idx[2]
             ix, iy = padded_to_grid(state, px, py)
@@ -639,8 +644,6 @@ function simulate_with_suppression!(
         end
 
         # Update narrow band
-        nx_pad = state.ncols + 2*state.padding
-        ny_pad = state.nrows + 2*state.padding
         for idx in cells_to_tag
             tag_band!(state.narrow_band, idx, nx_pad, ny_pad, state.padding)
         end

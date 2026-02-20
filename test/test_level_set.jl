@@ -113,22 +113,22 @@
     end
 
     @testset "Narrow Band" begin
-        nb = Elmfire.NarrowBand(3)  # Band thickness of 3
+        nb = Elmfire.NarrowBand(20, 20, 3)  # 20x20 grid, band thickness of 3
 
-        @test isempty(nb.active)
-        @test isempty(nb.ever_tagged)
+        @test nb.n_active == 0
+        @test !any(nb.ever_tagged)
 
         # Tag around a center point
         Elmfire.tag_band!(nb, CartesianIndex(10, 10), 20, 20, 2)
 
         # Should have tagged cells in a square around (10, 10)
-        @test !isempty(nb.active)
-        @test CartesianIndex(10, 10) in nb.active
-        @test CartesianIndex(11, 10) in nb.active
-        @test CartesianIndex(10, 11) in nb.active
+        @test nb.n_active > 0
+        @test nb.is_active[10, 10]
+        @test nb.is_active[11, 10]
+        @test nb.is_active[10, 11]
 
         # ever_tagged should track these
-        @test !isempty(nb.ever_tagged)
+        @test any(nb.ever_tagged)
     end
 
     @testset "Initialize Phi" begin

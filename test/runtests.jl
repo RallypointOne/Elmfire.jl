@@ -50,7 +50,7 @@ using Random  # Required for ensemble tests
             @test state.phi[px, py] < 0
 
             # Check narrow band is populated
-            @test !isempty(state.narrow_band.active)
+            @test state.narrow_band.n_active > 0
         end
 
         @testset "Ignite Circle" begin

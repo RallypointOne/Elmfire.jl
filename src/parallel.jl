@@ -31,29 +31,29 @@ end
 #-----------------------------------------------------------------------------#
 
 """
-    ThreadLocalState{T<:AbstractFloat}
+    ThreadLocalState{T<:AbstractFloat, R<:AbstractRNG}
 
 Thread-local simulation state to avoid data races.
 """
-mutable struct ThreadLocalState{T<:AbstractFloat}
+mutable struct ThreadLocalState{T<:AbstractFloat, R<:AbstractRNG}
     fire_state::FireState{T}
-    rng::AbstractRNG
+    rng::R
 end
 
 Base.eltype(::ThreadLocalState{T}) where {T} = T
 
 
 """
-    create_thread_local_states(template::FireState{T}, n::Int) -> Vector{ThreadLocalState{T}}
+    create_thread_local_states(template::FireState{T}, n::Int) -> Vector{ThreadLocalState{T, MersenneTwister}}
 
 Create n thread-local states from a template.
 """
 function create_thread_local_states(template::FireState{T}, n::Int) where {T<:AbstractFloat}
-    states = ThreadLocalState{T}[]
+    states = ThreadLocalState{T, MersenneTwister}[]
     for i in 1:n
         state = copy(template)
         rng = MersenneTwister(i * 12345)
-        push!(states, ThreadLocalState{T}(state, rng))
+        push!(states, ThreadLocalState{T, MersenneTwister}(state, rng))
     end
     return states
 end
@@ -103,8 +103,8 @@ function run_ensemble_threaded!(
     canopy::Union{Nothing, CanopyGrid{T}} = nothing,
     parallel_config::ParallelConfig = ParallelConfig(),
     show_progress::Bool = true,
-    callback::Union{Nothing, Function} = nothing
-) where {T<:AbstractFloat}
+    callback::CB = nothing
+) where {T<:AbstractFloat, CB}
     ncols = state_template.ncols
     nrows = state_template.nrows
 
@@ -217,13 +217,29 @@ function run_ensemble_threaded!(
     result = EnsembleResult{T}(config, ncols, nrows)
     result.members = members
 
-    # Compute convergence history
+    # Compute convergence history incrementally
     prev_burn_prob = zeros(T, ncols, nrows)
+    burn_count = zeros(Int, ncols, nrows)
     for i in 1:config.n_simulations
-        new_burn_prob = compute_burn_probability(result.members[1:i], ncols, nrows)
-        rms_change = sqrt(sum((new_burn_prob .- prev_burn_prob).^2) / (ncols * nrows))
-        push!(result.convergence_history, rms_change)
-        prev_burn_prob = new_burn_prob
+        member = result.members[i]
+        for ix in 1:ncols
+            for iy in 1:nrows
+                if member.burned[ix, iy]
+                    burn_count[ix, iy] += 1
+                end
+            end
+        end
+        inv_i = one(T) / T(i)
+        rms_sum = zero(T)
+        for ix in 1:ncols
+            for iy in 1:nrows
+                new_prob = T(burn_count[ix, iy]) * inv_i
+                diff = new_prob - prev_burn_prob[ix, iy]
+                rms_sum += diff * diff
+                prev_burn_prob[ix, iy] = new_prob
+            end
+        end
+        push!(result.convergence_history, sqrt(rms_sum / (ncols * nrows)))
     end
 
     # Compute final statistics
@@ -381,13 +397,14 @@ end
 #-----------------------------------------------------------------------------#
 
 """
-    parallel_map(f::Function, items::AbstractVector; n_threads::Int = 0)
+    parallel_map(f, items::AbstractVector; n_threads::Int = 0)
 
 Apply function f to each item in parallel.
 """
-function parallel_map(f::Function, items::AbstractVector; n_threads::Int = 0)
+function parallel_map(f::F, items::AbstractVector; n_threads::Int = 0) where {F}
     n = length(items)
-    results = Vector{Any}(undef, n)
+    RT = Core.Compiler.return_type(f, Tuple{eltype(items)})
+    results = Vector{RT}(undef, n)
 
     Threads.@threads for i in 1:n
         results[i] = f(items[i])
@@ -398,7 +415,7 @@ end
 
 
 """
-    parallel_reduce(f::Function, g::Function, items::AbstractVector; init, n_threads::Int = 0)
+    parallel_reduce(f, g, items::AbstractVector; init, n_threads::Int = 0)
 
 Apply function f to each item and reduce with g.
 
@@ -408,7 +425,7 @@ Apply function f to each item and reduce with g.
 - `items`: Items to process
 - `init`: Initial value for reduction
 """
-function parallel_reduce(f::Function, g::Function, items::AbstractVector; init, n_threads::Int = 0)
+function parallel_reduce(f::F, g::G, items::AbstractVector; init, n_threads::Int = 0) where {F, G}
     n = length(items)
     if n == 0
         return init
@@ -418,7 +435,8 @@ function parallel_reduce(f::Function, g::Function, items::AbstractVector; init, 
 
     # Split work among threads
     chunk_size = max(1, div(n, n_workers))
-    partial_results = Vector{Any}(undef, n_workers)
+    IT = typeof(init)
+    partial_results = Vector{IT}(undef, n_workers)
 
     Threads.@threads for tid in 1:n_workers
         start_idx = (tid - 1) * chunk_size + 1

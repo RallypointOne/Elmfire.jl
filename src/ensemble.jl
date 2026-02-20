@@ -403,8 +403,8 @@ function run_ensemble!(
     t_stop::T;
     canopy::Union{Nothing, CanopyGrid{T}} = nothing,
     show_progress::Bool = true,
-    callback::Union{Nothing, Function} = nothing
-) where {T<:AbstractFloat}
+    callback::CB = nothing
+) where {T<:AbstractFloat, CB}
     ncols = state_template.ncols
     nrows = state_template.nrows
 
@@ -419,6 +419,7 @@ function run_ensemble!(
     end
 
     prev_burn_prob = zeros(T, ncols, nrows)
+    burn_count = zeros(Int, ncols, nrows)
 
     for i in 1:config.n_simulations
         # Create RNG for this member
@@ -482,11 +483,25 @@ function run_ensemble!(
         )
         push!(result.members, member)
 
-        # Update running burn probability for convergence tracking
-        new_burn_prob = compute_burn_probability(result.members, ncols, nrows)
-        rms_change = sqrt(sum((new_burn_prob .- prev_burn_prob).^2) / (ncols * nrows))
-        push!(result.convergence_history, rms_change)
-        prev_burn_prob = new_burn_prob
+        # Incremental burn probability for convergence tracking
+        for ix in 1:ncols
+            for iy in 1:nrows
+                if state.burned[ix, iy]
+                    burn_count[ix, iy] += 1
+                end
+            end
+        end
+        inv_i = one(T) / T(i)
+        rms_sum = zero(T)
+        for ix in 1:ncols
+            for iy in 1:nrows
+                new_prob = T(burn_count[ix, iy]) * inv_i
+                diff = new_prob - prev_burn_prob[ix, iy]
+                rms_sum += diff * diff
+                prev_burn_prob[ix, iy] = new_prob
+            end
+        end
+        push!(result.convergence_history, sqrt(rms_sum / (ncols * nrows)))
 
         # Callback
         if callback !== nothing

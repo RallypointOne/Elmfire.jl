@@ -387,14 +387,16 @@ function simulate!(
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
-    callback::Union{Nothing, Function} = nothing
-) where {T<:AbstractFloat}
+    callback::CB = nothing
+) where {T<:AbstractFloat, CB}
     t = t_start
     dt = dt_initial
     iteration = 0
 
-    # Pre-compute wind direction in radians
+    # Pre-compute wind direction in radians and trig
     wind_dir_rad = weather.wind_direction * pio180(T)
+    wind_to_x = -sin(wind_dir_rad)
+    wind_to_y = -cos(wind_dir_rad)
 
     # Wind speed conversion: 20-ft to ft/min
     # 1 mph = 88 ft/min
@@ -403,10 +405,31 @@ function simulate!(
     # Live moisture class (30-120)
     live_moisture_class = clamp(round(Int, T(100) * weather.MLH), 30, 120)
 
+    # Pre-compute static slope grid
+    tanslp2_grid = calculate_tanslp2.(slope)
+
+    # Pre-build fast fuel lookup vector (O(1) by fuel_id)
+    unique_fids = unique(fuel_ids)
+    max_fid = maximum(unique_fids)
+    fuel_vec = Vector{FuelModel{T}}(undef, max_fid)
+    waf_cache = Vector{T}(undef, max_fid)
+    for fid in unique_fids
+        fm = get_fuel_model(fuel_table, fid, live_moisture_class)
+        fuel_vec[fid] = fm
+        waf_cache[fid] = wind_adjustment_factor(fm.delta)
+    end
+
+    # Pre-allocate buffers
+    cells_to_tag = CartesianIndex{2}[]
+    cached_velocity = zeros(T, state.ncols, state.nrows)
+    cached_flin = zeros(T, state.ncols, state.nrows)
+    nx_pad = state.ncols + 2*state.padding
+    ny_pad = state.nrows + 2*state.padding
+
     while t < t_stop
         iteration += 1
 
-        # Get active cells
+        # Get active cells (zero-allocation view)
         active_cells = get_active_cells(state.narrow_band)
 
         if isempty(active_cells)
@@ -430,9 +453,9 @@ function simulate!(
                 continue
             end
 
-            # Get fuel model
+            # Get fuel model (O(1) vector lookup)
             fuel_id = fuel_ids[ix, iy]
-            fm = get_fuel_model(fuel_table, fuel_id, live_moisture_class)
+            fm = fuel_vec[fuel_id]
 
             # Skip non-burnable
             if isnonburnable(fm)
@@ -441,12 +464,12 @@ function simulate!(
                 continue
             end
 
-            # Calculate wind adjustment factor
-            waf = wind_adjustment_factor(fm.delta)
+            # Use cached wind adjustment factor
+            waf = waf_cache[fuel_id]
             wsmf = ws20_ftpmin * waf  # Mid-flame wind speed (ft/min)
 
-            # Calculate slope factor
-            tanslp2 = calculate_tanslp2(slope[ix, iy])
+            # Use pre-computed slope factor
+            tanslp2 = tanslp2_grid[ix, iy]
 
             # Calculate spread rate
             result = surface_spread_rate(
@@ -457,24 +480,22 @@ function simulate!(
                 adj = spread_rate_adj
             )
 
+            # Cache for burn recording
+            cached_velocity[ix, iy] = result.velocity
+            cached_flin[ix, iy] = result.flin
+
             # Compute normal vector to fire front
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)
 
             # Calculate velocity components using elliptical spread
-            # Get effective windspeed for ellipse calculation
-            effective_ws_mph = weather.wind_speed_20ft * waf / T(1.47)  # Convert ft/min to mph
-
+            effective_ws_mph = weather.wind_speed_20ft * waf / T(1.47)
             es = elliptical_spread(result.velocity, effective_ws_mph)
 
-            # Calculate velocity components
-            ux, uy = velocity_components(
-                es.head, es.back,
-                wind_dir_rad,
-                normal_x, normal_y
-            )
-
-            state.ux[px, py] = ux
-            state.uy[px, py] = uy
+            # Inline velocity_components with pre-computed wind trig
+            cos_theta = normal_x * wind_to_x + normal_y * wind_to_y
+            vel = T(0.5) * ((one(T) + cos_theta) * es.head + (one(T) - cos_theta) * es.back)
+            state.ux[px, py] = vel * normal_x
+            state.uy[px, py] = vel * normal_y
         end
 
         # Compute CFL timestep (only after a few iterations)
@@ -495,7 +516,6 @@ function simulate!(
         end
 
         # Perform RK2 level set integration
-        # Stage 1
         for idx in active_cells
             state.phi_old[idx] = state.phi[idx]
         end
@@ -504,7 +524,7 @@ function simulate!(
         rk2_step!(state.phi, state.phi_old, state.ux, state.uy, active_cells, dt, state.cellsize, 2)
 
         # Update burned cells and narrow band
-        cells_to_tag = CartesianIndex{2}[]
+        empty!(cells_to_tag)
 
         for idx in active_cells
             px, py = idx[1], idx[2]
@@ -520,27 +540,14 @@ function simulate!(
                 state.burned[ix, iy] = true
                 state.time_of_arrival[ix, iy] = t + dt
 
-                # Record spread properties
-                fuel_id = fuel_ids[ix, iy]
-                fm = get_fuel_model(fuel_table, fuel_id, live_moisture_class)
-                waf = wind_adjustment_factor(fm.delta)
-                wsmf = ws20_ftpmin * waf
-                tanslp2 = calculate_tanslp2(slope[ix, iy])
-
-                result = surface_spread_rate(
-                    fm,
-                    weather.M1, weather.M10, weather.M100,
-                    weather.MLH, weather.MLW,
-                    wsmf, tanslp2;
-                    adj = spread_rate_adj
-                )
-
-                state.spread_rate[ix, iy] = result.velocity
-                state.fireline_intensity[ix, iy] = result.flin
+                # Use cached spread rate (computed earlier this iteration)
+                state.spread_rate[ix, iy] = cached_velocity[ix, iy]
+                state.fireline_intensity[ix, iy] = cached_flin[ix, iy]
 
                 # Flame length (Byram): Lf = 0.0775 * I^0.46 (ft)
-                if result.flin > zero(T)
-                    state.flame_length[ix, iy] = (T(0.0775) / ft_to_m(T)) * result.flin^T(0.46)
+                flin_val = cached_flin[ix, iy]
+                if flin_val > zero(T)
+                    state.flame_length[ix, iy] = (T(0.0775) / ft_to_m(T)) * flin_val^T(0.46)
                 end
 
                 # Tag surrounding cells
@@ -549,8 +556,6 @@ function simulate!(
         end
 
         # Expand narrow band around newly burned cells
-        nx_pad = state.ncols + 2*state.padding
-        ny_pad = state.nrows + 2*state.padding
         for idx in cells_to_tag
             tag_band!(state.narrow_band, idx, nx_pad, ny_pad, state.padding)
         end
@@ -822,9 +827,9 @@ function simulate_full!(
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
-    callback::Union{Nothing, Function} = nothing,
+    callback::CB = nothing,
     rng::AbstractRNG = Random.default_rng()
-) where {T<:AbstractFloat}
+) where {T<:AbstractFloat, CB}
     # Validate configuration
     if config.enable_crown_fire && canopy === nothing
         error("Canopy grid required when crown fire is enabled")
@@ -837,6 +842,14 @@ function simulate_full!(
     t = t_start
     dt = dt_initial
     iteration = 0
+
+    # Pre-compute static slope grid
+    tanslp2_grid = calculate_tanslp2.(slope)
+
+    # Pre-allocate cells_to_tag buffer
+    cells_to_tag = CartesianIndex{2}[]
+    nx_pad = state.ncols + 2*state.padding
+    ny_pad = state.nrows + 2*state.padding
 
     # Initialize spot fire tracker if spotting enabled
     spot_tracker = if config.enable_spotting
@@ -905,8 +918,8 @@ function simulate_full!(
             ws20_ftpmin = w.ws * T(88)  # mph to ft/min
             wsmf = ws20_ftpmin * waf
 
-            # Calculate slope factor
-            tanslp2 = calculate_tanslp2(slope[ix, iy])
+            # Use pre-computed slope factor
+            tanslp2 = tanslp2_grid[ix, iy]
 
             # Calculate surface spread rate
             surface_result = surface_spread_rate(
@@ -989,7 +1002,7 @@ function simulate_full!(
         rk2_step!(state.phi, state.phi_old, state.ux, state.uy, active_cells, dt, state.cellsize, 2)
 
         # Update burned cells, narrow band, and generate spotting
-        cells_to_tag = CartesianIndex{2}[]
+        empty!(cells_to_tag)
 
         for idx in active_cells
             px, py = idx[1], idx[2]
@@ -1015,7 +1028,7 @@ function simulate_full!(
                     waf = wind_adjustment_factor(fm.delta)
                     ws20_ftpmin = w.ws * T(88)
                     wsmf = ws20_ftpmin * waf
-                    tanslp2 = calculate_tanslp2(slope[ix, iy])
+                    tanslp2 = tanslp2_grid[ix, iy]
 
                     surface_result = surface_spread_rate(
                         fm,
@@ -1085,8 +1098,6 @@ function simulate_full!(
         end
 
         # Expand narrow band around newly burned cells
-        nx_pad = state.ncols + 2*state.padding
-        ny_pad = state.nrows + 2*state.padding
         for idx in cells_to_tag
             tag_band!(state.narrow_band, idx, nx_pad, ny_pad, state.padding)
         end
