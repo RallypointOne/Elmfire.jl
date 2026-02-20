@@ -25,6 +25,7 @@ book:
         - index.qmd
         - getting-started.qmd
         - comparison.qmd
+        - gpu.qmd
     - part: "Tutorials"
       chapters:
         - tutorials/index.qmd

@@ -1164,3 +1164,53 @@ function simulate_full_uniform!(
         kwargs...
     )
 end
+
+
+#-----------------------------------------------------------------------------#
+#                     GPU Simulation (requires ElmfireKAExt)
+#-----------------------------------------------------------------------------#
+
+"""
+    simulate_gpu!(
+        state::FireState{T},
+        fuel_ids::AbstractMatrix{Int},
+        fuel_array::FuelModelArray{T},
+        weather::ConstantWeather{T},
+        slope::AbstractMatrix{T},
+        aspect::AbstractMatrix{T},
+        t_start::T,
+        t_stop::T;
+        kwargs...
+    )
+
+GPU-accelerated fire simulation. Requires loading KernelAbstractions and Adapt:
+
+    using KernelAbstractions, Adapt
+
+Uses KernelAbstractions.jl kernels for velocity calculation, CFL reduction, and
+RK2 level set integration. The narrow band is managed on the CPU, with an active
+mask uploaded to GPU each timestep.
+
+See also: [`simulate!`](@ref), [`simulate_gpu_uniform!`](@ref)
+"""
+function simulate_gpu! end
+
+"""
+    simulate_gpu_uniform!(
+        state::FireState{T},
+        fuel_id::Int,
+        fuel_array::FuelModelArray{T},
+        weather::ConstantWeather{T},
+        slope_deg::T,
+        aspect_deg::T,
+        t_start::T,
+        t_stop::T;
+        kwargs...
+    )
+
+GPU-accelerated simulation with uniform fuel, slope, and aspect. Requires loading
+KernelAbstractions and Adapt.
+
+See also: [`simulate_gpu!`](@ref)
+"""
+function simulate_gpu_uniform! end

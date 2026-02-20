@@ -19,6 +19,9 @@ using Random  # Required for ensemble tests
     include("test_wui.jl")
     include("test_suppression.jl")
 
+    # GPU extension (tested with CPU backend)
+    include("test_gpu.jl")
+
     @testset "Simulation" begin
         @testset "FireState Construction" begin
             state = FireState(100, 100, 30.0)

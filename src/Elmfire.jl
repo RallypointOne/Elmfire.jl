@@ -29,8 +29,9 @@ export wind_adjustment_factor, calculate_tanslp2
 export FireState, CPUFireState, grid_to_padded, padded_to_grid
 export ignite!, ignite_point!, ignite_circle!
 export simulate!, simulate_uniform!
+export simulate_gpu!, simulate_gpu_uniform!
 export get_fire_perimeter, get_burned_area, get_burned_area_acres
-export reset!  # Phase 3: For ensemble support
+export reset!
 
 # Phase 2: Extended Simulation
 export SimulationConfig, CanopyGrid, get_canopy_properties
