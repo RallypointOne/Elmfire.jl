@@ -386,3 +386,140 @@ end
 Check if a fuel model is non-burnable (fuel model 256 or similar).
 """
 isnonburnable(fm::FuelModel{T}) where {T} = fm.id == FUEL_MODEL_NONBURNABLE || fm.W0[1] < T(1e-6)
+
+
+#-----------------------------------------------------------------------------#
+#                     GPU-Friendly Fuel Model Array
+#-----------------------------------------------------------------------------#
+"""
+    FuelModelArray{T<:AbstractFloat}
+
+Dense struct-of-arrays representation of fuel model coefficients for GPU-friendly lookup.
+Replaces the `Dict`-based `FuelModelTable` with array indexing.
+
+Fields are stored as `[fuel_index, moisture_class_index]` matrices where:
+- `fuel_index` maps from fuel ID via `fuel_id_to_index`
+- `moisture_class_index = live_moisture_class - 29` (so class 30 → index 1, class 120 → index 91)
+
+NTuple fields are stored as 3D arrays `[fuel_index, moisture_class_index, component]`.
+"""
+struct FuelModelArray{T<:AbstractFloat}
+    # Scalar fields: [fuel_index, moisture_class_index]
+    delta::Matrix{T}
+    mex_dead::Matrix{T}
+    mex_live::Matrix{T}
+    rhob::Matrix{T}
+    xi::Matrix{T}
+    B::Matrix{T}
+    GP_WND_ETAS_HOC::Matrix{T}
+    GP_WNL_ETAS_HOC::Matrix{T}
+    phisterm::Matrix{T}
+    phiwterm::Matrix{T}
+    R_MPRIMEDENOME14SUM_MEX_DEAD::Matrix{T}
+    F_dead::Matrix{T}
+    F_live::Matrix{T}
+    tr::Matrix{T}
+
+    # NTuple fields: [fuel_index, moisture_class_index, component]
+    F::Array{T, 3}            # 6 components
+    FEPS::Array{T, 3}         # 6 components
+    WPRIMENUMER::Array{T, 3}  # 4 components
+
+    # Nonburnable flag
+    nonburnable::BitMatrix     # [fuel_index, moisture_class_index]
+
+    # Mapping from fuel ID to array row index (0 = not present)
+    fuel_id_to_index::Vector{Int}
+end
+
+Base.eltype(::FuelModelArray{T}) where {T} = T
+
+"""
+    FuelModelArray(table::FuelModelTable{T}) -> FuelModelArray{T}
+
+Convert a `FuelModelTable` to a dense `FuelModelArray` for GPU-friendly access.
+
+### Examples
+
+    table = create_standard_fuel_table(Float64)
+    arr = FuelModelArray(table)
+"""
+function FuelModelArray(table::FuelModelTable{T}) where {T<:AbstractFloat}
+    # Collect unique fuel IDs and build index mapping
+    fuel_ids = sort!(unique(first.(keys(table.models))))
+    n_fuels = length(fuel_ids)
+    n_mc = 91  # moisture classes 30:120
+
+    max_fuel_id = maximum(fuel_ids)
+    fuel_id_to_index = zeros(Int, max_fuel_id)
+    for (i, fid) in enumerate(fuel_ids)
+        fuel_id_to_index[fid] = i
+    end
+
+    # Allocate scalar fields
+    delta = zeros(T, n_fuels, n_mc)
+    mex_dead = zeros(T, n_fuels, n_mc)
+    mex_live = zeros(T, n_fuels, n_mc)
+    rhob = zeros(T, n_fuels, n_mc)
+    xi = zeros(T, n_fuels, n_mc)
+    B = zeros(T, n_fuels, n_mc)
+    GP_WND_ETAS_HOC = zeros(T, n_fuels, n_mc)
+    GP_WNL_ETAS_HOC = zeros(T, n_fuels, n_mc)
+    phisterm = zeros(T, n_fuels, n_mc)
+    phiwterm = zeros(T, n_fuels, n_mc)
+    R_MPRIMEDENOME14SUM_MEX_DEAD = zeros(T, n_fuels, n_mc)
+    F_dead = zeros(T, n_fuels, n_mc)
+    F_live = zeros(T, n_fuels, n_mc)
+    tr = zeros(T, n_fuels, n_mc)
+
+    # Allocate NTuple fields
+    F = zeros(T, n_fuels, n_mc, 6)
+    FEPS = zeros(T, n_fuels, n_mc, 6)
+    WPRIMENUMER = zeros(T, n_fuels, n_mc, 4)
+
+    # Allocate nonburnable flag
+    nonburnable = falses(n_fuels, n_mc)
+
+    # Fill from table
+    for fid in fuel_ids
+        fi = fuel_id_to_index[fid]
+        for lmc in 30:120
+            mi = lmc - 29
+            fm = get_fuel_model(table, fid, lmc)
+
+            delta[fi, mi] = fm.delta
+            mex_dead[fi, mi] = fm.mex_dead
+            mex_live[fi, mi] = fm.mex_live
+            rhob[fi, mi] = fm.rhob
+            xi[fi, mi] = fm.xi
+            B[fi, mi] = fm.B
+            GP_WND_ETAS_HOC[fi, mi] = fm.GP_WND_ETAS_HOC
+            GP_WNL_ETAS_HOC[fi, mi] = fm.GP_WNL_ETAS_HOC
+            phisterm[fi, mi] = fm.phisterm
+            phiwterm[fi, mi] = fm.phiwterm
+            R_MPRIMEDENOME14SUM_MEX_DEAD[fi, mi] = fm.R_MPRIMEDENOME14SUM_MEX_DEAD
+            F_dead[fi, mi] = fm.F_dead
+            F_live[fi, mi] = fm.F_live
+            tr[fi, mi] = fm.tr
+
+            for k in 1:6
+                F[fi, mi, k] = fm.F[k]
+                FEPS[fi, mi, k] = fm.FEPS[k]
+            end
+            for k in 1:4
+                WPRIMENUMER[fi, mi, k] = fm.WPRIMENUMER[k]
+            end
+
+            nonburnable[fi, mi] = isnonburnable(fm)
+        end
+    end
+
+    return FuelModelArray{T}(
+        delta, mex_dead, mex_live, rhob, xi, B,
+        GP_WND_ETAS_HOC, GP_WNL_ETAS_HOC,
+        phisterm, phiwterm, R_MPRIMEDENOME14SUM_MEX_DEAD,
+        F_dead, F_live, tr,
+        F, FEPS, WPRIMENUMER,
+        nonburnable, fuel_id_to_index
+    )
+end

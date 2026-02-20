@@ -445,6 +445,25 @@ function get_active_cells(nb::NarrowBand)
 end
 
 
+"""
+    active_mask(nb::NarrowBand, nx::Int, ny::Int) -> BitMatrix
+
+Create a dense BitMatrix indicating which cells are in the active narrow band.
+Useful for GPU kernels that need a mask instead of an index list.
+
+### Examples
+
+    mask = active_mask(state.narrow_band, size(state.phi)...)
+"""
+function active_mask(nb::NarrowBand, nx::Int, ny::Int)
+    mask = falses(nx, ny)
+    for idx in nb.active
+        mask[idx] = true
+    end
+    return mask
+end
+
+
 #-----------------------------------------------------------------------------#
 #                     Level Set Propagation Step
 #-----------------------------------------------------------------------------#

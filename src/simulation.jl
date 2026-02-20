@@ -48,25 +48,26 @@ end
 #-----------------------------------------------------------------------------#
 
 """
-    FireState{T<:AbstractFloat}
+    FireState{T<:AbstractFloat, A<:AbstractMatrix{T}}
 
-Complete state of a fire simulation.
+Complete state of a fire simulation. Parameterized on element type `T` and array type `A`
+to support both CPU (`Matrix{T}`) and GPU arrays.
 """
-mutable struct FireState{T<:AbstractFloat}
+mutable struct FireState{T<:AbstractFloat, A<:AbstractMatrix{T}}
     # Level set field (with 2-cell padding for stencil operations)
-    phi::Matrix{T}
-    phi_old::Matrix{T}
+    phi::A
+    phi_old::A
 
     # Output fields (no padding, matches grid dimensions)
-    time_of_arrival::Matrix{T}
+    time_of_arrival::A
     burned::BitMatrix
-    spread_rate::Matrix{T}       # Final spread rate (ft/min)
-    fireline_intensity::Matrix{T} # Fireline intensity (kW/m)
-    flame_length::Matrix{T}       # Flame length (ft)
+    spread_rate::A               # Final spread rate (ft/min)
+    fireline_intensity::A        # Fireline intensity (kW/m)
+    flame_length::A              # Flame length (ft)
 
     # Velocity components (with padding)
-    ux::Matrix{T}
-    uy::Matrix{T}
+    ux::A
+    uy::A
 
     # Narrow band tracking
     narrow_band::NarrowBand
@@ -82,7 +83,29 @@ mutable struct FireState{T<:AbstractFloat}
     padding::Int
 end
 
+"""Type alias for CPU-backed `FireState` using standard `Matrix{T}` arrays."""
+const CPUFireState{T} = FireState{T, Matrix{T}}
+
 Base.eltype(::FireState{T}) where {T} = T
+
+# Outer constructor that infers A from array arguments
+function FireState{T}(
+    phi::A, phi_old::A,
+    time_of_arrival::A, burned::BitMatrix,
+    spread_rate::A, fireline_intensity::A, flame_length::A,
+    ux::A, uy::A,
+    narrow_band::NarrowBand,
+    ncols::Int, nrows::Int, cellsize::T, xllcorner::T, yllcorner::T,
+    padding::Int
+) where {T<:AbstractFloat, A<:AbstractMatrix{T}}
+    return FireState{T, A}(
+        phi, phi_old,
+        time_of_arrival, burned, spread_rate, fireline_intensity, flame_length,
+        ux, uy,
+        narrow_band,
+        ncols, nrows, cellsize, xllcorner, yllcorner, padding
+    )
+end
 
 
 """

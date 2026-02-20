@@ -1,0 +1,106 @@
+---
+title: "Comparison with Original ELMFIRE"
+subtitle: "How Elmfire.jl Differs from the Fortran Implementation"
+---
+
+[ELMFIRE](https://elmfire.io) (Eulerian Level Set Model of FIRE spread) was originally developed by [Chris Lautenberger](mailto:chris@cloudfire.ai) as a Fortran-based operational wildfire simulation system. It is used by the [Pyrecast project](https://pyrecast.org) to forecast the spread of large fires across the Continental US. The mathematical formulation is described in the [original journal article](https://doi.org/10.1016/j.firesaf.2013.08.014).
+
+**Elmfire.jl** is a ground-up rewrite of ELMFIRE in Julia. It reimplements the core algorithms but differs substantially in software architecture. The fire physics (Rothermel spread model, level set solver, crown fire, spotting) are faithful to the original formulation. This page documents the key differences between the two implementations.
+
+## At a Glance
+
+| | Original ELMFIRE | Elmfire.jl |
+|---|---|---|
+| **Language** | Fortran + Shell + Python | Julia |
+| **Lines of code** | ~28,000 (14K Fortran, 11K Shell, 3K Python) | ~7,000 |
+| **Parallelism** | MPI (distributed) | Julia threads + Distributed |
+| **Configuration** | Fortran namelists | Julia structs and keyword arguments |
+| **Geospatial I/O** | Direct GDAL / C bindings | ArchGDAL.jl and Rasters.jl |
+| **Numeric precision** | Double precision | Generic (`Float32` or `Float64`) |
+| **Testing** | Verification/validation scripts | Unit tests with CI |
+| **Maturity** | Operational, peer-reviewed | In development |
+| **License** | Eclipse Public License 2.0 | MIT |
+
+## Language
+
+The original ELMFIRE uses Fortran for the core simulation (~14,000 lines), shell scripts for orchestration and job management (~11,000 lines), and Python for pre/post-processing (~3,000 lines).
+
+Elmfire.jl uses Julia for all components (~7,000 lines). The line count difference partly reflects Julia's expressiveness and partly reflects that the original includes operational tooling (cloud deployment, gRPC services, etc.) that Elmfire.jl does not yet cover.
+
+## Development Workflow
+
+The original ELMFIRE is a compiled executable. Parameters are set via namelist files, and code changes require recompilation.
+
+Elmfire.jl runs in the Julia REPL or notebooks, allowing interactive parameter adjustment and visualization without recompilation:
+
+```julia
+weather = ConstantWeather{Float64}(wind_speed_mph=20.0, wind_direction=270.0,
+    M1=0.06, M10=0.08, M100=0.10, MLH=0.60, MLW=0.90)
+reset!(state)
+ignite!(state, 50, 50, 0.0)
+simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+```
+
+The trade-off is that Julia has longer startup and compilation times compared to a pre-built Fortran binary.
+
+## Numeric Precision
+
+The original ELMFIRE uses double-precision floating point throughout. Elmfire.jl parameterizes core types on `AbstractFloat`, allowing either `Float64` or `Float32`:
+
+```julia
+state64 = FireState{Float64}(100, 100, 30.0)
+state32 = FireState{Float32}(100, 100, 30f0)
+```
+
+This is useful for exploring memory/performance trade-offs, though `Float64` remains the default and is recommended for production use.
+
+## Parallelism
+
+The original ELMFIRE uses MPI for distributed parallelism with domain decomposition. This scales well across HPC clusters and is battle-tested in operational forecasting.
+
+Elmfire.jl uses Julia's native threading for ensemble runs (`run_ensemble_threaded!`), running independent simulations in parallel without domain decomposition. Julia's `Distributed` module is available for multi-node scaling. This approach is simpler but does not yet match the original's MPI scalability for single large-domain simulations.
+
+## Configuration
+
+The original ELMFIRE reads parameters from Fortran namelist files. Elmfire.jl uses Julia structs with keyword arguments:
+
+```julia
+config = SimulationConfig{Float64}(
+    enable_crown_fire = true,
+    foliar_moisture = 100.0
+)
+```
+
+Namelist files are language-agnostic and well-suited for batch job submission. Julia structs are type-checked and composable but require Julia to work with.
+
+## Geospatial I/O
+
+Both implementations read and write GeoTIFF rasters via GDAL. The original ELMFIRE uses Fortran/C bindings directly. Elmfire.jl uses [ArchGDAL.jl](https://github.com/yeesian/ArchGDAL.jl) and [Rasters.jl](https://github.com/rafaqz/Rasters.jl) for higher-level raster handling.
+
+## Testing
+
+The original ELMFIRE includes verification cases and validation scripts for known fire scenarios.
+
+Elmfire.jl has a unit test suite covering each module (Rothermel, level set, crown fire, spotting, weather, ensemble, etc.) that runs in CI on every commit. However, Elmfire.jl has not yet undergone the same level of real-world validation as the original.
+
+## Maturity
+
+The original ELMFIRE is a mature, operationally deployed system. It has been peer-reviewed, validated against real fires, and used in production forecasting through Pyrecast.
+
+Elmfire.jl is a newer implementation still under active development. While the core algorithms are implemented and tested, it has not yet been validated to the same degree and should be considered experimental for operational use.
+
+## What Stays the Same
+
+The fire science is the same. Both implementations use:
+
+- **Rothermel (1972)** surface fire spread model
+- **Level set PDE** with upwind differencing and narrow-band tracking
+- **Superbee flux limiter** for gradient calculation
+- **2nd-order Runge-Kutta** time integration
+- **CFL-adaptive timestep** for numerical stability
+- **Van Wagner (1977)** crown fire initiation
+- **Cruz et al. (2005)** active crown fire spread rate
+- **53 standard FBFM** fuel models
+- **Elliptical fire shape** (Anderson, 1983)
+
+For equivalent inputs, the two implementations should produce consistent fire behavior outputs.

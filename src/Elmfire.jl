@@ -9,24 +9,24 @@ export PI, PIO180
 export BTUPFT2MIN_TO_KWPM2, FT_TO_M, M_TO_FT
 
 # Fuel Models
-export RawFuelModel, FuelModel, FuelModelTable
+export RawFuelModel, FuelModel, FuelModelTable, FuelModelArray
 export compute_fuel_model, add_raw_model!, get_fuel_model, isnonburnable
 export load_fuel_models, create_standard_fuel_table, parse_fuel_model_line
 
 # Rothermel Model
-export SpreadResult, surface_spread_rate, moisture_damping
+export SpreadResult, surface_spread_rate, surface_spread_rate_flat, moisture_damping
 export EllipticalSpread, elliptical_spread, velocity_at_angle, velocity_components
 
 # Level Set Solver
 export half_superbee, limit_gradients
 export compute_cfl_timestep, rk2_step!, level_set_step!
 export compute_normal
-export NarrowBand, tag_band!, untag_isolated!, get_active_cells
+export NarrowBand, tag_band!, untag_isolated!, get_active_cells, active_mask
 export initialize_phi!, initialize_circular_fire!
 
 # Simulation
 export wind_adjustment_factor, calculate_tanslp2
-export FireState, grid_to_padded, padded_to_grid
+export FireState, CPUFireState, grid_to_padded, padded_to_grid
 export ignite!, ignite_point!, ignite_circle!
 export simulate!, simulate_uniform!
 export get_fire_perimeter, get_burned_area, get_burned_area_acres

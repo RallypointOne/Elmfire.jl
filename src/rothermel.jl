@@ -182,6 +182,120 @@ function surface_spread_rate(
 end
 
 
+"""
+    surface_spread_rate_flat(
+        fuel_arr::FuelModelArray{T}, fuel_index::Int, mc_index::Int,
+        M1::T, M10::T, M100::T, MLH::T, MLW::T,
+        wsmf::T, tanslp2::T, adj::T
+    ) -> Tuple{T, T, T}
+
+Compute surface fire spread rate from a `FuelModelArray` using dense array indexing.
+This variant is designed for GPU kernels where `Dict`-based `FuelModel` lookup is not available.
+
+Returns `(velocity, vs0, flin)` as a tuple instead of a `SpreadResult` struct.
+
+### Arguments
+- `fuel_arr`: Dense fuel model array
+- `fuel_index`: Row index in `fuel_arr` (from `fuel_arr.fuel_id_to_index[fuel_id]`)
+- `mc_index`: Moisture class index (`live_moisture_class - 29`)
+- `M1, M10, M100, MLH, MLW`: Fuel moisture fractions
+- `wsmf`: Mid-flame wind speed (ft/min)
+- `tanslp2`: tan²(slope angle)
+- `adj`: Spread rate adjustment factor
+"""
+@inline function surface_spread_rate_flat(
+    fuel_arr::FuelModelArray{T},
+    fuel_index::Int, mc_index::Int,
+    M1::T, M10::T, M100::T, MLH::T, MLW::T,
+    wsmf::T, tanslp2::T, adj::T
+) where {T<:AbstractFloat}
+    fi = fuel_index
+    mi = mc_index
+
+    # Check nonburnable
+    if fuel_arr.nonburnable[fi, mi]
+        return (zero(T), zero(T), zero(T))
+    end
+
+    # Load coefficients from arrays
+    rhob = fuel_arr.rhob[fi, mi]
+    xi = fuel_arr.xi[fi, mi]
+    B = fuel_arr.B[fi, mi]
+    GP_WND_ETAS_HOC = fuel_arr.GP_WND_ETAS_HOC[fi, mi]
+    GP_WNL_ETAS_HOC = fuel_arr.GP_WNL_ETAS_HOC[fi, mi]
+    phisterm = fuel_arr.phisterm[fi, mi]
+    phiwterm = fuel_arr.phiwterm[fi, mi]
+    R_MPRIMEDENOME14SUM_MEX_DEAD = fuel_arr.R_MPRIMEDENOME14SUM_MEX_DEAD[fi, mi]
+    F_dead = fuel_arr.F_dead[fi, mi]
+    F_live = fuel_arr.F_live[fi, mi]
+    mex_dead = fuel_arr.mex_dead[fi, mi]
+    mex_live_base = fuel_arr.mex_live[fi, mi]
+    tr = fuel_arr.tr[fi, mi]
+
+    # Moisture array
+    M = (M1, M10, M100, M1, MLH, MLW)
+
+    # Live fuel moisture of extinction (dynamic)
+    SUM_MPRIMENUMER = zero(T)
+    for k in 1:4
+        SUM_MPRIMENUMER += fuel_arr.WPRIMENUMER[fi, mi, k] * M[k]
+    end
+    mex_live = mex_live_base * (one(T) - R_MPRIMEDENOME14SUM_MEX_DEAD * SUM_MPRIMENUMER) - T(0.226)
+    mex_live = max(mex_live, mex_dead)
+
+    # Heat of pre-ignition and effective heating
+    RHOBEPSQIG_DEAD = zero(T)
+    RHOBEPSQIG_LIVE = zero(T)
+    for k in 1:4
+        RHOBEPSQIG_DEAD += fuel_arr.FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])
+    end
+    for k in 5:6
+        RHOBEPSQIG_LIVE += fuel_arr.FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])
+    end
+    RHOBEPSQIG_DEAD *= rhob
+    RHOBEPSQIG_LIVE *= rhob
+    RHOBEPSQIG = F_dead * RHOBEPSQIG_DEAD + F_live * RHOBEPSQIG_LIVE
+
+    # Moisture damping
+    M_dead = zero(T)
+    for k in 1:4
+        M_dead += fuel_arr.F[fi, mi, k] * M[k]
+    end
+    etam_dead = moisture_damping(M_dead / mex_dead)
+    IR_dead = GP_WND_ETAS_HOC * etam_dead
+
+    M_live = zero(T)
+    for k in 5:6
+        M_live += fuel_arr.F[fi, mi, k] * M[k]
+    end
+    etam_live = moisture_damping(M_live / mex_live)
+    IR_live = GP_WNL_ETAS_HOC * etam_live
+
+    IR_btupft2min = IR_dead + IR_live
+
+    # Wind/slope factors
+    WS_LIMIT = T(0.9) * IR_btupft2min
+    wsmf_limited = min(wsmf, WS_LIMIT)
+    phiw = phiwterm * wsmf_limited^B
+    phis_max = phiwterm * WS_LIMIT^B
+    phis = min(phisterm * tanslp2, phis_max)
+
+    # Spread rate
+    vs0 = if RHOBEPSQIG > T(1e-9)
+        adj * IR_btupft2min * xi / RHOBEPSQIG
+    else
+        zero(T)
+    end
+    velocity = vs0 * (one(T) + phis + phiw)
+
+    # Fireline intensity
+    IR = IR_btupft2min * btupft2min_to_kwpm2(T)
+    flin = tr * IR * velocity * ft_to_m(T)
+
+    return (velocity, vs0, flin)
+end
+
+
 #-----------------------------------------------------------------------------#
 #                     Elliptical Fire Spread Model
 #-----------------------------------------------------------------------------#
