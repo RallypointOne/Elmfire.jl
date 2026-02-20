@@ -149,7 +149,7 @@ function FireState{T}(
     uy = zeros(T, nx_pad, ny_pad)
 
     # Initialize narrow band
-    narrow_band = NarrowBand(band_thickness)
+    narrow_band = NarrowBand(nx_pad, ny_pad, band_thickness)
 
     return FireState{T}(
         phi, phi_old,
@@ -190,7 +190,7 @@ function Base.copy(state::FireState{T}) where {T<:AbstractFloat}
         copy(state.flame_length),
         copy(state.ux),
         copy(state.uy),
-        NarrowBand(state.narrow_band.band_thickness),  # New empty narrow band
+        NarrowBand(state.ncols + 2*state.padding, state.nrows + 2*state.padding, state.narrow_band.band_thickness),
         state.ncols,
         state.nrows,
         state.cellsize,
@@ -223,8 +223,9 @@ function reset!(state::FireState{T}) where {T<:AbstractFloat}
     fill!(state.uy, zero(T))
 
     # Reset narrow band
-    empty!(state.narrow_band.active)
-    empty!(state.narrow_band.ever_tagged)
+    fill!(state.narrow_band.is_active, false)
+    state.narrow_band.n_active = 0
+    fill!(state.narrow_band.ever_tagged, false)
 
     return nothing
 end

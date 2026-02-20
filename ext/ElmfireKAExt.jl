@@ -36,49 +36,87 @@ end
 
 
 #-----------------------------------------------------------------------------#
-#                     GPU Velocity Kernel
+#                     GPU Gather Kernel
 #-----------------------------------------------------------------------------#
 
-@kernel function velocity_kernel!(
-    ux, uy, @Const(phi), @Const(mask), @Const(burned),
-    @Const(fuel_ids), @Const(fuel_id_to_index),
-    @Const(fa_delta), @Const(fa_nonburnable),
-    @Const(fa_rhob), @Const(fa_xi), @Const(fa_B),
-    @Const(fa_GP_WND_ETAS_HOC), @Const(fa_GP_WNL_ETAS_HOC),
-    @Const(fa_phisterm), @Const(fa_phiwterm),
-    @Const(fa_R_MPRIMEDENOME14SUM_MEX_DEAD),
-    @Const(fa_mex_dead), @Const(fa_mex_live),
-    @Const(fa_F_dead), @Const(fa_F_live), @Const(fa_tr),
-    @Const(fa_F), @Const(fa_FEPS), @Const(fa_WPRIMENUMER),
-    @Const(slope), @Const(aspect),
-    ws20_ftpmin, wind_dir_rad, M1, M10, M100, MLH, MLW,
-    live_moisture_class, spread_rate_adj,
-    cellsize, padding, ncols, nrows
+@kernel function gather_phi_kernel!(
+    phi_out, @Const(phi), @Const(active_px), @Const(active_py)
 )
-    T = eltype(ux)
-    px, py = @index(Global, NTuple)
+    i = @index(Global, Linear)
+    phi_out[i] = phi[active_px[i], active_py[i]]
+end
+
+
+#-----------------------------------------------------------------------------#
+#                     GPU Copy-Active Kernel
+#-----------------------------------------------------------------------------#
+
+@kernel function copy_active_kernel!(
+    dst, @Const(src), @Const(active_px), @Const(active_py)
+)
+    i = @index(Global, Linear)
+    px = active_px[i]
+    py = active_py[i]
+    dst[px, py] = src[px, py]
+end
+
+
+#-----------------------------------------------------------------------------#
+#                     GPU Spread Rate Kernel (index-list)
+#-----------------------------------------------------------------------------#
+# Split into two kernels for Metal shader compiler compatibility.
+# Fuel model data is packed into two 3D arrays to reduce argument count:
+#   fuel_scalars[fi, mi, 1:14] = delta, rhob, xi, B, GP_WND, GP_WNL,
+#       phisterm, phiwterm, R_val, mex_dead, mex_live, F_dead, F_live, tr
+#   fuel_components[fi, mi, 1:16] = F[1:6], FEPS[1:6], WPRIMENUMER[1:4]
+
+@kernel function spread_rate_kernel!(
+    vel_out, ecc_out, @Const(active_px), @Const(active_py),
+    @Const(burned),
+    @Const(fuel_ids), @Const(fuel_id_to_index),
+    @Const(fuel_scalars), @Const(fa_nonburnable), @Const(fuel_components),
+    @Const(slope),
+    ws20_ftpmin, M1, M10, M100, MLH, MLW,
+    live_moisture_class, spread_rate_adj,
+    padding, ncols, nrows
+)
+    T = eltype(vel_out)
+    i = @index(Global, Linear)
+    px = active_px[i]
+    py = active_py[i]
 
     ix = px - padding
     iy = py - padding
-    in_bounds = (ix >= 1) && (ix <= ncols) && (iy >= 1) && (iy <= nrows)
 
-    if mask[px, py] && in_bounds
-        if burned[ix, iy]
-            # Burned cell: zero velocity
-            ux[px, py] = zero(T)
-            uy[px, py] = zero(T)
+    if ix >= 1 && ix <= ncols && iy >= 1 && iy <= nrows
+        if burned[ix, iy] != zero(eltype(burned))
+            vel_out[i] = zero(T)
+            ecc_out[i] = zero(T)
         else
             fuel_id = fuel_ids[ix, iy]
             fi = fuel_id_to_index[fuel_id]
             mi = live_moisture_class - 29
 
-            if fa_nonburnable[fi, mi]
-                # Nonburnable: zero velocity
-                ux[px, py] = zero(T)
-                uy[px, py] = zero(T)
+            if fa_nonburnable[fi, mi] != zero(eltype(fa_nonburnable))
+                vel_out[i] = zero(T)
+                ecc_out[i] = zero(T)
             else
+                # Unpack fuel scalars
+                delta           = fuel_scalars[fi, mi, 1]
+                rhob            = fuel_scalars[fi, mi, 2]
+                xi              = fuel_scalars[fi, mi, 3]
+                B               = fuel_scalars[fi, mi, 4]
+                GP_WND_ETAS_HOC = fuel_scalars[fi, mi, 5]
+                GP_WNL_ETAS_HOC = fuel_scalars[fi, mi, 6]
+                phisterm        = fuel_scalars[fi, mi, 7]
+                phiwterm        = fuel_scalars[fi, mi, 8]
+                R_val           = fuel_scalars[fi, mi, 9]
+                mex_dead        = fuel_scalars[fi, mi, 10]
+                mex_live_base   = fuel_scalars[fi, mi, 11]
+                F_dead          = fuel_scalars[fi, mi, 12]
+                F_live          = fuel_scalars[fi, mi, 13]
+
                 # --- Wind adjustment factor ---
-                delta = fa_delta[fi, mi]
                 waf = if delta < T(0.1)
                     T(0.1)
                 else
@@ -90,45 +128,34 @@ end
                 slope_rad = slope[ix, iy] * (Elmfire.pi_val(T) / T(180))
                 tanslp2 = tan(slope_rad)^2
 
-                # --- Rothermel spread rate (inlined) ---
-                rhob = fa_rhob[fi, mi]
-                xi = fa_xi[fi, mi]
-                B = fa_B[fi, mi]
-                GP_WND_ETAS_HOC = fa_GP_WND_ETAS_HOC[fi, mi]
-                GP_WNL_ETAS_HOC = fa_GP_WNL_ETAS_HOC[fi, mi]
-                phisterm = fa_phisterm[fi, mi]
-                phiwterm = fa_phiwterm[fi, mi]
-                R_val = fa_R_MPRIMEDENOME14SUM_MEX_DEAD[fi, mi]
-                F_dead = fa_F_dead[fi, mi]
-                F_live = fa_F_live[fi, mi]
-                mex_dead = fa_mex_dead[fi, mi]
-                mex_live_base = fa_mex_live[fi, mi]
-                tr = fa_tr[fi, mi]
-
+                # --- Rothermel spread rate ---
                 M = (M1, M10, M100, M1, MLH, MLW)
 
+                # WPRIMENUMER is at components 13:16
                 SUM_MPRIMENUMER = zero(T)
                 for k in 1:4
-                    SUM_MPRIMENUMER += fa_WPRIMENUMER[fi, mi, k] * M[k]
+                    SUM_MPRIMENUMER += fuel_components[fi, mi, 12 + k] * M[k]
                 end
                 mex_live = mex_live_base * (one(T) - R_val * SUM_MPRIMENUMER) - T(0.226)
                 mex_live = max(mex_live, mex_dead)
 
+                # FEPS is at components 7:12
                 RHOBEPSQIG_DEAD = zero(T)
                 RHOBEPSQIG_LIVE = zero(T)
                 for k in 1:4
-                    RHOBEPSQIG_DEAD += fa_FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])
+                    RHOBEPSQIG_DEAD += fuel_components[fi, mi, 6 + k] * (T(250) + T(1116) * M[k])
                 end
                 for k in 5:6
-                    RHOBEPSQIG_LIVE += fa_FEPS[fi, mi, k] * (T(250) + T(1116) * M[k])
+                    RHOBEPSQIG_LIVE += fuel_components[fi, mi, 6 + k] * (T(250) + T(1116) * M[k])
                 end
                 RHOBEPSQIG_DEAD *= rhob
                 RHOBEPSQIG_LIVE *= rhob
                 RHOBEPSQIG = F_dead * RHOBEPSQIG_DEAD + F_live * RHOBEPSQIG_LIVE
 
+                # F is at components 1:6
                 M_dead = zero(T)
                 for k in 1:4
-                    M_dead += fa_F[fi, mi, k] * M[k]
+                    M_dead += fuel_components[fi, mi, k] * M[k]
                 end
                 momex_dead = clamp(M_dead / mex_dead, zero(T), one(T))
                 etam_dead = clamp(one(T) - T(2.59) * momex_dead + T(5.11) * momex_dead^2 - T(3.52) * momex_dead^3, zero(T), one(T))
@@ -136,7 +163,7 @@ end
 
                 M_live = zero(T)
                 for k in 5:6
-                    M_live += fa_F[fi, mi, k] * M[k]
+                    M_live += fuel_components[fi, mi, k] * M[k]
                 end
                 momex_live = clamp(M_live / mex_live, zero(T), one(T))
                 etam_live = clamp(one(T) - T(2.59) * momex_live + T(5.11) * momex_live^2 - T(3.52) * momex_live^3, zero(T), one(T))
@@ -157,20 +184,7 @@ end
                 end
                 velocity = vs0 * (one(T) + phis + phiw)
 
-                # --- Normal to fire front ---
-                rdx2 = T(0.5) / cellsize
-                dphidx = (phi[px + 1, py] - phi[px - 1, py]) * rdx2
-                dphidy = (phi[px, py + 1] - phi[px, py - 1]) * rdx2
-                mag = sqrt(dphidx^2 + dphidy^2)
-
-                normal_x = zero(T)
-                normal_y = zero(T)
-                if mag > T(1e-10)
-                    normal_x = dphidx / mag
-                    normal_y = dphidy / mag
-                end
-
-                # --- Elliptical spread ---
+                # --- Elliptical eccentricity ---
                 effective_ws_mph = (ws20_ftpmin / T(88)) * waf / T(1.47)
                 U = max(effective_ws_mph, zero(T))
 
@@ -187,220 +201,268 @@ end
                     zero(T)
                 end
 
-                head = velocity
-                back = head * (one(T) - eccentricity) / (one(T) + eccentricity)
-
-                # --- Velocity components ---
-                wind_to_x = -sin(wind_dir_rad)
-                wind_to_y = -cos(wind_dir_rad)
-                cos_theta = normal_x * wind_to_x + normal_y * wind_to_y
-                vel = T(0.5) * ((one(T) + cos_theta) * head + (one(T) - cos_theta) * back)
-
-                ux[px, py] = vel * normal_x
-                uy[px, py] = vel * normal_y
+                vel_out[i] = velocity
+                ecc_out[i] = eccentricity
             end
         end
+    else
+        vel_out[i] = zero(T)
+        ecc_out[i] = zero(T)
     end
 end
 
 
 #-----------------------------------------------------------------------------#
-#                     GPU CFL Kernel
+#                     GPU Direction Kernel (index-list)
 #-----------------------------------------------------------------------------#
+# Kernel 2: phi gradient + wind → ux, uy
 
-@kernel function cfl_max_kernel!(umax_out, @Const(ux), @Const(uy), @Const(mask))
+@kernel function direction_kernel!(
+    ux, uy, @Const(phi), @Const(active_px), @Const(active_py),
+    @Const(vel_in), @Const(ecc_in),
+    wind_dir_rad, cellsize
+)
     T = eltype(ux)
-    px, py = @index(Global, NTuple)
+    i = @index(Global, Linear)
+    px = active_px[i]
+    py = active_py[i]
 
-    if mask[px, py]
-        u = max(abs(ux[px, py]), abs(uy[px, py]))
-        KernelAbstractions.@atomic umax_out[1] = max(umax_out[1], u)
+    velocity = vel_in[i]
+    eccentricity = ecc_in[i]
+
+    if velocity <= zero(T)
+        ux[px, py] = zero(T)
+        uy[px, py] = zero(T)
+    else
+        # --- Normal to fire front ---
+        rdx2 = T(0.5) / cellsize
+        dphidx = (phi[px + 1, py] - phi[px - 1, py]) * rdx2
+        dphidy = (phi[px, py + 1] - phi[px, py - 1]) * rdx2
+        mag = sqrt(dphidx^2 + dphidy^2)
+
+        normal_x = zero(T)
+        normal_y = zero(T)
+        if mag > T(1e-10)
+            normal_x = dphidx / mag
+            normal_y = dphidy / mag
+        end
+
+        head = velocity
+        back = head * (one(T) - eccentricity) / (one(T) + eccentricity)
+
+        # --- Velocity components ---
+        wind_to_x = -sin(wind_dir_rad)
+        wind_to_y = -cos(wind_dir_rad)
+        cos_theta = normal_x * wind_to_x + normal_y * wind_to_y
+        vel = T(0.5) * ((one(T) + cos_theta) * head + (one(T) - cos_theta) * back)
+
+        ux[px, py] = vel * normal_x
+        uy[px, py] = vel * normal_y
     end
 end
 
 
 #-----------------------------------------------------------------------------#
-#                     GPU RK2 Kernels
+#                     GPU CFL Gather Kernel (index-list)
+#-----------------------------------------------------------------------------#
+# Gathers per-cell max(|ux|, |uy|) into a 1D buffer.
+# The actual max reduction is done on CPU (avoids atomic max issues on Metal).
+
+@kernel function cfl_gather_kernel!(
+    u_out, @Const(ux), @Const(uy), @Const(active_px), @Const(active_py)
+)
+    T = eltype(ux)
+    i = @index(Global, Linear)
+    px = active_px[i]
+    py = active_py[i]
+    u_out[i] = max(abs(ux[px, py]), abs(uy[px, py]))
+end
+
+
+#-----------------------------------------------------------------------------#
+#                     GPU RK2 Kernels (index-list)
 #-----------------------------------------------------------------------------#
 
 @kernel function rk2_stage1_kernel!(
-    phi, @Const(phi_old), @Const(ux), @Const(uy), @Const(mask),
+    phi, @Const(phi_old), @Const(ux), @Const(uy),
+    @Const(active_px), @Const(active_py),
     dt, rcellsize
 )
     T = eltype(phi)
-    px, py = @index(Global, NTuple)
+    i = @index(Global, Linear)
+    px = active_px[i]
+    py = active_py[i]
 
-    if mask[px, py]
-        ux_val = ux[px, py]
-        uy_val = uy[px, py]
+    ux_val = ux[px, py]
+    uy_val = uy[px, py]
 
-        EPSILON = T(1e-30)
-        CEILING = T(1e3)
+    EPSILON = T(1e-30)
+    CEILING = T(1e3)
 
-        # X-direction gradient
-        dphidx = zero(T)
-        if ux_val >= zero(T)
-            deltaup = phi[px, py] - phi[px - 1, py]
-            deltaloc = phi[px + 1, py] - phi[px, py]
-            phieast = phi[px, py]
-            if abs(deltaloc) > EPSILON
-                phieast = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
-            end
-            deltaloc_west = -deltaup
-            phiwest = phi[px - 1, py]
-            if abs(deltaloc_west) > EPSILON
-                deltaup_west = phi[px - 2, py] - phi[px - 1, py]
-                phiwest = phi[px - 1, py] - _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
-            end
-            dphidx = (phieast - phiwest) * rcellsize
-        else
-            deltaloc = phi[px + 1, py] - phi[px, py]
-            phieast = phi[px + 1, py]
-            if abs(deltaloc) > EPSILON
-                deltaup = phi[px + 2, py] - phi[px + 1, py]
-                phieast = phi[px + 1, py] - _half_superbee(deltaup / deltaloc) * deltaloc
-            end
-            deltaup_west = -deltaloc
-            deltaloc_west = phi[px - 1, py] - phi[px, py]
-            phiwest = phi[px, py]
-            if abs(deltaloc_west) > EPSILON
-                phiwest = phi[px, py] + _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
-            end
-            dphidx = (phieast - phiwest) * rcellsize
+    # X-direction gradient
+    dphidx = zero(T)
+    if ux_val >= zero(T)
+        deltaup = phi[px, py] - phi[px - 1, py]
+        deltaloc = phi[px + 1, py] - phi[px, py]
+        phieast = phi[px, py]
+        if abs(deltaloc) > EPSILON
+            phieast = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
         end
-
-        # Y-direction gradient
-        dphidy = zero(T)
-        if uy_val > zero(T)
-            deltaup = phi[px, py] - phi[px, py - 1]
-            deltaloc = phi[px, py + 1] - phi[px, py]
-            phinorth = phi[px, py]
-            if abs(deltaloc) > EPSILON
-                phinorth = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
-            end
-            deltaloc_south = -deltaup
-            phisouth = phi[px, py - 1]
-            if abs(deltaloc_south) > EPSILON
-                deltaup_south = phi[px, py - 2] - phi[px, py - 1]
-                phisouth = phi[px, py - 1] - _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
-            end
-            dphidy = (phinorth - phisouth) * rcellsize
-        else
-            deltaloc = phi[px, py + 1] - phi[px, py]
-            phinorth = phi[px, py + 1]
-            if abs(deltaloc) > EPSILON
-                deltaup = phi[px, py + 2] - phi[px, py + 1]
-                phinorth = phi[px, py + 1] - _half_superbee(deltaup / deltaloc) * deltaloc
-            end
-            deltaup_south = -deltaloc
-            deltaloc_south = phi[px, py - 1] - phi[px, py]
-            phisouth = phi[px, py]
-            if abs(deltaloc_south) > EPSILON
-                phisouth = phi[px, py] + _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
-            end
-            dphidy = (phinorth - phisouth) * rcellsize
+        deltaloc_west = -deltaup
+        phiwest = phi[px - 1, py]
+        if abs(deltaloc_west) > EPSILON
+            deltaup_west = phi[px - 2, py] - phi[px - 1, py]
+            phiwest = phi[px - 1, py] - _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
         end
-
-        dphidx = clamp(dphidx, -CEILING, CEILING)
-        dphidy = clamp(dphidy, -CEILING, CEILING)
-        if isnan(dphidx); dphidx = zero(T); end
-        if isnan(dphidy); dphidy = zero(T); end
-
-        phi_new = phi_old[px, py] - dt * (ux_val * dphidx + uy_val * dphidy)
-        if isnan(phi_new)
-            phi_new = one(T)
+        dphidx = (phieast - phiwest) * rcellsize
+    else
+        deltaloc = phi[px + 1, py] - phi[px, py]
+        phieast = phi[px + 1, py]
+        if abs(deltaloc) > EPSILON
+            deltaup = phi[px + 2, py] - phi[px + 1, py]
+            phieast = phi[px + 1, py] - _half_superbee(deltaup / deltaloc) * deltaloc
         end
-        phi[px, py] = clamp(phi_new, T(-100), T(100))
+        deltaup_west = -deltaloc
+        deltaloc_west = phi[px - 1, py] - phi[px, py]
+        phiwest = phi[px, py]
+        if abs(deltaloc_west) > EPSILON
+            phiwest = phi[px, py] + _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
+        end
+        dphidx = (phieast - phiwest) * rcellsize
     end
+
+    # Y-direction gradient
+    dphidy = zero(T)
+    if uy_val > zero(T)
+        deltaup = phi[px, py] - phi[px, py - 1]
+        deltaloc = phi[px, py + 1] - phi[px, py]
+        phinorth = phi[px, py]
+        if abs(deltaloc) > EPSILON
+            phinorth = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
+        end
+        deltaloc_south = -deltaup
+        phisouth = phi[px, py - 1]
+        if abs(deltaloc_south) > EPSILON
+            deltaup_south = phi[px, py - 2] - phi[px, py - 1]
+            phisouth = phi[px, py - 1] - _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
+        end
+        dphidy = (phinorth - phisouth) * rcellsize
+    else
+        deltaloc = phi[px, py + 1] - phi[px, py]
+        phinorth = phi[px, py + 1]
+        if abs(deltaloc) > EPSILON
+            deltaup = phi[px, py + 2] - phi[px, py + 1]
+            phinorth = phi[px, py + 1] - _half_superbee(deltaup / deltaloc) * deltaloc
+        end
+        deltaup_south = -deltaloc
+        deltaloc_south = phi[px, py - 1] - phi[px, py]
+        phisouth = phi[px, py]
+        if abs(deltaloc_south) > EPSILON
+            phisouth = phi[px, py] + _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
+        end
+        dphidy = (phinorth - phisouth) * rcellsize
+    end
+
+    dphidx = clamp(dphidx, -CEILING, CEILING)
+    dphidy = clamp(dphidy, -CEILING, CEILING)
+    if isnan(dphidx); dphidx = zero(T); end
+    if isnan(dphidy); dphidy = zero(T); end
+
+    phi_new = phi_old[px, py] - dt * (ux_val * dphidx + uy_val * dphidy)
+    if isnan(phi_new)
+        phi_new = one(T)
+    end
+    phi[px, py] = clamp(phi_new, T(-100), T(100))
 end
 
 
 @kernel function rk2_stage2_kernel!(
-    phi, @Const(phi_old), @Const(ux), @Const(uy), @Const(mask),
+    phi, @Const(phi_old), @Const(ux), @Const(uy),
+    @Const(active_px), @Const(active_py),
     dt, rcellsize
 )
     T = eltype(phi)
-    px, py = @index(Global, NTuple)
+    i = @index(Global, Linear)
+    px = active_px[i]
+    py = active_py[i]
 
-    if mask[px, py]
-        ux_val = ux[px, py]
-        uy_val = uy[px, py]
+    ux_val = ux[px, py]
+    uy_val = uy[px, py]
 
-        EPSILON = T(1e-30)
-        CEILING = T(1e3)
+    EPSILON = T(1e-30)
+    CEILING = T(1e3)
 
-        # X-direction gradient
-        dphidx = zero(T)
-        if ux_val >= zero(T)
-            deltaup = phi[px, py] - phi[px - 1, py]
-            deltaloc = phi[px + 1, py] - phi[px, py]
-            phieast = phi[px, py]
-            if abs(deltaloc) > EPSILON
-                phieast = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
-            end
-            deltaloc_west = -deltaup
-            phiwest = phi[px - 1, py]
-            if abs(deltaloc_west) > EPSILON
-                deltaup_west = phi[px - 2, py] - phi[px - 1, py]
-                phiwest = phi[px - 1, py] - _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
-            end
-            dphidx = (phieast - phiwest) * rcellsize
-        else
-            deltaloc = phi[px + 1, py] - phi[px, py]
-            phieast = phi[px + 1, py]
-            if abs(deltaloc) > EPSILON
-                deltaup = phi[px + 2, py] - phi[px + 1, py]
-                phieast = phi[px + 1, py] - _half_superbee(deltaup / deltaloc) * deltaloc
-            end
-            deltaup_west = -deltaloc
-            deltaloc_west = phi[px - 1, py] - phi[px, py]
-            phiwest = phi[px, py]
-            if abs(deltaloc_west) > EPSILON
-                phiwest = phi[px, py] + _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
-            end
-            dphidx = (phieast - phiwest) * rcellsize
+    # X-direction gradient
+    dphidx = zero(T)
+    if ux_val >= zero(T)
+        deltaup = phi[px, py] - phi[px - 1, py]
+        deltaloc = phi[px + 1, py] - phi[px, py]
+        phieast = phi[px, py]
+        if abs(deltaloc) > EPSILON
+            phieast = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
         end
-
-        # Y-direction gradient
-        dphidy = zero(T)
-        if uy_val > zero(T)
-            deltaup = phi[px, py] - phi[px, py - 1]
-            deltaloc = phi[px, py + 1] - phi[px, py]
-            phinorth = phi[px, py]
-            if abs(deltaloc) > EPSILON
-                phinorth = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
-            end
-            deltaloc_south = -deltaup
-            phisouth = phi[px, py - 1]
-            if abs(deltaloc_south) > EPSILON
-                deltaup_south = phi[px, py - 2] - phi[px, py - 1]
-                phisouth = phi[px, py - 1] - _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
-            end
-            dphidy = (phinorth - phisouth) * rcellsize
-        else
-            deltaloc = phi[px, py + 1] - phi[px, py]
-            phinorth = phi[px, py + 1]
-            if abs(deltaloc) > EPSILON
-                deltaup = phi[px, py + 2] - phi[px, py + 1]
-                phinorth = phi[px, py + 1] - _half_superbee(deltaup / deltaloc) * deltaloc
-            end
-            deltaup_south = -deltaloc
-            deltaloc_south = phi[px, py - 1] - phi[px, py]
-            phisouth = phi[px, py]
-            if abs(deltaloc_south) > EPSILON
-                phisouth = phi[px, py] + _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
-            end
-            dphidy = (phinorth - phisouth) * rcellsize
+        deltaloc_west = -deltaup
+        phiwest = phi[px - 1, py]
+        if abs(deltaloc_west) > EPSILON
+            deltaup_west = phi[px - 2, py] - phi[px - 1, py]
+            phiwest = phi[px - 1, py] - _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
         end
-
-        dphidx = clamp(dphidx, -CEILING, CEILING)
-        dphidy = clamp(dphidy, -CEILING, CEILING)
-        if isnan(dphidx); dphidx = zero(T); end
-        if isnan(dphidy); dphidy = zero(T); end
-
-        phi_rhs = phi[px, py] - dt * (ux_val * dphidx + uy_val * dphidy)
-        phi[px, py] = T(0.5) * (phi_old[px, py] + phi_rhs)
+        dphidx = (phieast - phiwest) * rcellsize
+    else
+        deltaloc = phi[px + 1, py] - phi[px, py]
+        phieast = phi[px + 1, py]
+        if abs(deltaloc) > EPSILON
+            deltaup = phi[px + 2, py] - phi[px + 1, py]
+            phieast = phi[px + 1, py] - _half_superbee(deltaup / deltaloc) * deltaloc
+        end
+        deltaup_west = -deltaloc
+        deltaloc_west = phi[px - 1, py] - phi[px, py]
+        phiwest = phi[px, py]
+        if abs(deltaloc_west) > EPSILON
+            phiwest = phi[px, py] + _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
+        end
+        dphidx = (phieast - phiwest) * rcellsize
     end
+
+    # Y-direction gradient
+    dphidy = zero(T)
+    if uy_val > zero(T)
+        deltaup = phi[px, py] - phi[px, py - 1]
+        deltaloc = phi[px, py + 1] - phi[px, py]
+        phinorth = phi[px, py]
+        if abs(deltaloc) > EPSILON
+            phinorth = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
+        end
+        deltaloc_south = -deltaup
+        phisouth = phi[px, py - 1]
+        if abs(deltaloc_south) > EPSILON
+            deltaup_south = phi[px, py - 2] - phi[px, py - 1]
+            phisouth = phi[px, py - 1] - _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
+        end
+        dphidy = (phinorth - phisouth) * rcellsize
+    else
+        deltaloc = phi[px, py + 1] - phi[px, py]
+        phinorth = phi[px, py + 1]
+        if abs(deltaloc) > EPSILON
+            deltaup = phi[px, py + 2] - phi[px, py + 1]
+            phinorth = phi[px, py + 1] - _half_superbee(deltaup / deltaloc) * deltaloc
+        end
+        deltaup_south = -deltaloc
+        deltaloc_south = phi[px, py - 1] - phi[px, py]
+        phisouth = phi[px, py]
+        if abs(deltaloc_south) > EPSILON
+            phisouth = phi[px, py] + _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
+        end
+        dphidy = (phinorth - phisouth) * rcellsize
+    end
+
+    dphidx = clamp(dphidx, -CEILING, CEILING)
+    dphidy = clamp(dphidy, -CEILING, CEILING)
+    if isnan(dphidx); dphidx = zero(T); end
+    if isnan(dphidy); dphidy = zero(T); end
+
+    phi_rhs = phi[px, py] - dt * (ux_val * dphidx + uy_val * dphidy)
+    phi[px, py] = T(0.5) * (phi_old[px, py] + phi_rhs)
 end
 
 
@@ -431,93 +493,152 @@ function Elmfire.simulate_gpu!(
     # Pre-compute weather scalars
     wind_dir_rad = weather.wind_direction * Elmfire.pio180(T)
     ws20_ftpmin = weather.wind_speed_20ft * T(88)
-    live_moisture_class = clamp(round(Int, T(100) * weather.MLH), 30, 120)
+    live_moisture_class = Int32(clamp(round(Int, T(100) * weather.MLH), 30, 120))
 
     # Grid dimensions
     nx_pad = state.ncols + 2 * state.padding
     ny_pad = state.nrows + 2 * state.padding
 
-    # Allocate backend arrays
-    d_mask = KernelAbstractions.zeros(backend, Bool, nx_pad, ny_pad)
-    d_umax = KernelAbstractions.zeros(backend, T, 1)
-
+    # Allocate persistent device arrays
+    d_ucfl = KernelAbstractions.allocate(backend, T, nx_pad * ny_pad)  # reused for CFL gather
     d_phi = KernelAbstractions.allocate(backend, T, nx_pad, ny_pad)
     d_phi_old = KernelAbstractions.allocate(backend, T, nx_pad, ny_pad)
     d_ux = KernelAbstractions.zeros(backend, T, nx_pad, ny_pad)
     d_uy = KernelAbstractions.zeros(backend, T, nx_pad, ny_pad)
-    d_fuel_ids = Adapt.adapt(backend, fuel_ids)
+
+    # Upload static data (once, before the loop)
+    # Use Int32 for integer arrays — Metal doesn't support Int64
+    d_fuel_ids = Adapt.adapt(backend, Int32.(fuel_ids))
     d_slope = Adapt.adapt(backend, slope)
     d_aspect = Adapt.adapt(backend, aspect)
 
-    # Upload fuel model array fields
-    d_fuel_id_to_index = Adapt.adapt(backend, fuel_array.fuel_id_to_index)
-    d_fa_delta = Adapt.adapt(backend, fuel_array.delta)
-    d_fa_nonburnable = Adapt.adapt(backend, fuel_array.nonburnable)
-    d_fa_rhob = Adapt.adapt(backend, fuel_array.rhob)
-    d_fa_xi = Adapt.adapt(backend, fuel_array.xi)
-    d_fa_B = Adapt.adapt(backend, fuel_array.B)
-    d_fa_GP_WND = Adapt.adapt(backend, fuel_array.GP_WND_ETAS_HOC)
-    d_fa_GP_WNL = Adapt.adapt(backend, fuel_array.GP_WNL_ETAS_HOC)
-    d_fa_phisterm = Adapt.adapt(backend, fuel_array.phisterm)
-    d_fa_phiwterm = Adapt.adapt(backend, fuel_array.phiwterm)
-    d_fa_R = Adapt.adapt(backend, fuel_array.R_MPRIMEDENOME14SUM_MEX_DEAD)
-    d_fa_mex_dead = Adapt.adapt(backend, fuel_array.mex_dead)
-    d_fa_mex_live = Adapt.adapt(backend, fuel_array.mex_live)
-    d_fa_F_dead = Adapt.adapt(backend, fuel_array.F_dead)
-    d_fa_F_live = Adapt.adapt(backend, fuel_array.F_live)
-    d_fa_tr = Adapt.adapt(backend, fuel_array.tr)
-    d_fa_F = Adapt.adapt(backend, fuel_array.F)
-    d_fa_FEPS = Adapt.adapt(backend, fuel_array.FEPS)
-    d_fa_WPRIMENUMER = Adapt.adapt(backend, fuel_array.WPRIMENUMER)
+    d_fuel_id_to_index = Adapt.adapt(backend, Int32.(fuel_array.fuel_id_to_index))
 
-    # Upload initial phi
+    # Pack fuel model data into two 3D arrays for reduced kernel argument count
+    # fuel_scalars[fi, mi, 1:14]: delta, rhob, xi, B, GP_WND, GP_WNL,
+    #     phisterm, phiwterm, R_val, mex_dead, mex_live, F_dead, F_live, tr
+    fa = fuel_array
+    nf = size(fa.delta, 1)
+    nm = size(fa.delta, 2)
+    h_fuel_scalars = Array{T, 3}(undef, nf, nm, 14)
+    h_fuel_scalars[:, :, 1]  .= fa.delta
+    h_fuel_scalars[:, :, 2]  .= fa.rhob
+    h_fuel_scalars[:, :, 3]  .= fa.xi
+    h_fuel_scalars[:, :, 4]  .= fa.B
+    h_fuel_scalars[:, :, 5]  .= fa.GP_WND_ETAS_HOC
+    h_fuel_scalars[:, :, 6]  .= fa.GP_WNL_ETAS_HOC
+    h_fuel_scalars[:, :, 7]  .= fa.phisterm
+    h_fuel_scalars[:, :, 8]  .= fa.phiwterm
+    h_fuel_scalars[:, :, 9]  .= fa.R_MPRIMEDENOME14SUM_MEX_DEAD
+    h_fuel_scalars[:, :, 10] .= fa.mex_dead
+    h_fuel_scalars[:, :, 11] .= fa.mex_live
+    h_fuel_scalars[:, :, 12] .= fa.F_dead
+    h_fuel_scalars[:, :, 13] .= fa.F_live
+    h_fuel_scalars[:, :, 14] .= fa.tr
+    d_fuel_scalars = Adapt.adapt(backend, h_fuel_scalars)
+
+    # fuel_components[fi, mi, 1:16]: F[1:6], FEPS[1:6], WPRIMENUMER[1:4]
+    h_fuel_components = Array{T, 3}(undef, nf, nm, 16)
+    h_fuel_components[:, :, 1:6]   .= fa.F
+    h_fuel_components[:, :, 7:12]  .= fa.FEPS
+    h_fuel_components[:, :, 13:16] .= fa.WPRIMENUMER
+    d_fuel_components = Adapt.adapt(backend, h_fuel_components)
+
+    # BitMatrix can't go to GPU, convert to UInt8
+    h_fa_nonburnable = Matrix{UInt8}(fa.nonburnable)
+    d_fa_nonburnable = Adapt.adapt(backend, h_fa_nonburnable)
+
+    # Upload initial phi (once — d_phi stays on device for the entire simulation)
     copyto!(d_phi, state.phi)
     copyto!(d_phi_old, state.phi_old)
 
-    ndrange = (nx_pad, ny_pad)
+    # Burned array: BitMatrix can't go to GPU, so use UInt8 device copy
+    h_burned = zeros(UInt8, state.ncols, state.nrows)
+    h_burned .= state.burned
+    d_burned = KernelAbstractions.allocate(backend, UInt8, state.ncols, state.nrows)
+    copyto!(d_burned, h_burned)
+
+    rcellsize = one(T) / state.cellsize
+
+    # Pre-allocate reusable buffers for index lists and gather (avoids per-iteration allocs)
+    # Host buffers stay Int for CPU-side indexing; device buffers use Int32 for Metal compat
+    max_active = nx_pad * ny_pad
+    h_px = Vector{Int}(undef, max_active)
+    h_py = Vector{Int}(undef, max_active)
+    h_px32 = Vector{Int32}(undef, max_active)
+    h_py32 = Vector{Int32}(undef, max_active)
+    d_px = KernelAbstractions.allocate(backend, Int32, max_active)
+    d_py = KernelAbstractions.allocate(backend, Int32, max_active)
+    d_phi_active = KernelAbstractions.allocate(backend, T, max_active)
+    d_vel = KernelAbstractions.allocate(backend, T, max_active)
+    d_ecc = KernelAbstractions.allocate(backend, T, max_active)
+    h_phi_active = Vector{T}(undef, max_active)
+    h_active = Vector{CartesianIndex{2}}(undef, max_active)
+    h_cells_to_tag = Vector{CartesianIndex{2}}(undef, max_active)
 
     while t < t_stop
         iteration += 1
 
-        active_cells = Elmfire.get_active_cells(state.narrow_band)
-        if isempty(active_cells)
+        # Fill active cell list from Set directly (avoids collect allocation)
+        n_active = 0
+        for idx in state.narrow_band.active
+            n_active += 1
+            h_active[n_active] = idx
+            h_px[n_active] = idx[1]
+            h_py[n_active] = idx[2]
+        end
+        if n_active == 0
             break
         end
+        for i in 1:n_active
+            h_px32[i] = Int32(h_px[i])
+            h_py32[i] = Int32(h_py[i])
+        end
+        copyto!(d_px, 1, h_px32, 1, n_active)
+        copyto!(d_py, 1, h_py32, 1, n_active)
 
-        # Build and upload active mask
-        h_mask = Elmfire.active_mask(state.narrow_band, nx_pad, ny_pad)
-        copyto!(d_mask, h_mask)
-        copyto!(d_phi, state.phi)
+        # Re-upload burned state (modified by CPU burn detection loop)
+        h_burned .= state.burned
+        copyto!(d_burned, h_burned)
 
-        # Velocity kernel
-        velocity_kernel!(backend)(
-            d_ux, d_uy, d_phi, d_mask, state.burned,
+        # Spread rate kernel — Rothermel physics → velocity + eccentricity
+        spread_rate_kernel!(backend)(
+            d_vel, d_ecc, d_px, d_py, d_burned,
             d_fuel_ids, d_fuel_id_to_index,
-            d_fa_delta, d_fa_nonburnable,
-            d_fa_rhob, d_fa_xi, d_fa_B,
-            d_fa_GP_WND, d_fa_GP_WNL,
-            d_fa_phisterm, d_fa_phiwterm,
-            d_fa_R, d_fa_mex_dead, d_fa_mex_live,
-            d_fa_F_dead, d_fa_F_live, d_fa_tr,
-            d_fa_F, d_fa_FEPS, d_fa_WPRIMENUMER,
-            d_slope, d_aspect,
-            ws20_ftpmin, wind_dir_rad,
+            d_fuel_scalars, d_fa_nonburnable, d_fuel_components,
+            d_slope,
+            ws20_ftpmin,
             weather.M1, weather.M10, weather.M100,
             weather.MLH, weather.MLW,
             live_moisture_class, spread_rate_adj,
-            state.cellsize, state.padding, state.ncols, state.nrows;
-            ndrange = ndrange
+            Int32(state.padding), Int32(state.ncols), Int32(state.nrows);
+            ndrange = n_active
         )
         KernelAbstractions.synchronize(backend)
 
-        # CFL timestep
+        # Direction kernel — phi gradient + wind → ux, uy
+        direction_kernel!(backend)(
+            d_ux, d_uy, d_phi, d_px, d_py,
+            d_vel, d_ecc,
+            wind_dir_rad, state.cellsize;
+            ndrange = n_active
+        )
+        KernelAbstractions.synchronize(backend)
+
+        # CFL timestep — launched over n_active cells only
         if iteration > 5
-            fill!(d_umax, zero(T))
-            cfl_max_kernel!(backend)(d_umax, d_ux, d_uy, d_mask; ndrange = ndrange)
+            # Gather per-cell max speed (avoids atomic max which fails on Metal)
+            cfl_gather_kernel!(backend)(
+                d_ucfl, d_ux, d_uy, d_px, d_py;
+                ndrange = n_active
+            )
             KernelAbstractions.synchronize(backend)
 
-            h_umax = Array(d_umax)
-            umax = h_umax[1]
+            copyto!(h_phi_active, 1, d_ucfl, 1, n_active)
+            umax = zero(T)
+            for k in 1:n_active
+                umax = max(umax, h_phi_active[k])
+            end
             if umax > T(1e-9)
                 cfl = umax * dt / state.cellsize
                 dt = min(target_cfl * dt / cfl, dt_max)
@@ -530,39 +651,46 @@ function Elmfire.simulate_gpu!(
             dt = t_stop - t
         end
 
-        # RK2 level set integration
-        rcellsize = one(T) / state.cellsize
-        copyto!(d_phi_old, d_phi)
+        # RK2 level set integration — launched over n_active cells only
+        # Copy only active cells (RK2 kernels only read phi_old at active positions)
+        copy_active_kernel!(backend)(
+            d_phi_old, d_phi, d_px, d_py;
+            ndrange = n_active
+        )
+        KernelAbstractions.synchronize(backend)
 
         rk2_stage1_kernel!(backend)(
-            d_phi, d_phi_old, d_ux, d_uy, d_mask, dt, rcellsize;
-            ndrange = ndrange
+            d_phi, d_phi_old, d_ux, d_uy, d_px, d_py, dt, rcellsize;
+            ndrange = n_active
         )
         KernelAbstractions.synchronize(backend)
 
         rk2_stage2_kernel!(backend)(
-            d_phi, d_phi_old, d_ux, d_uy, d_mask, dt, rcellsize;
-            ndrange = ndrange
+            d_phi, d_phi_old, d_ux, d_uy, d_px, d_py, dt, rcellsize;
+            ndrange = n_active
         )
         KernelAbstractions.synchronize(backend)
 
-        # Download results
-        copyto!(state.phi, d_phi)
-        copyto!(state.ux, d_ux)
-        copyto!(state.uy, d_uy)
+        # Gather only active phi values for burn detection (reuse pre-allocated buffers)
+        gather_phi_kernel!(backend)(
+            d_phi_active, d_phi, d_px, d_py;
+            ndrange = n_active
+        )
+        KernelAbstractions.synchronize(backend)
+        copyto!(h_phi_active, 1, d_phi_active, 1, n_active)
 
         # Update burned cells and narrow band on CPU
-        cells_to_tag = CartesianIndex{2}[]
+        n_to_tag = 0
 
-        for idx in active_cells
-            px, py = idx[1], idx[2]
+        for i in 1:n_active
+            px, py = h_px[i], h_py[i]
             ix, iy = Elmfire.padded_to_grid(state, px, py)
 
             if ix < 1 || ix > state.ncols || iy < 1 || iy > state.nrows
                 continue
             end
 
-            if state.phi[px, py] <= zero(T) && !state.burned[ix, iy]
+            if h_phi_active[i] <= zero(T) && !state.burned[ix, iy]
                 state.burned[ix, iy] = true
                 state.time_of_arrival[ix, iy] = t + dt
 
@@ -586,12 +714,13 @@ function Elmfire.simulate_gpu!(
                     state.flame_length[ix, iy] = (T(0.0775) / Elmfire.ft_to_m(T)) * flin^T(0.46)
                 end
 
-                push!(cells_to_tag, idx)
+                n_to_tag += 1
+                h_cells_to_tag[n_to_tag] = h_active[i]
             end
         end
 
-        for idx in cells_to_tag
-            Elmfire.tag_band!(state.narrow_band, idx, nx_pad, ny_pad, state.padding)
+        for i in 1:n_to_tag
+            Elmfire.tag_band!(state.narrow_band, h_cells_to_tag[i], nx_pad, ny_pad, state.padding)
         end
         Elmfire.untag_isolated!(state.narrow_band, state.phi, state.burned, state.padding)
 
@@ -601,6 +730,11 @@ function Elmfire.simulate_gpu!(
             callback(state, t, dt, iteration)
         end
     end
+
+    # Final download — sync device state back to CPU
+    copyto!(state.phi, d_phi)
+    copyto!(state.ux, d_ux)
+    copyto!(state.uy, d_uy)
 
     nothing
 end

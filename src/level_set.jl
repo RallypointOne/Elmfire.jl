@@ -332,15 +332,20 @@ end
 Tracks the active cells near the fire front for efficient computation.
 
 The narrow band contains cells within `band_thickness` cells of the fire front
-(where φ changes sign).
+(where φ changes sign). Uses a BitMatrix for O(1) membership testing and a
+packed Vector for cache-friendly iteration.
 """
 mutable struct NarrowBand
-    active::Set{CartesianIndex{2}}      # Currently active cells
-    ever_tagged::Set{CartesianIndex{2}} # Cells that have ever been in the band
-    band_thickness::Int                  # Half-width of the narrow band
+    is_active::BitMatrix                      # O(1) membership test
+    active_list::Vector{CartesianIndex{2}}    # packed iteration list
+    n_active::Int                             # valid length of active_list
+    ever_tagged::BitMatrix                    # cells that have ever been in the band
+    band_thickness::Int                       # Half-width of the narrow band
 end
 
-NarrowBand(thickness::Int=5) = NarrowBand(Set{CartesianIndex{2}}(), Set{CartesianIndex{2}}(), thickness)
+function NarrowBand(nx::Int, ny::Int, thickness::Int=5)
+    NarrowBand(falses(nx, ny), CartesianIndex{2}[], 0, falses(nx, ny), thickness)
+end
 
 
 """
@@ -360,9 +365,17 @@ function tag_band!(nb::NarrowBand, center::CartesianIndex{2}, nx::Int, ny::Int, 
 
     for jx in ixstart:ixstop
         for jy in iystart:iystop
-            idx = CartesianIndex(jx, jy)
-            push!(nb.active, idx)
-            push!(nb.ever_tagged, idx)
+            if !nb.is_active[jx, jy]
+                nb.is_active[jx, jy] = true
+                nb.n_active += 1
+                idx = CartesianIndex(jx, jy)
+                if nb.n_active <= length(nb.active_list)
+                    nb.active_list[nb.n_active] = idx
+                else
+                    push!(nb.active_list, idx)
+                end
+            end
+            nb.ever_tagged[jx, jy] = true
         end
     end
 
@@ -384,6 +397,8 @@ Remove cells from the active set that are:
 
 Note: The active set uses padded coordinates if padding > 0, but the burned
 matrix uses grid coordinates. This function handles the conversion.
+
+Uses swap-and-compact on the active list for zero-allocation removal.
 """
 function untag_isolated!(
     nb::NarrowBand,
@@ -391,10 +406,11 @@ function untag_isolated!(
     burned::Union{AbstractMatrix{Bool}, BitMatrix},
     padding::Int = 0
 ) where {T<:AbstractFloat}
-    to_remove = CartesianIndex{2}[]
     ncols, nrows = size(burned)
 
-    for idx in nb.active
+    i = 1
+    while i <= nb.n_active
+        idx = nb.active_list[i]
         px, py = idx[1], idx[2]
 
         # Convert to grid coordinates
@@ -402,11 +418,13 @@ function untag_isolated!(
 
         # Skip if out of bounds for the burned grid
         if ix < 1 || ix > ncols || iy < 1 || iy > nrows
+            i += 1
             continue
         end
 
-        # Skip if not burned (use phi to check, or burned grid)
+        # Skip if not burned
         if !burned[ix, iy]
+            i += 1
             continue
         end
 
@@ -423,12 +441,14 @@ function untag_isolated!(
         end
 
         if !has_unburned_neighbor
-            push!(to_remove, idx)
+            # Swap-remove: replace with last element, clear bit
+            nb.is_active[px, py] = false
+            nb.active_list[i] = nb.active_list[nb.n_active]
+            nb.n_active -= 1
+            # Don't increment i — re-check the swapped element
+        else
+            i += 1
         end
-    end
-
-    for idx in to_remove
-        delete!(nb.active, idx)
     end
 
     return nothing
@@ -436,12 +456,12 @@ end
 
 
 """
-    get_active_cells(nb::NarrowBand) -> Vector{CartesianIndex{2}}
+    get_active_cells(nb::NarrowBand) -> AbstractVector{CartesianIndex{2}}
 
-Get a vector of active cell indices for iteration.
+Get a view of active cell indices for iteration. Zero-allocation.
 """
 function get_active_cells(nb::NarrowBand)
-    return collect(nb.active)
+    return @view nb.active_list[1:nb.n_active]
 end
 
 
@@ -456,11 +476,7 @@ Useful for GPU kernels that need a mask instead of an index list.
     mask = active_mask(state.narrow_band, size(state.phi)...)
 """
 function active_mask(nb::NarrowBand, nx::Int, ny::Int)
-    mask = falses(nx, ny)
-    for idx in nb.active
-        mask[idx] = true
-    end
-    return mask
+    return copy(nb.is_active)
 end
 
 

@@ -445,17 +445,18 @@ Returns grid indices of cells to ignite.
 function get_ready_ignitions!(tracker::SpotFireTracker{T}, time_now::T) where {T<:AbstractFloat}
     ignitions = Tuple{Int,Int}[]
 
-    # Filter fires that have waited long enough
-    ready_mask = [f.time + tracker.ignition_delay <= time_now for f in tracker.pending]
-
-    for (i, fire) in enumerate(tracker.pending)
-        if ready_mask[i]
+    # Partition in-place: move ready fires to front, keep pending at end
+    write_idx = 0
+    for i in eachindex(tracker.pending)
+        fire = tracker.pending[i]
+        if fire.time + tracker.ignition_delay <= time_now
             push!(ignitions, (fire.ix, fire.iy))
+        else
+            write_idx += 1
+            tracker.pending[write_idx] = fire
         end
     end
-
-    # Remove ignited fires from pending
-    tracker.pending = tracker.pending[.!ready_mask]
+    resize!(tracker.pending, write_idx)
 
     return ignitions
 end

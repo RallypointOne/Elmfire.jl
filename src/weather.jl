@@ -370,6 +370,13 @@ function get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) 
     wix = interp.icol_map[ix]
     wiy = interp.irow_map[iy]
 
+    # Short-circuit for single time step (constant weather)
+    if length(wts.times) == 1
+        g = wts.grids[1]
+        return (ws=g.ws[wix, wiy], wd=g.wd[wix, wiy], m1=g.m1[wix, wiy],
+                m10=g.m10[wix, wiy], m100=g.m100[wix, wiy], mlh=g.mlh[wix, wiy], mlw=g.mlw[wix, wiy])
+    end
+
     # Get time indices and interpolation weight
     i_lo, i_hi, f = find_time_indices(wts, t)
 

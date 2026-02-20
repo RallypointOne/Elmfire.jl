@@ -98,14 +98,14 @@ function surface_spread_rate(
     FEPSQIG = ntuple(i -> fm.FEPS[i] * QIG[i], 6)
 
     # ρb * Σ(f * ε * Qig) for dead and live
-    RHOBEPSQIG_DEAD = fm.rhob * sum(FEPSQIG[1:4])
-    RHOBEPSQIG_LIVE = fm.rhob * sum(FEPSQIG[5:6])
+    RHOBEPSQIG_DEAD = fm.rhob * (FEPSQIG[1] + FEPSQIG[2] + FEPSQIG[3] + FEPSQIG[4])
+    RHOBEPSQIG_LIVE = fm.rhob * (FEPSQIG[5] + FEPSQIG[6])
     RHOBEPSQIG = fm.F_dead * RHOBEPSQIG_DEAD + fm.F_live * RHOBEPSQIG_LIVE
 
     # Dead fuel moisture damping
     # M_dead = Σ(f * M) for dead classes
     FMC = ntuple(i -> fm.F[i] * M[i], 6)
-    M_dead = sum(FMC[1:4])
+    M_dead = FMC[1] + FMC[2] + FMC[3] + FMC[4]
     momex_dead = M_dead / fm.mex_dead
     etam_dead = moisture_damping(momex_dead)
 
@@ -113,7 +113,7 @@ function surface_spread_rate(
     IR_dead = fm.GP_WND_ETAS_HOC * etam_dead
 
     # Live fuel moisture damping
-    M_live = sum(FMC[5:6])
+    M_live = FMC[5] + FMC[6]
     momex_live = M_live / mex_live
     etam_live = moisture_damping(momex_live)
 
