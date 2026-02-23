@@ -1,3 +1,9 @@
+/* Constrain plot images to content width */
+.cell-output img {
+    max-width: 100%;
+    height: auto;
+}
+
 /* Sidebar section spacing */
 .sidebar-item-section {
     margin-top: 2rem !important;
