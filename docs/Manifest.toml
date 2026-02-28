@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "bfbabf2515d4d6196d2c834807c430ee4579f4f2"
+project_hash = "1af1be524892bbf9d13470e226d7c2d39ebcd446"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
@@ -335,6 +335,13 @@ deps = ["ArchGDAL", "Distributions", "GeoInterface", "GeoJSON", "LocalCoverage",
 path = "/Users/joshday/.julia/dev/Elmfire"
 uuid = "d2b3179f-ea35-45b6-b9e1-83e946046b97"
 version = "1.0.0-DEV"
+
+    [deps.Elmfire.extensions]
+    ElmfireKAExt = ["KernelAbstractions", "Adapt"]
+
+    [deps.Elmfire.weakdeps]
+    Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+    KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 
 [[deps.EpollShim_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]

@@ -5,6 +5,7 @@ using Statistics: median
 using Printf
 using Plots
 using Dates
+using JSON3
 
 # Try to load Metal
 const HAS_METAL = try
@@ -54,15 +55,17 @@ function bench_cpu(::Type{T}, n::Int) where {T}
 
     # Timed runs
     times = Float64[]
+    bytes_list = Int[]
     for _ in 1:N_RUNS
         reset!(state)
         ignite!(state, center, center, T(0))
-        t = @elapsed simulate_uniform!(state, FUEL_ID, fuel_table, weather,
+        stats = @timed simulate_uniform!(state, FUEL_ID, fuel_table, weather,
             T(0), T(0), T(0), T(SIM_DURATION); dt_initial = T(0.2))
-        push!(times, t)
+        push!(times, stats.time)
+        push!(bytes_list, stats.bytes)
     end
 
-    return times, burned
+    return times, bytes_list, burned
 end
 
 #--------------------------------------------------------------------------------# GPU benchmark (parameterized backend)
@@ -82,24 +85,26 @@ function bench_gpu(::Type{T}, n::Int; backend = KernelAbstractions.CPU()) where 
 
     # Timed runs
     times = Float64[]
+    bytes_list = Int[]
     for _ in 1:N_RUNS
         reset!(state)
         ignite!(state, center, center, T(0))
-        t = @elapsed simulate_gpu_uniform!(state, FUEL_ID, fuel_array, weather,
+        stats = @timed simulate_gpu_uniform!(state, FUEL_ID, fuel_array, weather,
             T(0), T(0), T(0), T(SIM_DURATION);
             dt_initial = T(0.2), backend = backend)
-        push!(times, t)
+        push!(times, stats.time)
+        push!(bytes_list, stats.bytes)
     end
 
-    return times, burned
+    return times, bytes_list, burned
 end
 
 #--------------------------------------------------------------------------------# Run benchmarks and generate report
 function main()
     mkpath(OUTDIR)
 
-    # Collect results: (grid, precision, backend) → (times, burned)
-    results = Dict{Tuple{Int, String, String}, Tuple{Vector{Float64}, Int}}()
+    # Collect results: (grid, precision, backend) → (times, bytes, burned)
+    results = Dict{Tuple{Int, String, String}, Tuple{Vector{Float64}, Vector{Int}, Int}}()
 
     # Determine which backends to run
     backends = [
@@ -129,8 +134,8 @@ function main()
         for (label, bench_fn) in backends
             for (T, prec) in precisions_for[label]
                 print("  $(n)x$(n) $prec $label ... ")
-                times, burned = bench_fn(T, n)
-                results[(n, prec, label)] = (times, burned)
+                times, bytes_list, burned = bench_fn(T, n)
+                results[(n, prec, label)] = (times, bytes_list, burned)
                 @printf("%.3fs (median)\n", median(times))
             end
         end
@@ -138,6 +143,37 @@ function main()
 
     # --- Collect all backend labels that were actually run ---
     all_backends = [b[1] for b in backends]
+
+    # --- Write results.json (template-compatible format) ---
+    println("\nWriting results.json...")
+    json_benchmarks = []
+    for n in GRID_SIZES
+        for b in all_backends
+            for (_, prec) in precisions_for[b]
+                times, bytes_list, _ = results[(n, prec, b)]
+                med_idx = argmin(abs.(times .- median(times)))
+                push!(json_benchmarks, (;
+                    name = "$(n)x$(n)/$prec/$b",
+                    time_ns = round(Int, median(times) * 1e9),
+                    memory_bytes = bytes_list[med_idx],
+                    allocs = 0,
+                ))
+            end
+        end
+    end
+
+    json_output = (;
+        julia_version = string(VERSION),
+        cpu = Sys.cpu_info()[1].model,
+        timestamp = Dates.format(now(UTC), dateformat"yyyy-mm-ddTHH:MM:SSZ"),
+        benchmarks = json_benchmarks,
+    )
+
+    outfile = joinpath(@__DIR__, "results.json")
+    open(outfile, "w") do io
+        JSON3.pretty(io, json_output)
+    end
+    println("Results written to $outfile")
 
     # --- Generate plots ---
     println("\nGenerating plots...")
@@ -188,7 +224,7 @@ function main()
         styles = Dict("CPU" => :solid, "KA.CPU" => :dash, "Metal" => :dot)
         markers = Dict("CPU" => :circle, "KA.CPU" => :diamond, "Metal" => :star5)
         for (prec, backend) in configs
-            cells = [results[(n, prec, backend)][2] for n in GRID_SIZES]
+            cells = [results[(n, prec, backend)][3] for n in GRID_SIZES]
             plot!(p, 1:length(GRID_SIZES), cells,
                 label = "$prec $backend", lw = 2,
                 ls = get(styles, backend, :solid),
@@ -273,7 +309,7 @@ function main()
         for n in GRID_SIZES
             for b in all_backends
                 for (_, prec) in precisions_for[b]
-                    times, burned = results[(n, prec, b)]
+                    times, _, burned = results[(n, prec, b)]
                     med = median(times)
                     mn = minimum(times)
                     mx = maximum(times)
