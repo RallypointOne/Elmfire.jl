@@ -22,6 +22,8 @@ const FUEL_ID = 1
 const WIND_MPH = 15.0
 const SIM_DURATION = 10.0  # minutes
 const OUTDIR = joinpath(@__DIR__, "results")
+const PLOT_STYLES  = Dict("CPU" => :solid, "KA.CPU" => :dash, "Metal" => :dot)
+const PLOT_MARKERS = Dict("CPU" => :circle, "KA.CPU" => :diamond, "Metal" => :star5)
 
 #--------------------------------------------------------------------------------# Setup
 function make_state(::Type{T}, n::Int) where {T}
@@ -65,7 +67,7 @@ function bench_cpu(::Type{T}, n::Int) where {T}
         push!(bytes_list, stats.bytes)
     end
 
-    return times, bytes_list, burned
+    return (; times, bytes=bytes_list, burned)
 end
 
 #--------------------------------------------------------------------------------# GPU benchmark (parameterized backend)
@@ -96,15 +98,19 @@ function bench_gpu(::Type{T}, n::Int; backend = KernelAbstractions.CPU()) where 
         push!(bytes_list, stats.bytes)
     end
 
-    return times, bytes_list, burned
+    return (; times, bytes=bytes_list, burned)
 end
 
 #--------------------------------------------------------------------------------# Run benchmarks and generate report
 function main()
     mkpath(OUTDIR)
 
-    # Collect results: (grid, precision, backend) → (times, bytes, burned)
-    results = Dict{Tuple{Int, String, String}, Tuple{Vector{Float64}, Vector{Int}, Int}}()
+    # Cache system info
+    cpu_model = Sys.cpu_info()[1].model
+    run_timestamp = now(UTC)
+
+    # Collect results: (grid, precision, backend) → NamedTuple
+    results = Dict{Tuple{Int, String, String}, @NamedTuple{times::Vector{Float64}, bytes::Vector{Int}, burned::Int}}()
 
     # Determine which backends to run
     backends = [
@@ -134,15 +140,26 @@ function main()
         for (label, bench_fn) in backends
             for (T, prec) in precisions_for[label]
                 print("  $(n)x$(n) $prec $label ... ")
-                times, bytes_list, burned = bench_fn(T, n)
-                results[(n, prec, label)] = (times, bytes_list, burned)
-                @printf("%.3fs (median)\n", median(times))
+                result = bench_fn(T, n)
+                results[(n, prec, label)] = result
+                @printf("%.3fs (median)\n", median(result.times))
             end
         end
     end
 
-    # --- Collect all backend labels that were actually run ---
+    # --- Precompute shared derived values ---
     all_backends = [b[1] for b in backends]
+
+    configs = Tuple{String, String}[]
+    for b in all_backends
+        for (_, prec) in precisions_for[b]
+            push!(configs, (prec, b))
+        end
+    end
+
+    backends_with_both = [b for b in all_backends
+        if any(p == "Float64" for (_, p) in precisions_for[b]) &&
+           any(p == "Float32" for (_, p) in precisions_for[b])]
 
     # --- Write results.json (template-compatible format) ---
     println("\nWriting results.json...")
@@ -150,12 +167,13 @@ function main()
     for n in GRID_SIZES
         for b in all_backends
             for (_, prec) in precisions_for[b]
-                times, bytes_list, _ = results[(n, prec, b)]
-                med_idx = argmin(abs.(times .- median(times)))
+                r = results[(n, prec, b)]
+                med = median(r.times)
+                med_idx = argmin(i -> abs(r.times[i] - med), eachindex(r.times))
                 push!(json_benchmarks, (;
                     name = "$(n)x$(n)/$prec/$b",
-                    time_ns = round(Int, median(times) * 1e9),
-                    memory_bytes = bytes_list[med_idx],
+                    time_ns = round(Int, med * 1e9),
+                    memory_bytes = r.bytes[med_idx],
                     allocs = 0,
                 ))
             end
@@ -164,8 +182,8 @@ function main()
 
     json_output = (;
         julia_version = string(VERSION),
-        cpu = Sys.cpu_info()[1].model,
-        timestamp = Dates.format(now(UTC), dateformat"yyyy-mm-ddTHH:MM:SSZ"),
+        cpu = cpu_model,
+        timestamp = Dates.format(run_timestamp, dateformat"yyyy-mm-ddTHH:MM:SSZ"),
         benchmarks = json_benchmarks,
     )
 
@@ -180,12 +198,6 @@ function main()
 
     # Plot 1: Median time by grid size
     p1 = let
-        configs = Tuple{String, String}[]
-        for b in all_backends
-            for (_, prec) in precisions_for[b]
-                push!(configs, (prec, b))
-            end
-        end
         p = plot(
             title = "Median Simulation Time by Grid Size",
             xlabel = "Grid Size", ylabel = "Time (s)",
@@ -193,14 +205,12 @@ function main()
             xticks = (1:length(GRID_SIZES), string.(GRID_SIZES)),
             margin = 5Plots.mm,
         )
-        styles = Dict("CPU" => :solid, "KA.CPU" => :dash, "Metal" => :dot)
-        markers = Dict("CPU" => :circle, "KA.CPU" => :diamond, "Metal" => :star5)
         for (prec, backend) in configs
-            meds = [median(results[(n, prec, backend)][1]) for n in GRID_SIZES]
+            meds = [median(results[(n, prec, backend)].times) for n in GRID_SIZES]
             plot!(p, 1:length(GRID_SIZES), meds,
                 label = "$prec $backend", lw = 2,
-                ls = get(styles, backend, :solid),
-                marker = get(markers, backend, :circle), ms = 6)
+                ls = get(PLOT_STYLES, backend, :solid),
+                marker = get(PLOT_MARKERS, backend, :circle), ms = 6)
         end
         p
     end
@@ -208,12 +218,6 @@ function main()
 
     # Plot 2: Burned cells by grid size
     p2 = let
-        configs = Tuple{String, String}[]
-        for b in all_backends
-            for (_, prec) in precisions_for[b]
-                push!(configs, (prec, b))
-            end
-        end
         p = plot(
             title = "Burned Cells by Grid Size",
             xlabel = "Grid Size", ylabel = "Burned Cells",
@@ -221,14 +225,12 @@ function main()
             xticks = (1:length(GRID_SIZES), string.(GRID_SIZES)),
             margin = 5Plots.mm,
         )
-        styles = Dict("CPU" => :solid, "KA.CPU" => :dash, "Metal" => :dot)
-        markers = Dict("CPU" => :circle, "KA.CPU" => :diamond, "Metal" => :star5)
         for (prec, backend) in configs
-            cells = [results[(n, prec, backend)][3] for n in GRID_SIZES]
+            cells = [results[(n, prec, backend)].burned for n in GRID_SIZES]
             plot!(p, 1:length(GRID_SIZES), cells,
                 label = "$prec $backend", lw = 2,
-                ls = get(styles, backend, :solid),
-                marker = get(markers, backend, :circle), ms = 6)
+                ls = get(PLOT_STYLES, backend, :solid),
+                marker = get(PLOT_MARKERS, backend, :circle), ms = 6)
         end
         p
     end
@@ -243,18 +245,12 @@ function main()
             xticks = (1:length(GRID_SIZES), string.(GRID_SIZES)),
             margin = 5Plots.mm,
         )
-        styles = Dict("CPU" => :solid, "KA.CPU" => :dash)
-        markers = Dict("CPU" => :circle, "KA.CPU" => :diamond)
-        for b in all_backends
-            has_both = any(p == "Float64" for (_, p) in precisions_for[b]) &&
-                       any(p == "Float32" for (_, p) in precisions_for[b])
-            if has_both
-                speedup = [median(results[(n, "Float64", b)][1]) / median(results[(n, "Float32", b)][1]) for n in GRID_SIZES]
-                plot!(p, 1:length(GRID_SIZES), speedup,
-                    label = b, lw = 2,
-                    ls = get(styles, b, :solid),
-                    marker = get(markers, b, :circle), ms = 6)
-            end
+        for b in backends_with_both
+            speedup = [median(results[(n, "Float64", b)].times) / median(results[(n, "Float32", b)].times) for n in GRID_SIZES]
+            plot!(p, 1:length(GRID_SIZES), speedup,
+                label = b, lw = 2,
+                ls = get(PLOT_STYLES, b, :solid),
+                marker = get(PLOT_MARKERS, b, :circle), ms = 6)
         end
         hline!(p, [1.0], ls = :dot, color = :gray, label = "1× (no speedup)")
         p
@@ -267,7 +263,7 @@ function main()
     open(report, "w") do io
         println(io, "# Elmfire.jl Benchmark Report")
         println(io)
-        println(io, "**Date:** $(Dates.format(now(), "yyyy-mm-dd HH:MM"))")
+        println(io, "**Date:** $(Dates.format(run_timestamp, "yyyy-mm-dd HH:MM"))")
         println(io)
 
         # System info
@@ -277,7 +273,7 @@ function main()
         println(io, "|----------|-------|")
         println(io, "| Julia | $(VERSION) |")
         println(io, "| OS | $(Sys.isapple() ? "macOS" : Sys.islinux() ? "Linux" : Sys.iswindows() ? "Windows" : string(Sys.KERNEL)) $(Sys.KERNEL == :Darwin ? strip(read(`sw_vers -productVersion`, String)) : "") |")
-        println(io, "| CPU | $(Sys.cpu_info()[1].model) |")
+        println(io, "| CPU | $cpu_model |")
         println(io, "| CPU Cores | $(Sys.CPU_THREADS) |")
         println(io, "| RAM | $(round(Sys.total_memory() / 2^30, digits=1)) GB |")
         if HAS_METAL
@@ -309,20 +305,17 @@ function main()
         for n in GRID_SIZES
             for b in all_backends
                 for (_, prec) in precisions_for[b]
-                    times, _, burned = results[(n, prec, b)]
-                    med = median(times)
-                    mn = minimum(times)
-                    mx = maximum(times)
+                    r = results[(n, prec, b)]
+                    med = median(r.times)
+                    mn = minimum(r.times)
+                    mx = maximum(r.times)
                     @printf(io, "| %d | %s | %s | %.3f | %.3f | %.3f | %d |\n",
-                        n, prec, b, med, mn, mx, burned)
+                        n, prec, b, med, mn, mx, r.burned)
                 end
             end
         end
 
         # Speedup summary (only for backends with Float64 + Float32)
-        backends_with_both = [b for b in all_backends
-            if any(p == "Float64" for (_, p) in precisions_for[b]) &&
-               any(p == "Float32" for (_, p) in precisions_for[b])]
         if !isempty(backends_with_both)
             println(io)
             println(io, "## Float32 vs Float64 Speedup")
@@ -331,8 +324,8 @@ function main()
             println(io, "|------|---------|-------------|")
             for n in GRID_SIZES
                 for b in backends_with_both
-                    t64 = median(results[(n, "Float64", b)][1])
-                    t32 = median(results[(n, "Float32", b)][1])
+                    t64 = median(results[(n, "Float64", b)].times)
+                    t32 = median(results[(n, "Float32", b)].times)
                     @printf(io, "| %d | %s | %.2f |\n", n, b, t64 / t32)
                 end
             end
@@ -346,8 +339,8 @@ function main()
             println(io, "| Grid | CPU (s) | Metal (s) | Speedup (×) |")
             println(io, "|------|---------|-----------|-------------|")
             for n in GRID_SIZES
-                t_cpu = median(results[(n, "Float32", "CPU")][1])
-                t_metal = median(results[(n, "Float32", "Metal")][1])
+                t_cpu = median(results[(n, "Float32", "CPU")].times)
+                t_metal = median(results[(n, "Float32", "Metal")].times)
                 @printf(io, "| %d | %.3f | %.3f | %.2f |\n", n, t_cpu, t_metal, t_cpu / t_metal)
             end
         end

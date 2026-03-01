@@ -8,7 +8,7 @@ engine: julia
 #| output: false
 using LocalCoverage
 coverage = generate_coverage("Elmfire"; run_test=true)
-html_coverage(coverage; dir=joinpath(@__DIR__, "_site", "coverage"), open=false)
+html_coverage(coverage; dir=joinpath(dirname(@__DIR__), "_site", "resources", "coverage"), open=false)
 rm(joinpath(dirname(@__DIR__), "coverage"); recursive=true, force=true)
 ```
 
