@@ -92,7 +92,7 @@
     "href": "getting-started.html",
     "title": "Getting Started",
     "section": "",
-    "text": "Setup\nThis tutorial will guide you through running your first wildfire simulation with Elmfire.jl. We’ll cover the basic components and build up to more complex scenarios with visualizations.\nFirst, let’s load the required packages:\nusing Elmfire\nusing Plots\nusing Random\n\n# Set a seed for reproducibility\nRandom.seed!(42)\n\nTaskLocalRNG()",
+    "text": "Setup\nThis tutorial will guide you through running your first wildfire simulation with Elmfire.jl. We’ll cover the basic components and build up to more complex scenarios with visualizations.\nFirst, let’s load the required packages:\nusing Elmfire\nusing Plots\nusing Random\n\n# Set a seed for reproducibility\nRandom.seed!(42)\n\n\nPrecompiling packages...\n   1881.3 ms  ✓ QuartoNotebookWorkerTablesExt (serial)\n  1 dependency successfully precompiled in 2 seconds\nPrecompiling packages...\n   1135.2 ms  ✓ QuartoNotebookWorkerJSON3Ext (serial)\n  1 dependency successfully precompiled in 1 seconds\nPrecompiling packages...\n   1115.2 ms  ✓ QuartoNotebookWorkerJSONExt (serial)\n  1 dependency successfully precompiled in 1 seconds\nPrecompiling packages...\n   2366.5 ms  ✓ QuartoNotebookWorkerPlotsExt (serial)\n  1 dependency successfully precompiled in 2 seconds\n\n\n\n\nTaskLocalRNG()",
     "crumbs": [
       "Docs",
       "<span class='chapter-number'>2</span>  <span class='chapter-title'>Getting Started</span>"
@@ -1071,7 +1071,7 @@
     "href": "tutorials/ensemble.html#parallel-ensemble-execution",
     "title": "Ensemble Simulations",
     "section": "Parallel Ensemble Execution",
-    "text": "Parallel Ensemble Execution\nFor large ensembles, use multi-threading:\n\n# Check available threads\nprintln(\"Available threads: \", Threads.nthreads())\n\n# Parallel configuration\nparallel_config = ParallelConfig(n_workers = 0, chunk_size = 1)  # 0 = auto-detect\n\n# Larger ensemble for parallel demo\nlarge_config = EnsembleConfig{Float64}(\n    n_simulations = 100,\n    base_seed = UInt64(99),\n    perturbation = perturbation,\n    save_individual_results = false\n)\n\n# Run threaded ensemble\n@time result_parallel = run_ensemble_threaded!(\n    large_config,\n    state_template,\n    fuel_ids,\n    fuel_table,\n    weather,\n    slope,\n    aspect,\n    40, 40,\n    0.0, 45.0;\n    parallel_config = parallel_config,\n    show_progress = false\n)\n\nprintln(\"Threaded ensemble mean area: $(round(result_parallel.mean_burned_area, digits=2)) acres\")\n\nAvailable threads: 1\n  4.592599 seconds (789.01 k allocations: 51.356 MiB, 0.26% gc time, 8.99% compilation time)\nThreaded ensemble mean area: 55.65 acres",
+    "text": "Parallel Ensemble Execution\nFor large ensembles, use multi-threading:\n\n# Check available threads\nprintln(\"Available threads: \", Threads.nthreads())\n\n# Parallel configuration\nparallel_config = ParallelConfig(n_workers = 0, chunk_size = 1)  # 0 = auto-detect\n\n# Larger ensemble for parallel demo\nlarge_config = EnsembleConfig{Float64}(\n    n_simulations = 100,\n    base_seed = UInt64(99),\n    perturbation = perturbation,\n    save_individual_results = false\n)\n\n# Run threaded ensemble\n@time result_parallel = run_ensemble_threaded!(\n    large_config,\n    state_template,\n    fuel_ids,\n    fuel_table,\n    weather,\n    slope,\n    aspect,\n    40, 40,\n    0.0, 45.0;\n    parallel_config = parallel_config,\n    show_progress = false\n)\n\nprintln(\"Threaded ensemble mean area: $(round(result_parallel.mean_burned_area, digits=2)) acres\")\n\nAvailable threads: 1\n  4.202547 seconds (788.35 k allocations: 51.323 MiB, 0.31% gc time, 9.17% compilation time)\nThreaded ensemble mean area: 55.65 acres",
     "crumbs": [
       "Tutorials",
       "<span class='chapter-number'>11</span>  <span class='chapter-title'>Ensemble Simulations</span>"
@@ -1720,7 +1720,7 @@
     "href": "reference/geospatial.html#types",
     "title": "Geospatial I/O",
     "section": "",
-    "text": "GeoMetadata\nGeospatial metadata for a raster dataset.\nstruct GeoMetadata{T&lt;:AbstractFloat}\n    ncols::Int          # Number of columns\n    nrows::Int          # Number of rows\n    cellsize::T         # Cell size (same units as CRS)\n    xllcorner::T        # X coordinate of lower-left corner\n    yllcorner::T        # Y coordinate of lower-left corner\n    nodata_value::T     # NoData value\n    crs::String         # Coordinate reference system (PROJ4 string)\n    transform::NTuple{6,T}  # GDAL GeoTransform\nend\nConstructor:\nGeoMetadata{T}(;\n    ncols::Int,\n    nrows::Int,\n    cellsize::T,\n    xllcorner = zero(T),\n    yllcorner = zero(T),\n    nodata_value = T(-9999),\n    crs = \"EPSG:4326\",\n    transform = nothing\n)\nThe GDAL GeoTransform is a 6-element tuple: (xmin, xres, xskew, ymax, yskew, -yres)\n\nmetadata = GeoMetadata{Float64}(\n    ncols = 100,\n    nrows = 100,\n    cellsize = 30.0,\n    xllcorner = 0.0,\n    yllcorner = 0.0,\n    crs = \"EPSG:32610\"  # UTM Zone 10N\n)\n\nprintln(\"Grid size: $(metadata.ncols) x $(metadata.nrows)\")\nprintln(\"Cell size: $(metadata.cellsize)\")\nprintln(\"CRS: $(metadata.crs)\")\n\nGrid size: 100 x 100\nCell size: 30.0\nCRS: EPSG:32610\n\n\n\n\nGeoRaster\nA raster dataset with geospatial metadata.\nstruct GeoRaster{T&lt;:AbstractFloat}\n    data::Matrix{T}\n    metadata::GeoMetadata{T}\nend\n\n# Create a simple raster\ndata = randn(Float64, 50, 50) .* 100 .+ 500  # Elevation-like data\nmetadata = GeoMetadata{Float64}(ncols=50, nrows=50, cellsize=30.0)\nraster = GeoRaster{Float64}(data, metadata)\n\nprintln(\"Raster size: $(size(raster))\")\nprintln(\"Data range: $(minimum(raster.data)) - $(maximum(raster.data))\")\n\nRaster size: (50, 50)\nData range: 146.10814969414542 - 818.3041195168144\n\n\n\n\nLandscapeData\nComplete landscape data for fire simulation including fuel, topography, and canopy.\nstruct LandscapeData{T&lt;:AbstractFloat}\n    fuel_ids::Matrix{Int}                 # Fuel model IDs\n    slope::Matrix{T}                      # Slope (degrees)\n    aspect::Matrix{T}                     # Aspect (degrees from north)\n    elevation::Matrix{T}                  # Elevation\n    canopy::Union{Nothing, CanopyGrid{T}} # Optional canopy data\n    metadata::GeoMetadata{T}              # Geospatial metadata\nend",
+    "text": "GeoMetadata\nGeospatial metadata for a raster dataset.\nstruct GeoMetadata{T&lt;:AbstractFloat}\n    ncols::Int          # Number of columns\n    nrows::Int          # Number of rows\n    cellsize::T         # Cell size (same units as CRS)\n    xllcorner::T        # X coordinate of lower-left corner\n    yllcorner::T        # Y coordinate of lower-left corner\n    nodata_value::T     # NoData value\n    crs::String         # Coordinate reference system (PROJ4 string)\n    transform::NTuple{6,T}  # GDAL GeoTransform\nend\nConstructor:\nGeoMetadata{T}(;\n    ncols::Int,\n    nrows::Int,\n    cellsize::T,\n    xllcorner = zero(T),\n    yllcorner = zero(T),\n    nodata_value = T(-9999),\n    crs = \"EPSG:4326\",\n    transform = nothing\n)\nThe GDAL GeoTransform is a 6-element tuple: (xmin, xres, xskew, ymax, yskew, -yres)\n\nmetadata = GeoMetadata{Float64}(\n    ncols = 100,\n    nrows = 100,\n    cellsize = 30.0,\n    xllcorner = 0.0,\n    yllcorner = 0.0,\n    crs = \"EPSG:32610\"  # UTM Zone 10N\n)\n\nprintln(\"Grid size: $(metadata.ncols) x $(metadata.nrows)\")\nprintln(\"Cell size: $(metadata.cellsize)\")\nprintln(\"CRS: $(metadata.crs)\")\n\nGrid size: 100 x 100\nCell size: 30.0\nCRS: EPSG:32610\n\n\n\n\nGeoRaster\nA raster dataset with geospatial metadata.\nstruct GeoRaster{T&lt;:AbstractFloat}\n    data::Matrix{T}\n    metadata::GeoMetadata{T}\nend\n\n# Create a simple raster\ndata = randn(Float64, 50, 50) .* 100 .+ 500  # Elevation-like data\nmetadata = GeoMetadata{Float64}(ncols=50, nrows=50, cellsize=30.0)\nraster = GeoRaster{Float64}(data, metadata)\n\nprintln(\"Raster size: $(size(raster))\")\nprintln(\"Data range: $(minimum(raster.data)) - $(maximum(raster.data))\")\n\nRaster size: (50, 50)\nData range: 160.13965266419945 - 873.1197611199732\n\n\n\n\nLandscapeData\nComplete landscape data for fire simulation including fuel, topography, and canopy.\nstruct LandscapeData{T&lt;:AbstractFloat}\n    fuel_ids::Matrix{Int}                 # Fuel model IDs\n    slope::Matrix{T}                      # Slope (degrees)\n    aspect::Matrix{T}                     # Aspect (degrees from north)\n    elevation::Matrix{T}                  # Elevation\n    canopy::Union{Nothing, CanopyGrid{T}} # Optional canopy data\n    metadata::GeoMetadata{T}              # Geospatial metadata\nend",
     "crumbs": [
       "Module Reference",
       "<span class='chapter-number'>19</span>  <span class='chapter-title'>Geospatial I/O</span>"
@@ -2013,6 +2013,17 @@
     ]
   },
   {
+    "objectID": "resources/benchmarks.html",
+    "href": "resources/benchmarks.html",
+    "title": "Benchmarks",
+    "section": "",
+    "text": "NoteNo benchmark results available\n\n\n\nBenchmarks have not been set up for this package yet. See the CLAUDE.md for instructions on how to set up benchmarks.",
+    "crumbs": [
+      "Resources",
+      "<span class='chapter-number'>23</span>  <span class='chapter-title'>Benchmarks</span>"
+    ]
+  },
+  {
     "objectID": "resources/changelog.html",
     "href": "resources/changelog.html",
     "title": "Changelog",
@@ -2020,7 +2031,7 @@
     "text": "Unreleased",
     "crumbs": [
       "Resources",
-      "<span class='chapter-number'>23</span>  <span class='chapter-title'>Changelog</span>"
+      "<span class='chapter-number'>24</span>  <span class='chapter-title'>Changelog</span>"
     ]
   }
 ]
