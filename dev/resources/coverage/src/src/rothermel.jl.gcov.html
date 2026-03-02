@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-03-01 21:40:15</td>
+            <td class="headerValue">2026-03-02 16:43:56</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -70,7 +70,7 @@
 <span id="L8"><span class="lineNum">       8</span>              : Results from the Rothermel surface fire spread rate calculation.</span>
 <span id="L9"><span class="lineNum">       9</span>              : &quot;&quot;&quot;</span>
 <span id="L10"><span class="lineNum">      10</span>              : struct SpreadResult{T&lt;:AbstractFloat}</span>
-<span id="L11"><span class="lineNum">      11</span> <span class="tlaGNC tlaBgGNC">      333789 :     velocity::T       # Spread rate (ft/min)</span></span>
+<span id="L11"><span class="lineNum">      11</span> <span class="tlaGNC tlaBgGNC">      393689 :     velocity::T       # Spread rate (ft/min)</span></span>
 <span id="L12"><span class="lineNum">      12</span>              :     vs0::T            # Base spread rate without wind/slope (ft/min)</span>
 <span id="L13"><span class="lineNum">      13</span>              :     ir::T             # Reaction intensity (kW/m²)</span>
 <span id="L14"><span class="lineNum">      14</span>              :     hpua::T           # Heat per unit area (kJ/m²)</span>
@@ -93,11 +93,11 @@
 <span id="L31"><span class="lineNum">      31</span>              : Implementation follows Rothermel (1972) equation.</span>
 <span id="L32"><span class="lineNum">      32</span>              : &quot;&quot;&quot;</span>
 <span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">           5 : @inline function moisture_damping(r::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">     1343413 :     r = clamp(r, zero(T), one(T))</span></span>
-<span id="L35"><span class="lineNum">      35</span> <span class="tlaGNC">      671707 :     r2 = r * r</span></span>
-<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">      671707 :     r3 = r2 * r</span></span>
-<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">      671707 :     eta = one(T) - T(2.59)*r + T(5.11)*r2 - T(3.52)*r3</span></span>
-<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">     1343409 :     return clamp(eta, zero(T), one(T))</span></span>
+<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">     1583013 :     r = clamp(r, zero(T), one(T))</span></span>
+<span id="L35"><span class="lineNum">      35</span> <span class="tlaGNC">      791507 :     r2 = r * r</span></span>
+<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">      791507 :     r3 = r2 * r</span></span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">      791507 :     eta = one(T) - T(2.59)*r + T(5.11)*r2 - T(3.52)*r3</span></span>
+<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">     1583009 :     return clamp(eta, zero(T), one(T))</span></span>
 <span id="L39"><span class="lineNum">      39</span>              : end</span>
 <span id="L40"><span class="lineNum">      40</span>              : </span>
 <span id="L41"><span class="lineNum">      41</span>              : </span>
@@ -129,7 +129,7 @@
 <span id="L67"><span class="lineNum">      67</span>              : </span>
 <span id="L68"><span class="lineNum">      68</span>              : Implementation follows `elmfire_spread_rate.f90:13-132`.</span>
 <span id="L69"><span class="lineNum">      69</span>              : &quot;&quot;&quot;</span>
-<span id="L70"><span class="lineNum">      70</span> <span class="tlaGNC">      667574 : function surface_spread_rate(</span></span>
+<span id="L70"><span class="lineNum">      70</span> <span class="tlaGNC">      787374 : function surface_spread_rate(</span></span>
 <span id="L71"><span class="lineNum">      71</span>              :     fm::FuelModel{T},</span>
 <span id="L72"><span class="lineNum">      72</span>              :     M1::T, M10::T, M100::T,</span>
 <span id="L73"><span class="lineNum">      73</span>              :     MLH::T, MLW::T,</span>
@@ -138,86 +138,86 @@
 <span id="L76"><span class="lineNum">      76</span>              :     adj::T = one(T)</span>
 <span id="L77"><span class="lineNum">      77</span>              : ) where {T&lt;:AbstractFloat}</span>
 <span id="L78"><span class="lineNum">      78</span>              :     # Check for non-burnable</span>
-<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">      667573 :     if isnonburnable(fm)</span></span>
+<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">      787373 :     if isnonburnable(fm)</span></span>
 <span id="L80"><span class="lineNum">      80</span> <span class="tlaGNC">           1 :         return SpreadResult{T}(zero(T), zero(T), zero(T), zero(T), zero(T), zero(T), zero(T))</span></span>
 <span id="L81"><span class="lineNum">      81</span>              :     end</span>
 <span id="L82"><span class="lineNum">      82</span>              : </span>
 <span id="L83"><span class="lineNum">      83</span>              :     # Moisture array: M1, M10, M100, M_dead_dyn (=M1), MLH, MLW</span>
-<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">      333786 :     M = (M1, M10, M100, M1, MLH, MLW)</span></span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">      393686 :     M = (M1, M10, M100, M1, MLH, MLW)</span></span>
 <span id="L85"><span class="lineNum">      85</span>              : </span>
 <span id="L86"><span class="lineNum">      86</span>              :     # Calculate live fuel moisture of extinction (dynamic)</span>
 <span id="L87"><span class="lineNum">      87</span>              :     # M_prime numerator for dead classes</span>
-<span id="L88"><span class="lineNum">      88</span> <span class="tlaGNC">      667572 :     MPRIMENUMER = ntuple(i -&gt; fm.WPRIMENUMER[i] * M[i], 4)</span></span>
-<span id="L89"><span class="lineNum">      89</span> <span class="tlaGNC">      333786 :     SUM_MPRIMENUMER = sum(MPRIMENUMER)</span></span>
+<span id="L88"><span class="lineNum">      88</span> <span class="tlaGNC">      787372 :     MPRIMENUMER = ntuple(i -&gt; fm.WPRIMENUMER[i] * M[i], 4)</span></span>
+<span id="L89"><span class="lineNum">      89</span> <span class="tlaGNC">      393686 :     SUM_MPRIMENUMER = sum(MPRIMENUMER)</span></span>
 <span id="L90"><span class="lineNum">      90</span>              : </span>
-<span id="L91"><span class="lineNum">      91</span> <span class="tlaGNC">      333786 :     mex_live = fm.mex_live * (one(T) - fm.R_MPRIMEDENOME14SUM_MEX_DEAD * SUM_MPRIMENUMER) - T(0.226)</span></span>
-<span id="L92"><span class="lineNum">      92</span> <span class="tlaGNC">      333786 :     mex_live = max(mex_live, fm.mex_dead)</span></span>
+<span id="L91"><span class="lineNum">      91</span> <span class="tlaGNC">      393686 :     mex_live = fm.mex_live * (one(T) - fm.R_MPRIMEDENOME14SUM_MEX_DEAD * SUM_MPRIMENUMER) - T(0.226)</span></span>
+<span id="L92"><span class="lineNum">      92</span> <span class="tlaGNC">      393686 :     mex_live = max(mex_live, fm.mex_dead)</span></span>
 <span id="L93"><span class="lineNum">      93</span>              : </span>
 <span id="L94"><span class="lineNum">      94</span>              :     # Heat of pre-ignition: Qig = 250 + 1116*M</span>
-<span id="L95"><span class="lineNum">      95</span> <span class="tlaGNC">      667572 :     QIG = ntuple(i -&gt; T(250) + T(1116) * M[i], 6)</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaGNC">      787372 :     QIG = ntuple(i -&gt; T(250) + T(1116) * M[i], 6)</span></span>
 <span id="L96"><span class="lineNum">      96</span>              : </span>
 <span id="L97"><span class="lineNum">      97</span>              :     # f * ε * Qig</span>
-<span id="L98"><span class="lineNum">      98</span> <span class="tlaGNC">      667572 :     FEPSQIG = ntuple(i -&gt; fm.FEPS[i] * QIG[i], 6)</span></span>
+<span id="L98"><span class="lineNum">      98</span> <span class="tlaGNC">      787372 :     FEPSQIG = ntuple(i -&gt; fm.FEPS[i] * QIG[i], 6)</span></span>
 <span id="L99"><span class="lineNum">      99</span>              : </span>
 <span id="L100"><span class="lineNum">     100</span>              :     # ρb * Σ(f * ε * Qig) for dead and live</span>
-<span id="L101"><span class="lineNum">     101</span> <span class="tlaGNC">      333786 :     RHOBEPSQIG_DEAD = fm.rhob * (FEPSQIG[1] + FEPSQIG[2] + FEPSQIG[3] + FEPSQIG[4])</span></span>
-<span id="L102"><span class="lineNum">     102</span> <span class="tlaGNC">      333786 :     RHOBEPSQIG_LIVE = fm.rhob * (FEPSQIG[5] + FEPSQIG[6])</span></span>
-<span id="L103"><span class="lineNum">     103</span> <span class="tlaGNC">      333786 :     RHOBEPSQIG = fm.F_dead * RHOBEPSQIG_DEAD + fm.F_live * RHOBEPSQIG_LIVE</span></span>
+<span id="L101"><span class="lineNum">     101</span> <span class="tlaGNC">      393686 :     RHOBEPSQIG_DEAD = fm.rhob * (FEPSQIG[1] + FEPSQIG[2] + FEPSQIG[3] + FEPSQIG[4])</span></span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaGNC">      393686 :     RHOBEPSQIG_LIVE = fm.rhob * (FEPSQIG[5] + FEPSQIG[6])</span></span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaGNC">      393686 :     RHOBEPSQIG = fm.F_dead * RHOBEPSQIG_DEAD + fm.F_live * RHOBEPSQIG_LIVE</span></span>
 <span id="L104"><span class="lineNum">     104</span>              : </span>
 <span id="L105"><span class="lineNum">     105</span>              :     # Dead fuel moisture damping</span>
 <span id="L106"><span class="lineNum">     106</span>              :     # M_dead = Σ(f * M) for dead classes</span>
-<span id="L107"><span class="lineNum">     107</span> <span class="tlaGNC">      667572 :     FMC = ntuple(i -&gt; fm.F[i] * M[i], 6)</span></span>
-<span id="L108"><span class="lineNum">     108</span> <span class="tlaGNC">      333786 :     M_dead = FMC[1] + FMC[2] + FMC[3] + FMC[4]</span></span>
-<span id="L109"><span class="lineNum">     109</span> <span class="tlaGNC">      333786 :     momex_dead = M_dead / fm.mex_dead</span></span>
-<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">      667572 :     etam_dead = moisture_damping(momex_dead)</span></span>
+<span id="L107"><span class="lineNum">     107</span> <span class="tlaGNC">      787372 :     FMC = ntuple(i -&gt; fm.F[i] * M[i], 6)</span></span>
+<span id="L108"><span class="lineNum">     108</span> <span class="tlaGNC">      393686 :     M_dead = FMC[1] + FMC[2] + FMC[3] + FMC[4]</span></span>
+<span id="L109"><span class="lineNum">     109</span> <span class="tlaGNC">      393686 :     momex_dead = M_dead / fm.mex_dead</span></span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">      787372 :     etam_dead = moisture_damping(momex_dead)</span></span>
 <span id="L111"><span class="lineNum">     111</span>              : </span>
 <span id="L112"><span class="lineNum">     112</span>              :     # Reaction intensity for dead fuels</span>
-<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">      333786 :     IR_dead = fm.GP_WND_ETAS_HOC * etam_dead</span></span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">      393686 :     IR_dead = fm.GP_WND_ETAS_HOC * etam_dead</span></span>
 <span id="L114"><span class="lineNum">     114</span>              : </span>
 <span id="L115"><span class="lineNum">     115</span>              :     # Live fuel moisture damping</span>
-<span id="L116"><span class="lineNum">     116</span> <span class="tlaGNC">      333786 :     M_live = FMC[5] + FMC[6]</span></span>
-<span id="L117"><span class="lineNum">     117</span> <span class="tlaGNC">      333786 :     momex_live = M_live / mex_live</span></span>
-<span id="L118"><span class="lineNum">     118</span> <span class="tlaGNC">      667572 :     etam_live = moisture_damping(momex_live)</span></span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaGNC">      393686 :     M_live = FMC[5] + FMC[6]</span></span>
+<span id="L117"><span class="lineNum">     117</span> <span class="tlaGNC">      393686 :     momex_live = M_live / mex_live</span></span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaGNC">      787372 :     etam_live = moisture_damping(momex_live)</span></span>
 <span id="L119"><span class="lineNum">     119</span>              : </span>
 <span id="L120"><span class="lineNum">     120</span>              :     # Reaction intensity for live fuels</span>
-<span id="L121"><span class="lineNum">     121</span> <span class="tlaGNC">      333786 :     IR_live = fm.GP_WNL_ETAS_HOC * etam_live</span></span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaGNC">      393686 :     IR_live = fm.GP_WNL_ETAS_HOC * etam_live</span></span>
 <span id="L122"><span class="lineNum">     122</span>              : </span>
 <span id="L123"><span class="lineNum">     123</span>              :     # Total reaction intensity (Btu/(ft²·min))</span>
-<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC">      333786 :     IR_btupft2min = IR_dead + IR_live</span></span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC">      393686 :     IR_btupft2min = IR_dead + IR_live</span></span>
 <span id="L125"><span class="lineNum">     125</span>              : </span>
 <span id="L126"><span class="lineNum">     126</span>              :     # Wind limit (original Rothermel limit)</span>
-<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC">      333786 :     WS_LIMIT = T(0.9) * IR_btupft2min</span></span>
-<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">      333786 :     wsmf_limited = min(wsmf, WS_LIMIT)</span></span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC">      393686 :     WS_LIMIT = T(0.9) * IR_btupft2min</span></span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">      393686 :     wsmf_limited = min(wsmf, WS_LIMIT)</span></span>
 <span id="L129"><span class="lineNum">     129</span>              : </span>
 <span id="L130"><span class="lineNum">     130</span>              :     # Wind factor: φ_w = phiwterm * WSMF^B</span>
-<span id="L131"><span class="lineNum">     131</span> <span class="tlaGNC">      333786 :     phiw = fm.phiwterm * wsmf_limited^fm.B</span></span>
+<span id="L131"><span class="lineNum">     131</span> <span class="tlaGNC">      393686 :     phiw = fm.phiwterm * wsmf_limited^fm.B</span></span>
 <span id="L132"><span class="lineNum">     132</span>              : </span>
 <span id="L133"><span class="lineNum">     133</span>              :     # Maximum slope factor equals max wind factor</span>
-<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">      333786 :     phis_max = fm.phiwterm * WS_LIMIT^fm.B</span></span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">      393686 :     phis_max = fm.phiwterm * WS_LIMIT^fm.B</span></span>
 <span id="L135"><span class="lineNum">     135</span>              : </span>
 <span id="L136"><span class="lineNum">     136</span>              :     # Slope factor: φ_s = min(phisterm * tan²θ, φ_w_max)</span>
-<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">      333786 :     phis = min(fm.phisterm * tanslp2, phis_max)</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">      393686 :     phis = min(fm.phisterm * tanslp2, phis_max)</span></span>
 <span id="L138"><span class="lineNum">     138</span>              : </span>
 <span id="L139"><span class="lineNum">     139</span>              :     # Base spread rate (ft/min)</span>
-<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">      333786 :     vs0 = if RHOBEPSQIG &gt; T(1e-9)</span></span>
-<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">      333786 :         adj * IR_btupft2min * fm.xi / RHOBEPSQIG</span></span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">      393686 :     vs0 = if RHOBEPSQIG &gt; T(1e-9)</span></span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">      393686 :         adj * IR_btupft2min * fm.xi / RHOBEPSQIG</span></span>
 <span id="L142"><span class="lineNum">     142</span>              :     else</span>
-<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">      333786 :         zero(T)</span></span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">      393686 :         zero(T)</span></span>
 <span id="L144"><span class="lineNum">     144</span>              :     end</span>
 <span id="L145"><span class="lineNum">     145</span>              : </span>
 <span id="L146"><span class="lineNum">     146</span>              :     # Final spread velocity (ft/min)</span>
-<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">      333786 :     velocity = vs0 * (one(T) + phis + phiw)</span></span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">      393686 :     velocity = vs0 * (one(T) + phis + phiw)</span></span>
 <span id="L148"><span class="lineNum">     148</span>              : </span>
 <span id="L149"><span class="lineNum">     149</span>              :     # Convert reaction intensity to SI: kW/m²</span>
-<span id="L150"><span class="lineNum">     150</span> <span class="tlaGNC">      333786 :     IR = IR_btupft2min * btupft2min_to_kwpm2(T)</span></span>
+<span id="L150"><span class="lineNum">     150</span> <span class="tlaGNC">      393686 :     IR = IR_btupft2min * btupft2min_to_kwpm2(T)</span></span>
 <span id="L151"><span class="lineNum">     151</span>              : </span>
 <span id="L152"><span class="lineNum">     152</span>              :     # Heat per unit area: HPUA = IR * tr * 60 (kJ/m²)</span>
-<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">      333786 :     hpua = IR * fm.tr * T(60)</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">      393686 :     hpua = IR * fm.tr * T(60)</span></span>
 <span id="L154"><span class="lineNum">     154</span>              : </span>
 <span id="L155"><span class="lineNum">     155</span>              :     # Fireline intensity: flin = tr * IR * velocity * 0.3048 (kW/m)</span>
-<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">      333786 :     flin = fm.tr * IR * velocity * ft_to_m(T)</span></span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">      393686 :     flin = fm.tr * IR * velocity * ft_to_m(T)</span></span>
 <span id="L157"><span class="lineNum">     157</span>              : </span>
-<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">      333786 :     return SpreadResult{T}(velocity, vs0, IR, hpua, flin, phiw, phis)</span></span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">      393686 :     return SpreadResult{T}(velocity, vs0, IR, hpua, flin, phiw, phis)</span></span>
 <span id="L159"><span class="lineNum">     159</span>              : end</span>
 <span id="L160"><span class="lineNum">     160</span>              : </span>
 <span id="L161"><span class="lineNum">     161</span>              : </span>
@@ -368,7 +368,7 @@
 <span id="L306"><span class="lineNum">     306</span>              : Elliptical fire spread parameters following Anderson (1982).</span>
 <span id="L307"><span class="lineNum">     307</span>              : &quot;&quot;&quot;</span>
 <span id="L308"><span class="lineNum">     308</span>              : struct EllipticalSpread{T&lt;:AbstractFloat}</span>
-<span id="L309"><span class="lineNum">     309</span> <span class="tlaGNC">      328944 :     head::T           # Head fire spread rate (ft/min)</span></span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaGNC">      388844 :     head::T           # Head fire spread rate (ft/min)</span></span>
 <span id="L310"><span class="lineNum">     310</span>              :     back::T           # Backing fire spread rate (ft/min)</span>
 <span id="L311"><span class="lineNum">     311</span>              :     flank::T          # Flanking fire spread rate (ft/min)</span>
 <span id="L312"><span class="lineNum">     312</span>              :     eccentricity::T   # Ellipse eccentricity</span>
@@ -388,40 +388,40 @@
 <span id="L326"><span class="lineNum">     326</span>              : </span>
 <span id="L327"><span class="lineNum">     327</span>              : Where U is effective windspeed in mi/h.</span>
 <span id="L328"><span class="lineNum">     328</span>              : &quot;&quot;&quot;</span>
-<span id="L329"><span class="lineNum">     329</span> <span class="tlaGNC">      328944 : function elliptical_spread(velocity::T, effective_windspeed_mph::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">      328944 :     U = max(effective_windspeed_mph, zero(T))</span></span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaGNC">      388844 : function elliptical_spread(velocity::T, effective_windspeed_mph::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">      388844 :     U = max(effective_windspeed_mph, zero(T))</span></span>
 <span id="L331"><span class="lineNum">     331</span>              : </span>
 <span id="L332"><span class="lineNum">     332</span>              :     # Length to breadth ratio (Anderson 1982)</span>
 <span id="L333"><span class="lineNum">     333</span>              :     # Note: The Anderson formula gives unrealistic values at high wind speeds</span>
 <span id="L334"><span class="lineNum">     334</span>              :     # (e.g., L/B &gt; 10^11 at 100 mph). Real fires rarely exceed L/B of 8-10.</span>
-<span id="L335"><span class="lineNum">     335</span> <span class="tlaGNC">      328944 :     if U &lt; T(0.5)</span></span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaGNC">      388844 :     if U &lt; T(0.5)</span></span>
 <span id="L336"><span class="lineNum">     336</span> <span class="tlaGNC">        1203 :         LB = one(T)  # Nearly circular at low wind speeds</span></span>
 <span id="L337"><span class="lineNum">     337</span>              :     else</span>
-<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">      327741 :         LB = T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397)</span></span>
-<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">      327741 :         LB = clamp(LB, one(T), T(8))  # Cap at realistic maximum</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">      387641 :         LB = T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397)</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">      387641 :         LB = clamp(LB, one(T), T(8))  # Cap at realistic maximum</span></span>
 <span id="L340"><span class="lineNum">     340</span>              :     end</span>
 <span id="L341"><span class="lineNum">     341</span>              : </span>
 <span id="L342"><span class="lineNum">     342</span>              :     # Eccentricity from L/B ratio</span>
 <span id="L343"><span class="lineNum">     343</span>              :     # LB = (1 + e) / sqrt(1 - e²)</span>
 <span id="L344"><span class="lineNum">     344</span>              :     # Solving: e² * (LB² + 1) = LB² - 1</span>
 <span id="L345"><span class="lineNum">     345</span>              :     # Therefore: e = sqrt((LB² - 1) / (LB² + 1))</span>
-<span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC">      328944 :     eccentricity = if LB &gt; T(1.001)</span></span>
-<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">      327741 :         LB2 = LB * LB</span></span>
-<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">      327741 :         sqrt((LB2 - one(T)) / (LB2 + one(T)))</span></span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC">      388844 :     eccentricity = if LB &gt; T(1.001)</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">      387641 :         LB2 = LB * LB</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">      387641 :         sqrt((LB2 - one(T)) / (LB2 + one(T)))</span></span>
 <span id="L349"><span class="lineNum">     349</span>              :     else</span>
-<span id="L350"><span class="lineNum">     350</span> <span class="tlaGNC">      330147 :         zero(T)</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaGNC">      390047 :         zero(T)</span></span>
 <span id="L351"><span class="lineNum">     351</span>              :     end</span>
 <span id="L352"><span class="lineNum">     352</span>              : </span>
 <span id="L353"><span class="lineNum">     353</span>              :     # Head fire rate is the input velocity</span>
-<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">      328944 :     head = velocity</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">      388844 :     head = velocity</span></span>
 <span id="L355"><span class="lineNum">     355</span>              : </span>
 <span id="L356"><span class="lineNum">     356</span>              :     # Backing fire rate from eccentricity</span>
-<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">      328944 :     back = head * (one(T) - eccentricity) / (one(T) + eccentricity)</span></span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">      388844 :     back = head * (one(T) - eccentricity) / (one(T) + eccentricity)</span></span>
 <span id="L358"><span class="lineNum">     358</span>              : </span>
 <span id="L359"><span class="lineNum">     359</span>              :     # Flanking fire rate (at the widest point)</span>
-<span id="L360"><span class="lineNum">     360</span> <span class="tlaGNC">      328944 :     flank = head * sqrt(one(T) - eccentricity * eccentricity) / (one(T) + eccentricity)</span></span>
+<span id="L360"><span class="lineNum">     360</span> <span class="tlaGNC">      388844 :     flank = head * sqrt(one(T) - eccentricity * eccentricity) / (one(T) + eccentricity)</span></span>
 <span id="L361"><span class="lineNum">     361</span>              : </span>
-<span id="L362"><span class="lineNum">     362</span> <span class="tlaGNC">      328944 :     return EllipticalSpread{T}(head, back, flank, eccentricity, LB)</span></span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaGNC">      388844 :     return EllipticalSpread{T}(head, back, flank, eccentricity, LB)</span></span>
 <span id="L363"><span class="lineNum">     363</span>              : end</span>
 <span id="L364"><span class="lineNum">     364</span>              : </span>
 <span id="L365"><span class="lineNum">     365</span>              : </span>
