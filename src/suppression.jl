@@ -517,6 +517,7 @@ function simulate_with_suppression!(
     dt_initial::T = one(T),
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
+    dampening::SpreadRateDampeningConfig{T} = SpreadRateDampeningConfig{T}(),
     callback::CB = nothing
 ) where {T<:AbstractFloat, CB}
     t = t_start
@@ -585,9 +586,15 @@ function simulate_with_suppression!(
                 wsmf, tanslp2
             )
 
+            # Apply spread rate dampening
+            dampened_velocity = apply_spread_rate_dampening(
+                result.velocity, wsmf, result.vs0, result.phis, result.phiw,
+                fm.phiwterm, fm.B, dampening
+            )
+
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)
             effective_ws_mph = w.ws * waf / T(1.47)
-            es = elliptical_spread(result.velocity, effective_ws_mph)
+            es = elliptical_spread(dampened_velocity, effective_ws_mph)
             wind_dir_rad = w.wd * pio180(T)
 
             ux, uy = velocity_components(

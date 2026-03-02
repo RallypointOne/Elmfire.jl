@@ -22,6 +22,10 @@ These tutorials provide in-depth coverage of Elmfire.jl's features with practica
 - **[WUI Modeling](wui.qmd)** - Wildland-urban interface and building ignition
 - **[Suppression](suppression.qmd)** - Fire containment and resource management
 
+## Case Studies
+
+- **[Marshall Fire](marshall-fire.qmd)** - Animated reconstruction of the 2021 Boulder County wildfire
+
 ## Prerequisites
 
 All tutorials assume you have Elmfire.jl installed:

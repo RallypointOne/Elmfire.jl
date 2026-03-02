@@ -1,0 +1,404 @@
+---
+title: "Case Study: Marshall Fire"
+subtitle: "Animated reconstruction of the 2021 Boulder County wildfire"
+engine: julia
+format:
+  html:
+    code-fold: true
+---
+
+On December 30, 2021, the Marshall Fire ignited in Boulder County, Colorado, driven by sustained winds of 70--100+ mph from the west. Fueled primarily by dry grasslands, the fire burned roughly 6,000 acres and destroyed over 1,000 structures in the communities of Louisville and Superior, making it the most destructive wildfire in Colorado history.
+
+This tutorial builds a simplified reconstruction using synthetic data on a reduced grid. The final product is an animated GIF showing terrain contours, burned area, building status, fire perimeter, and wind particles.
+
+```{julia}
+using Elmfire
+using Plots
+using Random
+
+Random.seed!(2021)
+```
+
+## Setup: Grid & Synthetic Data
+
+We use a 200x120 grid at 30 m (≈98.4 ft) per cell, covering roughly 6 km x 3.6 km — enough to capture the fire's west-to-east run.
+
+```{julia}
+ncols, nrows = 200, 120
+cellsize = 98.4  # 30 m in feet
+
+#-------------------------------------------------------------------------#
+# Elevation: gentle west-high to east-low slope with noise
+#-------------------------------------------------------------------------#
+elevation = zeros(Float64, ncols, nrows)
+for ix in 1:ncols, iy in 1:nrows
+    # ~80 m drop west to east (1700 m to 1620 m), with minor noise
+    elevation[ix, iy] = 1700.0 - 80.0 * (ix - 1) / (ncols - 1) +
+        2.0 * sin(ix / 15.0) * cos(iy / 12.0)
+end
+
+#-------------------------------------------------------------------------#
+# Slope and aspect from finite differences
+#-------------------------------------------------------------------------#
+slope = zeros(Float64, ncols, nrows)
+aspect = zeros(Float64, ncols, nrows)
+for ix in 2:ncols-1, iy in 2:nrows-1
+    dzdx = (elevation[ix+1, iy] - elevation[ix-1, iy]) / (2 * cellsize)
+    dzdy = (elevation[ix, iy+1] - elevation[ix, iy-1]) / (2 * cellsize)
+    slope[ix, iy] = atand(sqrt(dzdx^2 + dzdy^2))
+    aspect[ix, iy] = mod(atand(dzdy, -dzdx), 360.0)
+end
+
+#-------------------------------------------------------------------------#
+# Fuel map: grass with patches and non-burnable buildings
+#-------------------------------------------------------------------------#
+fuel_ids = fill(1, ncols, nrows)  # FBFM01: short grass
+
+# Scatter some FBFM02 (timber with grass understory) patches
+for _ in 1:40
+    cx, cy = rand(20:180), rand(10:110)
+    r = rand(3:8)
+    for ix in max(1, cx-r):min(ncols, cx+r)
+        for iy in max(1, cy-r):min(nrows, cy+r)
+            if (ix - cx)^2 + (iy - cy)^2 <= r^2
+                fuel_ids[ix, iy] = 2
+            end
+        end
+    end
+end
+
+# Scatter some non-burnable cells (roads, rock)
+for _ in 1:20
+    cx, cy = rand(1:ncols), rand(1:nrows)
+    for ix in max(1, cx-1):min(ncols, cx+1)
+        for iy in max(1, cy-1):min(nrows, cy+1)
+            fuel_ids[ix, iy] = 256  # FUEL_MODEL_NONBURNABLE
+        end
+    end
+end
+
+#-------------------------------------------------------------------------#
+# Buildings: two clusters in eastern portion (Louisville / Superior)
+#-------------------------------------------------------------------------#
+building_x = Int[]
+building_y = Int[]
+
+# Cluster 1: "Louisville" — centered around (150, 60)
+for _ in 1:160
+    bx = clamp(round(Int, 150 + 15 * randn()), 125, 175)
+    by = clamp(round(Int, 60 + 12 * randn()), 35, 85)
+    push!(building_x, bx)
+    push!(building_y, by)
+end
+
+# Cluster 2: "Superior" — centered around (160, 35)
+for _ in 1:140
+    bx = clamp(round(Int, 160 + 12 * randn()), 135, 185)
+    by = clamp(round(Int, 35 + 10 * randn()), 15, 55)
+    push!(building_x, bx)
+    push!(building_y, by)
+end
+
+println("Grid: $(ncols) x $(nrows) cells ($(round(ncols * 30 / 1000, digits=1)) km x $(round(nrows * 30 / 1000, digits=1)) km)")
+println("Buildings: $(length(building_x))")
+```
+
+### Real Fire Perimeter
+
+We embed a simplified 68-vertex outline of the NIFC-reported final Marshall Fire perimeter (source: [WFIGS Interagency Fire Perimeters](https://data-nifc.opendata.arcgis.com/datasets/nifc::wfigs-interagency-fire-perimeters/about)). The real fire covered a larger area (~8.7 km x 6.3 km) than our synthetic grid (6 km x 3.6 km), so we apply an affine mapping from the perimeter's geographic bounding box to the grid extents. The cyan dashed overlay is an **approximate visual reference**, not a georeferenced projection.
+
+```{julia}
+#| code-summary: "Real perimeter data and coordinate mapping"
+marshall_lons = [
+    -105.15578189, -105.150187981, -105.148455511, -105.154426407,
+    -105.166509164, -105.174085129, -105.183513936, -105.186659581,
+    -105.191342133, -105.199118164, -105.20325183, -105.211697309,
+    -105.2187015, -105.218575818, -105.216022257, -105.210317805,
+    -105.205598008, -105.201926559, -105.198826345, -105.205472569,
+    -105.210588368, -105.210422241, -105.206565017, -105.209375132,
+    -105.211022675, -105.21244565, -105.216589587, -105.220904884,
+    -105.223762278, -105.23114879, -105.232220919, -105.230245643,
+    -105.231178867, -105.227634591, -105.223612241, -105.216866022,
+    -105.209194876, -105.202710712, -105.199755201, -105.193218167,
+    -105.187123917, -105.177427577, -105.17426527, -105.166263924,
+    -105.159484327, -105.160889181, -105.168011545, -105.173244731,
+    -105.18129603, -105.187561572, -105.186350425, -105.182062245,
+    -105.169989657, -105.15280199, -105.157700496, -105.151555572,
+    -105.14228634, -105.135403856, -105.13400898, -105.143272037,
+    -105.150702638, -105.151732027, -105.148133975, -105.162690269,
+    -105.16290612, -105.160775214, -105.155749399, -105.15578189
+]
+
+marshall_lats = [
+    39.932501691, 39.932160245, 39.930951065, 39.930128578,
+    39.929834178, 39.931874761, 39.938231055, 39.941187265,
+    39.94191379, 39.943666603, 39.949012617, 39.952900838,
+    39.948194153, 39.944015461, 39.942396246, 39.940455353,
+    39.941457391, 39.942198499, 39.939586262, 39.939025362,
+    39.940278005, 39.938495697, 39.937288017, 39.937373604,
+    39.937147068, 39.935686057, 39.934825002, 39.936359122,
+    39.938038343, 39.943087304, 39.946706446, 39.950041154,
+    39.956338927, 39.957987934, 39.96328027, 39.968159127,
+    39.972556766, 39.981432798, 39.984073332, 39.985861432,
+    39.985363745, 39.984545513, 39.980451157, 39.979390993,
+    39.979185718, 39.974453018, 39.972997694, 39.973824902,
+    39.971560272, 39.966939183, 39.96350881, 39.96454676,
+    39.959384736, 39.958598085, 39.961596277, 39.961962513,
+    39.960157483, 39.959079493, 39.957765704, 39.954691877,
+    39.954065873, 39.950312213, 39.946678462, 39.943338063,
+    39.938092464, 39.936112611, 39.934267921, 39.932501691
+]
+
+# Affine mapping: real bounding box → grid coordinates
+lon_min, lon_max = extrema(marshall_lons)
+lat_min, lat_max = extrema(marshall_lats)
+real_perim_col = [(lon - lon_min) / (lon_max - lon_min) * ncols for lon in marshall_lons]
+real_perim_row = [(lat - lat_min) / (lat_max - lat_min) * nrows for lat in marshall_lats]
+
+println("Real perimeter: $(length(marshall_lons)) vertices mapped to grid")
+```
+
+## Static Overview
+
+Four-panel summary of the simulation inputs.
+
+```{julia}
+p1 = contourf(1:ncols, 1:nrows, elevation',
+    title = "Elevation (m)", color = :terrain,
+    xlabel = "col", ylabel = "row", aspect_ratio = :equal,
+    linewidth = 0.3, levels = 12)
+
+p2 = heatmap(fuel_ids',
+    title = "Fuel Types", color = cgrad([:lightgreen, :darkgreen, :gray]),
+    aspect_ratio = :equal, colorbar = false,
+    xlabel = "col", ylabel = "row")
+
+p3 = scatter(building_x, building_y,
+    title = "Building Locations",
+    marker = :square, markersize = 1.5, markerstrokewidth = 0,
+    color = :steelblue, legend = false,
+    xlims = (1, ncols), ylims = (1, nrows),
+    aspect_ratio = :equal,
+    xlabel = "col", ylabel = "row")
+plot!(p3, real_perim_col, real_perim_row,
+    color = :cyan, linestyle = :dash, linewidth = 1.5, label = false)
+
+p4 = quiver([100], [60], quiver = ([30], [0]),
+    title = "Wind: 70 mph from W",
+    xlims = (1, ncols), ylims = (1, nrows),
+    aspect_ratio = :equal, legend = false,
+    linewidth = 3, color = :black,
+    xlabel = "col", ylabel = "row")
+annotate!(p4, 115, 65, text("→ 70 mph", 10, :left))
+
+plot(p1, p2, p3, p4, layout = (2, 2), size = (900, 600))
+```
+
+## Run Simulation with Snapshots
+
+We run 360 minutes (6 hours) in 40 steps, capturing the burned state at each step.
+
+```{julia}
+fuel_table = create_standard_fuel_table(Float64)
+
+# Marshall Fire weather: extreme west wind, very dry fuels
+weather = ConstantWeather{Float64}(
+    wind_speed_mph = 70.0,
+    wind_direction = 270.0,  # From west
+    M1 = 0.03,
+    M10 = 0.05,
+    M100 = 0.08,
+    MLH = 0.30,
+    MLW = 0.60
+)
+
+state = FireState{Float64}(ncols, nrows, cellsize)
+
+# Ignite near the western edge (approximate origin of Marshall Fire)
+ignite!(state, 15, 60, 0.0)
+
+# Capture snapshots
+n_frames = 40
+dt_frame = 360.0 / n_frames  # 9 min per frame
+frames_burned = [copy(state.burned)]
+frames_toa = [copy(state.time_of_arrival)]
+frame_times = [0.0]
+
+for i in 1:n_frames
+    t_start = (i - 1) * dt_frame
+    t_stop = i * dt_frame
+    simulate!(state, fuel_ids, fuel_table, weather,
+        slope, aspect, t_start, t_stop;
+        dt_initial = 0.5,
+        dampening = SpreadRateDampeningConfig{Float64}(WIND_SPEED_CAP))
+    push!(frames_burned, copy(state.burned))
+    push!(frames_toa, copy(state.time_of_arrival))
+    push!(frame_times, t_stop)
+end
+
+println("Simulation complete: $(length(frames_burned)) frames captured")
+println("Burned area: $(round(get_burned_area_acres(state), digits=0)) acres")
+```
+
+## Animated Multi-Layer Plot
+
+Six visual layers per frame: terrain contours, burned area (time-of-arrival), buildings (standing vs destroyed), simulated fire perimeter, the NIFC-reported real fire perimeter (cyan dashed line), and wind particles.
+
+```{julia}
+# Pre-compute wind particles (advected west→east across frames)
+n_particles = 80
+wx = rand(1:ncols, n_particles)  # x positions
+wy = rand(1:nrows, n_particles)  # y positions
+
+anim = @animate for (fi, t) in enumerate(frame_times)
+    burned = frames_burned[fi]
+    toa = copy(frames_toa[fi])
+    toa[toa .< 0] .= NaN
+
+    # Layer 1: terrain contours (base)
+    p = contour(1:ncols, 1:nrows, elevation',
+        color = :grays, linewidth = 0.4, levels = 10,
+        aspect_ratio = :equal, colorbar = false,
+        xlims = (1, ncols), ylims = (1, nrows),
+        title = "Marshall Fire — t = $(round(Int, t)) min",
+        xlabel = "col", ylabel = "row",
+        size = (800, 500), legend = :topright)
+
+    # Layer 2: burned area (time-of-arrival heatmap)
+    burn_x, burn_y, burn_c = Int[], Int[], Float64[]
+    for ix in 1:ncols, iy in 1:nrows
+        if burned[ix, iy]
+            push!(burn_x, ix)
+            push!(burn_y, iy)
+            push!(burn_c, isnan(toa[ix, iy]) ? 0.0 : toa[ix, iy])
+        end
+    end
+    if !isempty(burn_x)
+        scatter!(p, burn_x, burn_y,
+            marker = :square, markersize = 2.5, markerstrokewidth = 0,
+            zcolor = burn_c, color = :YlOrRd, clims = (0, 360),
+            alpha = 0.7, label = false, colorbar_title = "min")
+    end
+
+    # Layer 3: buildings (steelblue = standing, red = destroyed)
+    for k in eachindex(building_x)
+        bx, by = building_x[k], building_y[k]
+        destroyed = 1 <= bx <= ncols && 1 <= by <= nrows && burned[bx, by]
+        scatter!(p, [bx], [by],
+            marker = :square, markersize = 2, markerstrokewidth = 0,
+            color = destroyed ? :red : :steelblue,
+            label = false)
+    end
+
+    # Layer 4: fire perimeter
+    perim_x, perim_y = Int[], Int[]
+    for ix in 1:ncols, iy in 1:nrows
+        if burned[ix, iy]
+            is_edge = false
+            for (dx, dy) in ((1,0), (-1,0), (0,1), (0,-1))
+                nx, ny = ix + dx, iy + dy
+                if nx < 1 || nx > ncols || ny < 1 || ny > nrows || !burned[nx, ny]
+                    is_edge = true
+                    break
+                end
+            end
+            if is_edge
+                push!(perim_x, ix)
+                push!(perim_y, iy)
+            end
+        end
+    end
+    if !isempty(perim_x)
+        scatter!(p, perim_x, perim_y,
+            marker = :circle, markersize = 1.5, markerstrokewidth = 0,
+            color = :orangered, alpha = 0.9, label = false)
+    end
+
+    # Layer 5: real fire perimeter (NIFC)
+    plot!(p, real_perim_col, real_perim_row,
+        color = :cyan, linestyle = :dash, linewidth = 1.5, label = false)
+
+    # Layer 6: wind particles (advected eastward)
+    for k in eachindex(wx)
+        wx[k] += rand(3:6)
+        wy[k] += rand(-1:1)
+        if wx[k] > ncols
+            wx[k] = rand(1:5)
+            wy[k] = rand(1:nrows)
+        end
+        wy[k] = clamp(wy[k], 1, nrows)
+    end
+    scatter!(p, wx, wy,
+        marker = :circle, markersize = 1, markerstrokewidth = 0,
+        color = :white, alpha = 0.6, label = false)
+
+    # Legend entries (invisible scatter for labels)
+    scatter!(p, [NaN], [NaN], color = :steelblue, marker = :square, label = "Standing")
+    scatter!(p, [NaN], [NaN], color = :red, marker = :square, label = "Destroyed")
+    scatter!(p, [NaN], [NaN], color = :orangered, marker = :circle, markersize = 2, label = "Perimeter")
+    plot!(p, [NaN], [NaN], color = :cyan, linestyle = :dash, linewidth = 1.5, label = "Real perimeter")
+
+    p
+end
+
+gif(anim, fps = 4)
+```
+
+## Summary Statistics
+
+```{julia}
+burned_acres = round(get_burned_area_acres(state), digits=0)
+final_burned = frames_burned[end]
+n_destroyed = count(k -> begin
+    bx, by = building_x[k], building_y[k]
+    1 <= bx <= ncols && 1 <= by <= nrows && final_burned[bx, by]
+end, eachindex(building_x))
+
+println("=" ^ 50)
+println("Marshall Fire Simulation Summary")
+println("=" ^ 50)
+println("  Grid:             $(ncols) x $(nrows) cells ($(round(ncols * 30 / 1000, digits=1)) km x $(round(nrows * 30 / 1000, digits=1)) km)")
+println("  Cell size:        30 m ($(cellsize) ft)")
+println("  Duration:         360 min (6 hours)")
+println("  Wind:             70 mph from west")
+println("  Burned area:      $(burned_acres) acres")
+println("  Buildings:        $(length(building_x)) total")
+println("  Destroyed:        $(n_destroyed) ($(round(100 * n_destroyed / length(building_x), digits=1))%)")
+```
+
+## Final State
+
+Two-panel view of the final burned area with buildings and the time-of-arrival map.
+
+```{julia}
+# Panel 1: burned area with buildings
+toa_final = copy(state.time_of_arrival)
+toa_final[toa_final .< 0] .= NaN
+
+p1 = heatmap(state.burned',
+    title = "Final Burned Area",
+    color = :YlOrRd, aspect_ratio = :equal,
+    colorbar = false, xlabel = "col", ylabel = "row")
+
+for k in eachindex(building_x)
+    bx, by = building_x[k], building_y[k]
+    destroyed = 1 <= bx <= ncols && 1 <= by <= nrows && final_burned[bx, by]
+    scatter!(p1, [bx], [by],
+        marker = :square, markersize = 2, markerstrokewidth = 0,
+        color = destroyed ? :red : :steelblue, label = false)
+end
+
+# Overlay real perimeter on burned area panel
+plot!(p1, real_perim_col, real_perim_row,
+    color = :cyan, linestyle = :dash, linewidth = 1.5, label = "Real perimeter")
+
+# Panel 2: time-of-arrival
+p2 = heatmap(toa_final',
+    title = "Time of Arrival (min)",
+    color = :viridis, aspect_ratio = :equal,
+    xlabel = "col", ylabel = "row")
+plot!(p2, real_perim_col, real_perim_row,
+    color = :cyan, linestyle = :dash, linewidth = 1.5, label = "Real perimeter")
+
+plot(p1, p2, layout = (1, 2), size = (900, 400))
+```

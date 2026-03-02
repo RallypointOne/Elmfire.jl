@@ -38,6 +38,7 @@ book:
         - tutorials/spotting.qmd
         - tutorials/ensemble.qmd
         - tutorials/wui.qmd
+        - tutorials/marshall-fire.qmd
         - tutorials/suppression.qmd
     - part: "Module Reference"
       chapters:

@@ -337,6 +337,124 @@ end
 
 
 #-----------------------------------------------------------------------------#
+#                     Spread Rate Dampening
+#-----------------------------------------------------------------------------#
+
+"""
+    SpreadRateDampeningMode
+
+Configurable strategy for limiting fire spread rates at extreme wind speeds.
+
+The Rothermel model's power-law wind factor (`phi_w = C * wsmf^B`) overpredicts
+spread rates at high wind speeds. These modes provide physically motivated dampening.
+
+### Values
+- `NO_DAMPENING`: Status quo — only Rothermel's 0.9*IR wind limit applies
+- `WIND_SPEED_CAP`: Andrews et al. (2013) — cap ROS at midflame wind speed (ft/min)
+- `ABSOLUTE_CAP`: Hard cap at a user-specified maximum spread rate (ft/min)
+- `LINEAR_DAMPENING`: Transition phi_w from power-law to linear above a threshold
+"""
+@enum SpreadRateDampeningMode begin
+    NO_DAMPENING
+    WIND_SPEED_CAP
+    ABSOLUTE_CAP
+    LINEAR_DAMPENING
+end
+
+"""
+    SpreadRateDampeningConfig{T<:AbstractFloat}
+
+Configuration for spread rate dampening.
+
+### Fields
+- `mode::SpreadRateDampeningMode`: Dampening strategy
+- `max_spread_rate::T`: Maximum spread rate for `ABSOLUTE_CAP` mode (ft/min, default 250.0)
+- `linear_threshold::T`: Wind speed threshold for `LINEAR_DAMPENING` mode (ft/min, default 400.0)
+
+### Examples
+```julia
+# No dampening (default)
+cfg = SpreadRateDampeningConfig{Float64}()
+
+# Cap spread rate at midflame wind speed
+cfg = SpreadRateDampeningConfig{Float64}(WIND_SPEED_CAP)
+
+# Hard cap at 200 ft/min
+cfg = SpreadRateDampeningConfig{Float64}(ABSOLUTE_CAP, max_spread_rate=200.0)
+
+# Linear dampening above 300 ft/min midflame wind
+cfg = SpreadRateDampeningConfig{Float64}(LINEAR_DAMPENING, linear_threshold=300.0)
+```
+"""
+struct SpreadRateDampeningConfig{T<:AbstractFloat}
+    mode::SpreadRateDampeningMode
+    max_spread_rate::T
+    linear_threshold::T
+end
+
+function SpreadRateDampeningConfig{T}(
+    mode::SpreadRateDampeningMode = NO_DAMPENING;
+    max_spread_rate::T = T(250),
+    linear_threshold::T = T(400)
+) where {T<:AbstractFloat}
+    SpreadRateDampeningConfig{T}(mode, max_spread_rate, linear_threshold)
+end
+
+SpreadRateDampeningConfig(mode::SpreadRateDampeningMode = NO_DAMPENING; kwargs...) =
+    SpreadRateDampeningConfig{Float64}(mode; kwargs...)
+
+Base.eltype(::SpreadRateDampeningConfig{T}) where {T} = T
+
+"""
+    apply_spread_rate_dampening(
+        velocity::T, wsmf::T, vs0::T, phis::T, phiw::T,
+        phiwterm::T, B::T,
+        config::SpreadRateDampeningConfig{T}
+    ) -> T
+
+Apply spread rate dampening to a computed fire spread velocity.
+
+Called after `surface_spread_rate()` and before `elliptical_spread()`.
+
+### Arguments
+- `velocity`: Spread rate from Rothermel model (ft/min)
+- `wsmf`: Midflame wind speed (ft/min)
+- `vs0`: Base spread rate without wind/slope (ft/min)
+- `phis`: Slope factor
+- `phiw`: Wind factor (power-law)
+- `phiwterm`: Fuel model wind coefficient (C * (beta/betaop)^(-E))
+- `B`: Fuel model wind exponent (0.02526 * sigma^0.54)
+- `config`: Dampening configuration
+"""
+@inline function apply_spread_rate_dampening(
+    velocity::T, wsmf::T, vs0::T, phis::T, phiw::T,
+    phiwterm::T, B::T,
+    config::SpreadRateDampeningConfig{T}
+) where {T<:AbstractFloat}
+    mode = config.mode
+    if mode == NO_DAMPENING
+        return velocity
+    elseif mode == WIND_SPEED_CAP
+        return min(velocity, wsmf)
+    elseif mode == ABSOLUTE_CAP
+        return min(velocity, config.max_spread_rate)
+    else  # LINEAR_DAMPENING
+        threshold = config.linear_threshold
+        if wsmf <= threshold
+            return velocity
+        end
+        # phi_w at threshold (power-law)
+        phiw_at_threshold = phiwterm * threshold^B
+        # Derivative of phi_w at threshold: d(phiwterm * w^B)/dw = phiwterm * B * w^(B-1)
+        dphiw_dw = phiwterm * B * threshold^(B - one(T))
+        # Linear extrapolation beyond threshold
+        phiw_linear = phiw_at_threshold + dphiw_dw * (wsmf - threshold)
+        return vs0 * (one(T) + phis + phiw_linear)
+    end
+end
+
+
+#-----------------------------------------------------------------------------#
 #                     Main Simulation Loop
 #-----------------------------------------------------------------------------#
 
@@ -387,6 +505,7 @@ function simulate!(
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
+    dampening::SpreadRateDampeningConfig{T} = SpreadRateDampeningConfig{T}(),
     callback::CB = nothing
 ) where {T<:AbstractFloat, CB}
     t = t_start
@@ -480,8 +599,14 @@ function simulate!(
                 adj = spread_rate_adj
             )
 
+            # Apply spread rate dampening
+            dampened_velocity = apply_spread_rate_dampening(
+                result.velocity, wsmf, result.vs0, result.phis, result.phiw,
+                fm.phiwterm, fm.B, dampening
+            )
+
             # Cache for burn recording
-            cached_velocity[ix, iy] = result.velocity
+            cached_velocity[ix, iy] = dampened_velocity
             cached_flin[ix, iy] = result.flin
 
             # Compute normal vector to fire front
@@ -489,7 +614,7 @@ function simulate!(
 
             # Calculate velocity components using elliptical spread
             effective_ws_mph = weather.wind_speed_20ft * waf / T(1.47)
-            es = elliptical_spread(result.velocity, effective_ws_mph)
+            es = elliptical_spread(dampened_velocity, effective_ws_mph)
 
             # Inline velocity_components with pre-computed wind trig
             cos_theta = normal_x * wind_to_x + normal_y * wind_to_y
@@ -827,6 +952,7 @@ function simulate_full!(
     target_cfl::T = T(0.9),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
+    dampening::SpreadRateDampeningConfig{T} = SpreadRateDampeningConfig{T}(),
     callback::CB = nothing,
     rng::AbstractRNG = Random.default_rng()
 ) where {T<:AbstractFloat, CB}
@@ -954,6 +1080,12 @@ function simulate_full!(
                 velocity = surface_result.velocity
                 flin_total = surface_result.flin
             end
+
+            # Apply spread rate dampening
+            velocity = apply_spread_rate_dampening(
+                velocity, wsmf, surface_result.vs0, surface_result.phis, surface_result.phiw,
+                fm.phiwterm, fm.B, dampening
+            )
 
             # Compute normal vector to fire front
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)

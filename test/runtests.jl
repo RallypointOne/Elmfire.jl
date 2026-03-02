@@ -18,6 +18,7 @@ using Random  # Required for ensemble tests
     include("test_ensemble.jl")
     include("test_wui.jl")
     include("test_suppression.jl")
+    include("test_dampening.jl")
 
     # GPU extension (tested with CPU backend)
     include("test_gpu.jl")

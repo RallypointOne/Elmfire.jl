@@ -24,6 +24,10 @@ export compute_normal
 export NarrowBand, tag_band!, untag_isolated!, get_active_cells, active_mask
 export initialize_phi!, initialize_circular_fire!
 
+# Spread Rate Dampening
+export SpreadRateDampeningMode, SpreadRateDampeningConfig, apply_spread_rate_dampening
+export NO_DAMPENING, WIND_SPEED_CAP, ABSOLUTE_CAP, LINEAR_DAMPENING
+
 # Simulation
 export wind_adjustment_factor, calculate_tanslp2
 export FireState, CPUFireState, grid_to_padded, padded_to_grid
