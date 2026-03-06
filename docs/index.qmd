@@ -31,7 +31,7 @@ Elmfire.jl supports both `Float64` (default) and `Float32` precision throughout 
 
 ### Comprehensive Fire Behavior
 
-- 53 standard FBFM (Fire Behavior Fuel Models) included
+- 13 standard FBFM (Fire Behavior Fuel Models) included, with Scott & Burgan models loadable from CSV
 - Custom fuel model support
 - Dynamic fuel moisture effects
 - Slope and aspect terrain effects
@@ -73,14 +73,7 @@ println("Burned area: ", get_burned_area_acres(state), " acres")
 
 ```julia
 using Pkg
-Pkg.add("Elmfire")
-```
-
-Or for the development version:
-
-```julia
-using Pkg
-Pkg.develop(path="path/to/Elmfire.jl")
+Pkg.add(url="https://github.com/RallypointOne/Elmfire.jl")
 ```
 
 ## Documentation Structure

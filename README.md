@@ -19,12 +19,13 @@ A Julia implementation of the ELMFIRE wildfire spread model. This package provid
 - **Parallel Execution**: Multi-threaded ensemble simulations
 - **WUI Models**: Wildland-urban interface structure ignition
 - **Suppression Models**: Containment line construction and resource allocation
+- **GPU Support**: GPU-accelerated simulations via KernelAbstractions.jl
 
 ## Installation
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/joshday/Elmfire.jl")
+Pkg.add(url="https://github.com/RallypointOne/Elmfire.jl")
 ```
 
 ## Quick Start
@@ -35,7 +36,7 @@ using Elmfire
 # Create a 100x100 grid with 30-ft cells
 state = FireState(100, 100, 30.0)
 
-# Load standard fuel models (FBFM 1-40)
+# Load standard fuel models (FBFM 1-13)
 fuel_table = create_standard_fuel_table()
 
 # Set weather conditions
@@ -99,19 +100,21 @@ simulate_full!(state, fuel_ids, fuel_table, weather_interp, slope, aspect, 0.0, 
 ```julia
 # Configure perturbations for Monte Carlo runs
 perturb_config = PerturbationConfig{Float64}(
-    wind_speed_std = 3.0,
+    wind_speed_factor_range = (0.8, 1.2),
     wind_direction_std = 15.0,
-    moisture_std = 0.02
+    moisture_factor_range = (0.9, 1.1)
 )
 
 ensemble_config = EnsembleConfig{Float64}(
-    n_members = 100,
+    n_simulations = 100,
     perturbation = perturb_config
 )
 
-# Run ensemble (multi-threaded)
-result = run_ensemble!(ensemble_config, base_state, fuel_ids, fuel_table,
-                       weather_interp, slope, aspect, 0.0, 60.0)
+# Run ensemble
+result = run_ensemble!(
+    ensemble_config, base_state, fuel_ids, fuel_table,
+    weather, slope, aspect, 50, 50, 0.0, 60.0
+)
 
 # Get burn probability map
 burn_prob = result.burn_probability
@@ -161,11 +164,15 @@ See the `examples/` directory for complete examples:
 
 Tutorials are available in `docs/tutorials/`:
 
+- Basic Simulation
 - Weather Effects
-- Fuel Models
 - Terrain Effects
 - Crown Fire
-- Ensemble Analysis
+- Spotting / Ember Transport
+- Ensemble Simulations
+- WUI (Wildland-Urban Interface)
+- Marshall Fire Case Study
+- Suppression
 
 ## References
 
