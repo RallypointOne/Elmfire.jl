@@ -10,12 +10,9 @@
 """
     wind_adjustment_factor(fuel_bed_depth::T) -> T
 
-Calculate wind adjustment factor (WAF) from 20-ft wind to mid-flame wind.
+Calculate unsheltered wind adjustment factor (WAF) from 20-ft wind to mid-flame wind.
 
-Uses the unsheltered (no canopy) formula: WAF = 1.83 / ln((20 + 0.36*H) / (0.13*H))
-where H is the fuel bed depth in feet.
-
-For sheltered conditions (with canopy), use a lookup table or more complex formula.
+Uses: WAF = 1.83 / ln((20 + 0.36*H) / (0.13*H)) where H is the fuel bed depth in feet.
 """
 function wind_adjustment_factor(fuel_bed_depth::T) where {T<:AbstractFloat}
     if fuel_bed_depth < T(0.1)
@@ -25,6 +22,148 @@ function wind_adjustment_factor(fuel_bed_depth::T) where {T<:AbstractFloat}
     H = fuel_bed_depth
     waf = T(1.83) / log((T(20) + T(0.36)*H) / (T(0.13)*H))
     return clamp(waf, T(0.1), one(T))
+end
+
+
+"""
+    wind_adjustment_factor(fuel_bed_depth::T, canopy_cover::T, canopy_height::T) -> T
+
+Calculate sheltered wind adjustment factor (WAF) under forest canopy.
+
+Uses the Albini & Baughman (1979) sheltered formula when canopy cover and height
+are non-trivial, otherwise falls back to the unsheltered formula.
+
+# Arguments
+- `fuel_bed_depth`: Fuel bed depth (ft)
+- `canopy_cover`: Canopy cover fraction (0-1)
+- `canopy_height`: Canopy height (m)
+"""
+function wind_adjustment_factor(fuel_bed_depth::T, canopy_cover::T, canopy_height::T) where {T<:AbstractFloat}
+    # Fall back to unsheltered if no meaningful canopy
+    if canopy_cover < T(1e-4) || canopy_height < T(1e-4)
+        return wind_adjustment_factor(fuel_bed_depth)
+    end
+
+    # Convert canopy height to feet
+    hft = canopy_height / ft_to_m(T)
+
+    # Ratio of mid-canopy wind to 20-ft wind (log profile)
+    numer = T(20) + T(0.36) * hft
+    denom = T(0.13) * hft
+    if denom < T(0.01)
+        return wind_adjustment_factor(fuel_bed_depth)
+    end
+    uhou20ph = one(T) / log(numer / denom)
+
+    # Crown ratio assumed 1/3 (fraction of canopy occupied by crown)
+    crown_ratio = one(T) / T(3)
+    f = T(0.3333) * canopy_cover * crown_ratio
+    ucouh = T(0.555) / sqrt(f * hft)
+
+    waf = uhou20ph * ucouh
+    return clamp(waf, T(0.1), one(T))
+end
+
+
+"""
+    acceleration_factor(t::T, tau::T) -> T
+
+Compute the fire acceleration factor at time `t` with time constant `tau` (minutes).
+
+The acceleration factor ramps from 0 at ignition to 1 at steady state following
+`1 - exp(-t/τ)`. This models the observed behavior that fires initially spread
+slower than the Rothermel steady-state prediction.
+
+When `tau ≤ 0.5` (minutes), acceleration is disabled and returns 1.0.
+"""
+@inline function acceleration_factor(t::T, tau::T) where {T<:AbstractFloat}
+    if tau <= T(0.5)
+        return one(T)
+    end
+    ratio = t / tau
+    if ratio > T(7)
+        return one(T)
+    end
+    return one(T) - exp(-ratio)
+end
+
+
+"""
+    DiurnalConfig{T<:AbstractFloat}
+
+Configuration for diurnal (day/night) spread rate adjustment.
+
+During the burn period (daytime), the adjustment factor is 1.0 (full spread).
+Outside the burn period (nighttime), spread rate is multiplied by `overnight_factor`.
+
+# Fields
+- `forecast_start_hour`: Simulation start hour in local time (0-24)
+- `sunrise_hour`: Local sunrise hour (default 6.0)
+- `sunset_hour`: Local sunset hour (default 20.0)
+- `burn_period_center_frac`: Fraction of daylight for burn period center (default 0.667)
+- `burn_period_length`: Duration of active burn period in hours (default 10.0)
+- `overnight_factor`: Spread rate multiplier outside burn period (default 0.1)
+"""
+struct DiurnalConfig{T<:AbstractFloat}
+    forecast_start_hour::T
+    sunrise_hour::T
+    sunset_hour::T
+    burn_period_center_frac::T
+    burn_period_length::T
+    overnight_factor::T
+end
+
+Base.eltype(::DiurnalConfig{T}) where {T} = T
+
+function DiurnalConfig{T}(;
+    forecast_start_hour::T = T(12),
+    sunrise_hour::T = T(6),
+    sunset_hour::T = T(20),
+    burn_period_center_frac::T = T(0.667),
+    burn_period_length::T = T(10),
+    overnight_factor::T = T(0.1)
+) where {T<:AbstractFloat}
+    DiurnalConfig{T}(forecast_start_hour, sunrise_hour, sunset_hour,
+        burn_period_center_frac, burn_period_length, overnight_factor)
+end
+
+DiurnalConfig(; kwargs...) = DiurnalConfig{Float64}(; kwargs...)
+
+"""
+    diurnal_adjustment(config::DiurnalConfig{T}, t::T) -> T
+
+Compute diurnal spread rate adjustment factor at simulation time `t` (minutes).
+
+Returns 1.0 during the burn period (daytime) and `config.overnight_factor` outside it.
+"""
+@inline function diurnal_adjustment(config::DiurnalConfig{T}, t::T) where {T<:AbstractFloat}
+    # Convert simulation time (minutes) to hour of day
+    hour_of_day = config.forecast_start_hour + t / T(60)
+    hour_of_day = mod(hour_of_day, T(24))
+
+    # Compute burn period window
+    daylight = config.sunset_hour - config.sunrise_hour
+    center = config.sunrise_hour + config.burn_period_center_frac * daylight
+    half_len = config.burn_period_length / T(2)
+    start_hour = center - half_len
+    stop_hour = center + half_len
+
+    # Check if current hour falls within burn period
+    if start_hour >= zero(T) && stop_hour <= T(24)
+        # No wrap-around
+        if hour_of_day >= start_hour && hour_of_day <= stop_hour
+            return one(T)
+        end
+    else
+        # Handle wrap-around (burn period crosses midnight)
+        start_mod = mod(start_hour, T(24))
+        stop_mod = mod(stop_hour, T(24))
+        if hour_of_day >= start_mod || hour_of_day <= stop_mod
+            return one(T)
+        end
+    end
+
+    return config.overnight_factor
 end
 
 
@@ -469,9 +608,11 @@ end
         t_start::T,
         t_stop::T;
         dt_initial::T = one(T),
-        target_cfl::T = T(0.9),
+        target_cfl::T = T(0.45),
         dt_max::T = T(10),
         spread_rate_adj::T = one(T),
+        accel_time_constant::T = zero(T),
+        diurnal::Union{Nothing, DiurnalConfig{T}} = nothing,
         callback::Union{Nothing, Function} = nothing
     )
 
@@ -487,9 +628,13 @@ Run the fire simulation from t_start to t_stop.
 - `t_start`: Start time (minutes)
 - `t_stop`: Stop time (minutes)
 - `dt_initial`: Initial timestep (minutes, default 1.0)
-- `target_cfl`: Target CFL number (default 0.9)
+- `target_cfl`: Target CFL number (default 0.45)
 - `dt_max`: Maximum timestep (minutes, default 10.0)
 - `spread_rate_adj`: Spread rate adjustment factor (default 1.0, multiplies base spread rate)
+- `accel_time_constant`: Fire acceleration time constant (minutes, default 0 = disabled).
+  When > 0.5, spread rate is multiplied by `1 - exp(-t/τ)`, modeling fire buildup from
+  ignition to steady-state.
+- `diurnal`: Optional `DiurnalConfig` for day/night spread rate adjustment (default nothing = disabled)
 - `callback`: Optional callback function(state, t, dt, iteration) called each timestep
 """
 function simulate!(
@@ -502,9 +647,11 @@ function simulate!(
     t_start::T,
     t_stop::T;
     dt_initial::T = one(T),
-    target_cfl::T = T(0.9),
+    target_cfl::T = T(0.45),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
+    accel_time_constant::T = zero(T),
+    diurnal::Union{Nothing, DiurnalConfig{T}} = nothing,
     dampening::SpreadRateDampeningConfig{T} = SpreadRateDampeningConfig{T}(),
     callback::CB = nothing
 ) where {T<:AbstractFloat, CB}
@@ -605,6 +752,12 @@ function simulate!(
                 fm.phiwterm, fm.B, dampening
             )
 
+            # Apply acceleration and diurnal factors
+            dampened_velocity *= acceleration_factor(t, accel_time_constant)
+            if diurnal !== nothing
+                dampened_velocity *= diurnal_adjustment(diurnal, t)
+            end
+
             # Cache for burn recording
             cached_velocity[ix, iy] = dampened_velocity
             cached_flin[ix, iy] = result.flin
@@ -616,11 +769,10 @@ function simulate!(
             effective_ws_mph = weather.wind_speed_20ft * waf / T(1.47)
             es = elliptical_spread(dampened_velocity, effective_ws_mph)
 
-            # Inline velocity_components with pre-computed wind trig
-            cos_theta = normal_x * wind_to_x + normal_y * wind_to_y
-            vel = T(0.5) * ((one(T) + cos_theta) * es.head + (one(T) - cos_theta) * es.back)
-            state.ux[px, py] = vel * normal_x
-            state.uy[px, py] = vel * normal_y
+            # Richards (1990) ellipse velocity decomposition
+            ux, uy = velocity_components(es, wind_dir_rad, normal_x, normal_y)
+            state.ux[px, py] = ux
+            state.uy[px, py] = uy
         end
 
         # Compute CFL timestep (only after a few iterations)
@@ -907,9 +1059,11 @@ end
         canopy::Union{Nothing, CanopyGrid{T}} = nothing,
         config::SimulationConfig{T} = SimulationConfig{T}(),
         dt_initial::T = one(T),
-        target_cfl::T = T(0.9),
+        target_cfl::T = T(0.45),
         dt_max::T = T(10),
         spread_rate_adj::T = one(T),
+        accel_time_constant::T = zero(T),
+        diurnal::Union{Nothing, DiurnalConfig{T}} = nothing,
         callback::Union{Nothing, Function} = nothing,
         rng::AbstractRNG = Random.default_rng()
     )
@@ -928,9 +1082,13 @@ Run full fire simulation with crown fire, spotting, and weather interpolation.
 - `canopy`: Optional canopy properties grid (required if crown fire enabled)
 - `config`: Simulation configuration (crown fire, spotting settings)
 - `dt_initial`: Initial timestep (minutes, default 1.0)
-- `target_cfl`: Target CFL number (default 0.9)
+- `target_cfl`: Target CFL number (default 0.45)
 - `dt_max`: Maximum timestep (minutes, default 10.0)
 - `spread_rate_adj`: Spread rate adjustment factor (default 1.0, multiplies base spread rate)
+- `accel_time_constant`: Fire acceleration time constant (minutes, default 0 = disabled).
+  When > 0.5, spread rate is multiplied by `1 - exp(-t/τ)`, modeling fire buildup from
+  ignition to steady-state.
+- `diurnal`: Optional `DiurnalConfig` for day/night spread rate adjustment (default nothing = disabled)
 - `callback`: Optional callback function(state, t, dt, iteration) called each timestep
 - `rng`: Random number generator for stochastic processes
 
@@ -949,9 +1107,11 @@ function simulate_full!(
     canopy::Union{Nothing, CanopyGrid{T}} = nothing,
     config::SimulationConfig{T} = SimulationConfig{T}(),
     dt_initial::T = one(T),
-    target_cfl::T = T(0.9),
+    target_cfl::T = T(0.45),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
+    accel_time_constant::T = zero(T),
+    diurnal::Union{Nothing, DiurnalConfig{T}} = nothing,
     dampening::SpreadRateDampeningConfig{T} = SpreadRateDampeningConfig{T}(),
     callback::CB = nothing,
     rng::AbstractRNG = Random.default_rng()
@@ -1040,7 +1200,11 @@ function simulate_full!(
             end
 
             # Calculate wind adjustment factor and mid-flame wind speed
-            waf = wind_adjustment_factor(fm.delta)
+            waf = if canopy !== nothing
+                wind_adjustment_factor(fm.delta, canopy.cc[ix, iy], canopy.ch[ix, iy])
+            else
+                wind_adjustment_factor(fm.delta)
+            end
             ws20_ftpmin = w.ws * T(88)  # mph to ft/min
             wsmf = ws20_ftpmin * waf
 
@@ -1087,6 +1251,12 @@ function simulate_full!(
                 fm.phiwterm, fm.B, dampening
             )
 
+            # Apply acceleration and diurnal factors
+            velocity *= acceleration_factor(t, accel_time_constant)
+            if diurnal !== nothing
+                velocity *= diurnal_adjustment(diurnal, t)
+            end
+
             # Compute normal vector to fire front
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)
 
@@ -1097,12 +1267,8 @@ function simulate_full!(
             # Wind direction in radians
             wind_dir_rad = w.wd * pio180(T)
 
-            # Calculate velocity components
-            ux, uy = velocity_components(
-                es.head, es.back,
-                wind_dir_rad,
-                normal_x, normal_y
-            )
+            # Richards (1990) ellipse velocity decomposition
+            ux, uy = velocity_components(es, wind_dir_rad, normal_x, normal_y)
 
             state.ux[px, py] = ux
             state.uy[px, py] = uy
@@ -1157,7 +1323,11 @@ function simulate_full!(
                 fm = get_fuel_model(fuel_table, fuel_id, live_moisture_class)
 
                 if !isnonburnable(fm)
-                    waf = wind_adjustment_factor(fm.delta)
+                    waf = if canopy !== nothing
+                        wind_adjustment_factor(fm.delta, canopy.cc[ix, iy], canopy.ch[ix, iy])
+                    else
+                        wind_adjustment_factor(fm.delta)
+                    end
                     ws20_ftpmin = w.ws * T(88)
                     wsmf = ws20_ftpmin * waf
                     tanslp2 = tanslp2_grid[ix, iy]
@@ -1215,6 +1385,7 @@ function simulate_full!(
                             state.ncols, state.nrows,
                             t + dt,
                             state.burned;
+                            weather_interp = weather_interp,
                             use_sardoy = config.use_sardoy,
                             rng = rng
                         )

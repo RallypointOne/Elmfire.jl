@@ -71,13 +71,13 @@ end
 #   fuel_components[fi, mi, 1:16] = F[1:6], FEPS[1:6], WPRIMENUMER[1:4]
 
 @kernel function spread_rate_kernel!(
-    vel_out, ecc_out, @Const(active_px), @Const(active_py),
+    vel_out, ecc_out, lb_out, @Const(active_px), @Const(active_py),
     @Const(burned),
     @Const(fuel_ids), @Const(fuel_id_to_index),
     @Const(fuel_scalars), @Const(fa_nonburnable), @Const(fuel_components),
     @Const(slope),
     ws20_ftpmin, M1, M10, M100, MLH, MLW,
-    live_moisture_class, spread_rate_adj,
+    live_moisture_class, spread_rate_adj, accel_factor,
     padding, ncols, nrows
 )
     T = eltype(vel_out)
@@ -92,6 +92,7 @@ end
         if burned[ix, iy] != zero(eltype(burned))
             vel_out[i] = zero(T)
             ecc_out[i] = zero(T)
+            lb_out[i] = one(T)
         else
             fuel_id = fuel_ids[ix, iy]
             fi = fuel_id_to_index[fuel_id]
@@ -100,6 +101,7 @@ end
             if fa_nonburnable[fi, mi] != zero(eltype(fa_nonburnable))
                 vel_out[i] = zero(T)
                 ecc_out[i] = zero(T)
+                lb_out[i] = one(T)
             else
                 # Unpack fuel scalars
                 delta           = fuel_scalars[fi, mi, 1]
@@ -182,7 +184,7 @@ end
                 else
                     zero(T)
                 end
-                velocity = vs0 * (one(T) + phis + phiw)
+                velocity = vs0 * (one(T) + phis + phiw) * accel_factor
 
                 # --- Elliptical eccentricity ---
                 effective_ws_mph = (ws20_ftpmin / T(88)) * waf / T(1.47)
@@ -203,11 +205,13 @@ end
 
                 vel_out[i] = velocity
                 ecc_out[i] = eccentricity
+                lb_out[i] = LB
             end
         end
     else
         vel_out[i] = zero(T)
         ecc_out[i] = zero(T)
+        lb_out[i] = one(T)
     end
 end
 
@@ -216,10 +220,11 @@ end
 #                     GPU Direction Kernel (index-list)
 #-----------------------------------------------------------------------------#
 # Kernel 2: phi gradient + wind → ux, uy
+# Uses Richards (1990) ellipse equation for velocity decomposition.
 
 @kernel function direction_kernel!(
     ux, uy, @Const(phi), @Const(active_px), @Const(active_py),
-    @Const(vel_in), @Const(ecc_in),
+    @Const(vel_in), @Const(ecc_in), @Const(lb_in),
     wind_dir_rad, cellsize
 )
     T = eltype(ux)
@@ -229,6 +234,7 @@ end
 
     velocity = vel_in[i]
     eccentricity = ecc_in[i]
+    lb = lb_in[i]
 
     if velocity <= zero(T)
         ux[px, py] = zero(T)
@@ -250,14 +256,26 @@ end
         head = velocity
         back = head * (one(T) - eccentricity) / (one(T) + eccentricity)
 
-        # --- Velocity components ---
+        # --- Richards (1990) ellipse velocity decomposition ---
         wind_to_x = -sin(wind_dir_rad)
         wind_to_y = -cos(wind_dir_rad)
-        cos_theta = normal_x * wind_to_x + normal_y * wind_to_y
-        vel = T(0.5) * ((one(T) + cos_theta) * head + (one(T) - cos_theta) * back)
 
-        ux[px, py] = vel * normal_x
-        uy[px, py] = vel * normal_y
+        cosang = normal_x * wind_to_x + normal_y * wind_to_y
+        sinang = normal_x * wind_to_y - normal_y * wind_to_x
+
+        a = max(T(0.5) * (head + back), T(1e-10))
+        lb_clamped = max(lb, one(T))
+        b = max(a / lb_clamped, T(1e-10))
+
+        aa_cosang = a * a * cosang
+        bb_sinang = b * b * sinang
+        denom = max(sqrt(aa_cosang * cosang + bb_sinang * sinang), T(1e-10))
+
+        dydt = aa_cosang / denom + T(0.5) * (head - back)
+        dxdt = bb_sinang / denom
+
+        ux[px, py] = dxdt * wind_to_y + dydt * wind_to_x
+        uy[px, py] = -dxdt * wind_to_x + dydt * wind_to_y
     end
 end
 
@@ -480,9 +498,10 @@ function Elmfire.simulate_gpu!(
     t_start::T,
     t_stop::T;
     dt_initial::T = one(T),
-    target_cfl::T = T(0.9),
+    target_cfl::T = T(0.45),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
+    accel_time_constant::T = zero(T),
     callback::CB = nothing,
     backend::KernelAbstractions.Backend = KernelAbstractions.CPU()
 ) where {T<:AbstractFloat, CB}
@@ -572,6 +591,7 @@ function Elmfire.simulate_gpu!(
     d_phi_active = KernelAbstractions.allocate(backend, T, max_active)
     d_vel = KernelAbstractions.allocate(backend, T, max_active)
     d_ecc = KernelAbstractions.allocate(backend, T, max_active)
+    d_lb  = KernelAbstractions.allocate(backend, T, max_active)
     h_phi_active = Vector{T}(undef, max_active)
     h_active = Vector{CartesianIndex{2}}(undef, max_active)
     h_cells_to_tag = Vector{CartesianIndex{2}}(undef, max_active)
@@ -602,16 +622,19 @@ function Elmfire.simulate_gpu!(
         h_burned .= state.burned
         copyto!(d_burned, h_burned)
 
+        # Compute acceleration factor on host (same for all cells at time t)
+        accel = Elmfire.acceleration_factor(t, accel_time_constant)
+
         # Spread rate kernel — Rothermel physics → velocity + eccentricity
         spread_rate_kernel!(backend)(
-            d_vel, d_ecc, d_px, d_py, d_burned,
+            d_vel, d_ecc, d_lb, d_px, d_py, d_burned,
             d_fuel_ids, d_fuel_id_to_index,
             d_fuel_scalars, d_fa_nonburnable, d_fuel_components,
             d_slope,
             ws20_ftpmin,
             weather.M1, weather.M10, weather.M100,
             weather.MLH, weather.MLW,
-            live_moisture_class, spread_rate_adj,
+            live_moisture_class, spread_rate_adj, accel,
             Int32(state.padding), Int32(state.ncols), Int32(state.nrows);
             ndrange = n_active
         )
@@ -620,7 +643,7 @@ function Elmfire.simulate_gpu!(
         # Direction kernel — phi gradient + wind → ux, uy
         direction_kernel!(backend)(
             d_ux, d_uy, d_phi, d_px, d_py,
-            d_vel, d_ecc,
+            d_vel, d_ecc, d_lb,
             wind_dir_rad, state.cellsize;
             ndrange = n_active
         )

@@ -97,10 +97,15 @@ The fire science is the same. Both implementations use:
 - **Level set PDE** with upwind differencing and narrow-band tracking
 - **Superbee flux limiter** for gradient calculation
 - **2nd-order Runge-Kutta** time integration
-- **CFL-adaptive timestep** for numerical stability
+- **CFL-adaptive timestep** (target CFL = 0.45) for numerical stability
 - **Van Wagner (1977)** crown fire initiation
 - **Cruz et al. (2005)** active crown fire spread rate
 - **53 standard FBFM** fuel models
-- **Elliptical fire shape** (Anderson, 1983)
+- **Elliptical fire shape** (Richards 1990 velocity decomposition, Anderson 1983 shape)
+- **Sheltered wind adjustment factor** (Albini & Baughman 1979) under forest canopy
+- **Bilinear spatial interpolation** for weather grids
+- **Fire acceleration ramp** (`1 - exp(-t/τ)`) from ignition to steady state
+- **Diurnal spread rate adjustment** (day/night modulation)
+- **Wind-field-aware ember transport** (embers advected through spatially varying wind)
 
 For equivalent inputs, the two implementations should produce consistent fire behavior outputs.

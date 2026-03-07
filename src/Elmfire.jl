@@ -29,7 +29,8 @@ export SpreadRateDampeningMode, SpreadRateDampeningConfig, apply_spread_rate_dam
 export NO_DAMPENING, WIND_SPEED_CAP, ABSOLUTE_CAP, LINEAR_DAMPENING
 
 # Simulation
-export wind_adjustment_factor, calculate_tanslp2
+export wind_adjustment_factor, calculate_tanslp2, acceleration_factor
+export DiurnalConfig, diurnal_adjustment
 export FireState, CPUFireState, grid_to_padded, padded_to_grid
 export ignite!, ignite_point!, ignite_circle!
 export simulate!, simulate_uniform!
@@ -106,8 +107,8 @@ include("io.jl")
 include("rothermel.jl")
 include("level_set.jl")
 include("crown_fire.jl")
-include("spotting.jl")
 include("weather.jl")
+include("spotting.jl")
 include("simulation.jl")
 
 # Phase 3: New modules (order matters - geospatial first, then others that depend on simulation)

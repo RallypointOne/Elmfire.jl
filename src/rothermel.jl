@@ -398,18 +398,19 @@ end
 
 """
     velocity_components(
-        head_velocity::T,
-        back_velocity::T,
+        es::EllipticalSpread{T},
         wind_direction_rad::T,
         normal_x::T,
         normal_y::T
     ) -> Tuple{T, T}
 
-Calculate velocity components (ux, uy) in grid coordinates from fire spread parameters.
+Calculate velocity components (ux, uy) using the Richards (1990) ellipse equation.
+
+Uses semi-major and semi-minor axes derived from head/back velocities and L/B ratio
+to compute the exact elliptical velocity at any angle relative to the wind direction.
 
 # Arguments
-- `head_velocity`: Head fire spread rate (ft/min)
-- `back_velocity`: Backing fire spread rate (ft/min)
+- `es`: Elliptical spread parameters (head, back, eccentricity, length_to_breadth)
 - `wind_direction_rad`: Wind direction in radians (meteorological convention)
 - `normal_x, normal_y`: Unit normal vector to the fire front
 
@@ -417,29 +418,36 @@ Calculate velocity components (ux, uy) in grid coordinates from fire spread para
 - `(ux, uy)`: Velocity components in grid coordinates (ft/min)
 """
 function velocity_components(
-    head_velocity::T,
-    back_velocity::T,
+    es::EllipticalSpread{T},
     wind_direction_rad::T,
     normal_x::T,
     normal_y::T
 ) where {T<:AbstractFloat}
-    # Calculate the angle between the normal and the wind direction
-    # Wind direction in ELMFIRE is meteorological (direction FROM)
-    # Convert to mathematical convention (direction TO)
+    # Wind direction: convert FROM (meteorological) to TO (mathematical)
     wind_to_x = -sin(wind_direction_rad)
     wind_to_y = -cos(wind_direction_rad)
 
-    # Dot product gives cos(angle between normal and wind)
-    cos_theta = normal_x * wind_to_x + normal_y * wind_to_y
+    # Dot and cross products of normal against wind direction
+    cosang = normal_x * wind_to_x + normal_y * wind_to_y
+    sinang = normal_x * wind_to_y - normal_y * wind_to_x
 
-    # Interpolate between head and back fire based on angle
-    # At head (cos_theta = 1): velocity = head_velocity
-    # At back (cos_theta = -1): velocity = back_velocity
-    velocity = T(0.5) * ((one(T) + cos_theta) * head_velocity + (one(T) - cos_theta) * back_velocity)
+    # Semi-major axis (along wind) and semi-minor axis (across wind)
+    a = max(T(0.5) * (es.head + es.back), T(1e-10))
+    lb = max(es.length_to_breadth, one(T))
+    b = max(a / lb, T(1e-10))
 
-    # Velocity components along the normal
-    ux = velocity * normal_x
-    uy = velocity * normal_y
+    # Richards (1990) ellipse velocity decomposition
+    aa_cosang = a * a * cosang
+    bb_sinang = b * b * sinang
+    denom = max(sqrt(aa_cosang * cosang + bb_sinang * sinang), T(1e-10))
+
+    # Velocity in the wind-aligned (dydt) and crosswind (dxdt) directions
+    dydt = aa_cosang / denom + T(0.5) * (es.head - es.back)
+    dxdt = bb_sinang / denom
+
+    # Rotate from wind-relative to grid coordinates
+    ux = dxdt * wind_to_y + dydt * wind_to_x
+    uy = -dxdt * wind_to_x + dydt * wind_to_y
 
     return (ux, uy)
 end

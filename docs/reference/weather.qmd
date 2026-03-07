@@ -168,8 +168,8 @@ Handles interpolation of weather data to simulation grid and time.
 ```julia
 struct WeatherInterpolator{T<:AbstractFloat}
     weather_series::WeatherTimeSeries{T}
-    icol_map::Vector{Int}    # Mapping from sim column to weather column
-    irow_map::Vector{Int}    # Mapping from sim row to weather row
+    xcol_map::Vector{T}    # Fractional weather column for each sim column
+    yrow_map::Vector{T}    # Fractional weather row for each sim row
     sim_ncols::Int
     sim_nrows::Int
 end
@@ -256,17 +256,23 @@ println("Interpolated direction (350° to 10°): $(round(wd, digits=1))°")
 
 ### create_grid_mapping
 
-Create mapping from simulation grid to weather grid indices.
+Create mapping from simulation grid to weather grid coordinates for bilinear interpolation.
 
 ```julia
 create_grid_mapping(
     weather_grid::WeatherGrid,
     sim_ncols, sim_nrows, sim_cellsize,
     sim_xllcorner, sim_yllcorner
-) -> Tuple{Vector{Int}, Vector{Int}}
+) -> Tuple{Vector{T}, Vector{T}}
 ```
 
-Returns `(icol_weather, irow_weather)` vectors such that simulation cell `(ix, iy)` maps to weather cell `(icol_weather[ix], irow_weather[iy])`.
+Returns `(xcol_map, yrow_map)` vectors of fractional weather grid coordinates. Simulation cell `(ix, iy)` maps to fractional weather position `(xcol_map[ix], yrow_map[iy])`, which is used for bilinear interpolation across the four surrounding weather grid cells.
+
+### Spatial Interpolation
+
+`get_weather_at` uses **bilinear interpolation** for spatial weather fields, providing smooth gradients across the simulation domain. Wind direction is interpolated via sin/cos decomposition to correctly handle the 0°/360° wrap-around.
+
+For temporal interpolation between weather grids, linear interpolation is used (with the same sin/cos method for wind direction).
 
 ## Weather Effects on Fire Spread
 

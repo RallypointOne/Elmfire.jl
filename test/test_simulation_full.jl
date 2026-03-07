@@ -365,4 +365,111 @@ using Random
         # Callback should have been called
         @test callback_count[] > 0
     end
+
+    @testset "Acceleration Factor" begin
+        # Unit tests for acceleration_factor function
+        @test acceleration_factor(0.0, 0.0) == 1.0   # disabled
+        @test acceleration_factor(5.0, 0.0) == 1.0   # disabled
+        @test acceleration_factor(5.0, 0.3) == 1.0   # tau too small, disabled
+        @test acceleration_factor(0.0, 2.0) ≈ 0.0 atol=1e-10  # t=0 → factor=0
+        @test acceleration_factor(2.0, 2.0) ≈ 1 - exp(-1.0)   # t=τ → ~0.632
+        @test acceleration_factor(100.0, 2.0) == 1.0  # saturated (ratio > 7)
+
+        # Monotonically increasing
+        vals = [acceleration_factor(Float64(t), 3.0) for t in 0.0:0.5:20.0]
+        @test all(diff(vals) .>= 0)
+
+        # Integration test: acceleration should reduce burned area
+        fuel_table = create_standard_fuel_table()
+        weather = ConstantWeather(
+            wind_speed_mph = 10.0,
+            wind_direction = 270.0,
+            M1 = 0.06, M10 = 0.08, M100 = 0.10,
+            MLH = 0.60, MLW = 0.90
+        )
+
+        # Without acceleration
+        state1 = FireState(80, 80, 10.0)
+        ignite!(state1, 40, 40, 0.0)
+        simulate_uniform!(state1, 1, fuel_table, weather, 0.0, 0.0, 0.0, 5.0;
+            dt_initial = 0.2)
+        area1 = get_burned_area_acres(state1)
+
+        # With acceleration (2 min time constant)
+        state2 = FireState(80, 80, 10.0)
+        ignite!(state2, 40, 40, 0.0)
+        simulate_uniform!(state2, 1, fuel_table, weather, 0.0, 0.0, 0.0, 5.0;
+            dt_initial = 0.2, accel_time_constant = 2.0)
+        area2 = get_burned_area_acres(state2)
+
+        # Accelerated simulation should burn less area
+        @test area2 < area1
+        @test area2 > 0  # Should still burn something
+    end
+
+    @testset "Diurnal Adjustment" begin
+        # DiurnalConfig construction
+        dc = DiurnalConfig()
+        @test dc.forecast_start_hour == 12.0
+        @test dc.overnight_factor == 0.1
+        @test eltype(dc) == Float64
+
+        dc32 = DiurnalConfig{Float32}()
+        @test eltype(dc32) == Float32
+
+        # Daytime: factor should be 1.0
+        # Default: sunrise=6, sunset=20, center_frac=0.667, length=10
+        # center = 6 + 0.667*14 = 15.338, window = [10.338, 20.338]
+        # forecast_start_hour=12, t=0 → hour=12 → in burn period
+        @test diurnal_adjustment(dc, 0.0) == 1.0
+
+        # Still daytime at t=3hrs (hour=15)
+        @test diurnal_adjustment(dc, 180.0) == 1.0
+
+        # Nighttime: at t=14hrs (hour=2, next day)
+        @test diurnal_adjustment(dc, 840.0) == dc.overnight_factor
+
+        # Custom config: narrow burn period
+        dc_narrow = DiurnalConfig(
+            forecast_start_hour = 0.0,  # midnight start
+            sunrise_hour = 6.0,
+            sunset_hour = 18.0,
+            burn_period_center_frac = 0.5,
+            burn_period_length = 4.0,
+            overnight_factor = 0.2
+        )
+        # center = 6 + 0.5*12 = 12, window = [10, 14]
+        # t=0 → hour=0 → nighttime
+        @test diurnal_adjustment(dc_narrow, 0.0) == 0.2
+        # t=12hrs → hour=12 → daytime
+        @test diurnal_adjustment(dc_narrow, 720.0) == 1.0
+
+        # Integration test: nighttime should reduce burned area
+        fuel_table = create_standard_fuel_table()
+        weather = ConstantWeather(
+            wind_speed_mph = 10.0,
+            wind_direction = 270.0,
+            M1 = 0.06, M10 = 0.08, M100 = 0.10,
+            MLH = 0.60, MLW = 0.90
+        )
+
+        # Daytime simulation (start at noon)
+        state_day = FireState(80, 80, 10.0)
+        ignite!(state_day, 40, 40, 0.0)
+        dc_day = DiurnalConfig(forecast_start_hour = 12.0)
+        simulate_uniform!(state_day, 1, fuel_table, weather, 0.0, 0.0, 0.0, 5.0;
+            dt_initial = 0.2, diurnal = dc_day)
+        area_day = get_burned_area_acres(state_day)
+
+        # Nighttime simulation (start at midnight)
+        state_night = FireState(80, 80, 10.0)
+        ignite!(state_night, 40, 40, 0.0)
+        dc_night = DiurnalConfig(forecast_start_hour = 0.0)
+        simulate_uniform!(state_night, 1, fuel_table, weather, 0.0, 0.0, 0.0, 5.0;
+            dt_initial = 0.2, diurnal = dc_night)
+        area_night = get_burned_area_acres(state_night)
+
+        @test area_night < area_day
+        @test area_night > 0
+    end
 end

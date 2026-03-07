@@ -250,18 +250,26 @@ end
         spotting_distance::T,
         cellsize::T,
         ncols::Int, nrows::Int;
+        weather_interp::Union{Nothing, WeatherInterpolator{T}} = nothing,
+        time_now::T = zero(T),
         rng::AbstractRNG = Random.default_rng()
     ) -> Tuple{Int, Int, T}
 
 Transport a single ember from source location to landing location.
 
+When `weather_interp` is provided, the ember is advected step-by-step through
+the spatially varying wind field. Otherwise, uses source-cell wind only.
+
 # Arguments
 - `x0, y0`: Source location (in grid units, 1-based)
-- `ws20`: 20-ft wind speed (mph)
-- `wd20`: Wind direction (degrees, FROM convention)
+- `ws20`: 20-ft wind speed at source (mph)
+- `wd20`: Wind direction at source (degrees, FROM convention)
 - `spotting_distance`: Transport distance (m)
 - `cellsize`: Cell size (ft)
 - `ncols, nrows`: Grid dimensions
+- `weather_interp`: Optional weather interpolator for wind-field advection
+- `time_now`: Current simulation time (minutes), used with weather_interp
+- `rng`: Random number generator
 
 # Returns
 - `(ix, iy, dist)`: Landing grid indices and actual distance traveled
@@ -273,30 +281,62 @@ function transport_ember(
     spotting_distance::T,
     cellsize::T,
     ncols::Int, nrows::Int;
+    weather_interp::Union{Nothing, WeatherInterpolator{T}} = nothing,
+    time_now::T = zero(T),
     rng::AbstractRNG = Random.default_rng()
 ) where {T<:AbstractFloat}
-    # Convert wind direction to radians (TO direction)
-    wd_to_rad = (wd20 + T(180)) * pio180(T)
-    if wd_to_rad > T(2) * pi_val(T)
-        wd_to_rad -= T(2) * pi_val(T)
+    # Add small random perturbation to initial wind direction (±8°)
+    wd_perturb = (rand(rng, T) - T(0.5)) * T(16)
+
+    if weather_interp === nothing
+        # Simple direct placement using source-cell wind
+        wd_to_rad = (wd20 + T(180) + wd_perturb) * pio180(T)
+        if wd_to_rad > T(2) * pi_val(T)
+            wd_to_rad -= T(2) * pi_val(T)
+        end
+
+        dist_cells = spotting_distance / ft_to_m(T) / cellsize
+        dx = dist_cells * sin(wd_to_rad)
+        dy = dist_cells * cos(wd_to_rad)
+
+        ix = clamp(round(Int, x0 + dx), 1, ncols)
+        iy = clamp(round(Int, y0 + dy), 1, nrows)
+
+        return (ix, iy, spotting_distance)
     end
 
-    # Add small random perturbation to wind direction (±8°)
-    wd_to_rad += (rand(rng, T) - T(0.5)) * T(16) * pio180(T)
+    # Wind-field advection: step along the wind field
+    cell_m = cellsize * ft_to_m(T)  # cell size in meters
+    step_m = max(cell_m, T(10))     # step size in meters (~1 cell)
+    remaining = spotting_distance
+    cx, cy = x0, y0
 
-    # Convert spotting distance from meters to feet, then to grid cells
-    dist_cells = spotting_distance / ft_to_m(T) / cellsize
+    while remaining > zero(T)
+        ds = min(step_m, remaining)
 
-    # Calculate landing position
-    dx = dist_cells * sin(wd_to_rad)
-    dy = dist_cells * cos(wd_to_rad)
+        # Get wind at current position
+        cix = clamp(round(Int, cx), 1, ncols)
+        ciy = clamp(round(Int, cy), 1, nrows)
+        w = get_weather_at(weather_interp, cix, ciy, time_now)
 
-    ix = round(Int, x0 + dx)
-    iy = round(Int, y0 + dy)
+        wd_to_rad = (w.wd + T(180) + wd_perturb) * pio180(T)
+        if wd_to_rad > T(2) * pi_val(T)
+            wd_to_rad -= T(2) * pi_val(T)
+        end
 
-    # Clamp to grid bounds
-    ix = clamp(ix, 1, ncols)
-    iy = clamp(iy, 1, nrows)
+        ds_cells = ds / ft_to_m(T) / cellsize
+        cx += ds_cells * sin(wd_to_rad)
+        cy += ds_cells * cos(wd_to_rad)
+        remaining -= ds
+
+        # Early exit if out of bounds
+        if cx < T(0.5) || cx > T(ncols) + T(0.5) || cy < T(0.5) || cy > T(nrows) + T(0.5)
+            break
+        end
+    end
+
+    ix = clamp(round(Int, cx), 1, ncols)
+    iy = clamp(round(Int, cy), 1, nrows)
 
     return (ix, iy, spotting_distance)
 end
@@ -314,6 +354,7 @@ end
         ncols::Int, nrows::Int,
         time_now::T,
         burned::BitMatrix;
+        weather_interp = nothing,
         use_sardoy::Bool = false,
         rng::AbstractRNG = Random.default_rng()
     ) -> Vector{SpotFire{T}}
@@ -331,6 +372,7 @@ Generate potential spot fire locations from a burning cell.
 - `ncols, nrows`: Grid dimensions
 - `time_now`: Current simulation time (minutes)
 - `burned`: Matrix of burned cells
+- `weather_interp`: Optional WeatherInterpolator for wind-field ember advection
 - `use_sardoy`: Use Sardoy model for distribution parameters
 - `rng`: Random number generator
 
@@ -348,6 +390,7 @@ function generate_spot_fires(
     ncols::Int, nrows::Int,
     time_now::T,
     burned::BitMatrix;
+    weather_interp::Union{Nothing, WeatherInterpolator{T}} = nothing,
     use_sardoy::Bool = false,
     rng::AbstractRNG = Random.default_rng()
 ) where {T<:AbstractFloat}
@@ -387,6 +430,8 @@ function generate_spot_fires(
             spotting_dist,
             cellsize,
             ncols, nrows;
+            weather_interp=weather_interp,
+            time_now=time_now,
             rng=rng
         )
 

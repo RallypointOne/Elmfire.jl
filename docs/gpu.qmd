@@ -14,7 +14,16 @@ Elmfire.jl is designed with GPU acceleration in mind. This page describes the cu
 - `active_mask()` converts the narrow band's `Set` to a dense `BitMatrix` for GPU kernel masking.
 - `surface_spread_rate_flat()` computes Rothermel spread rates from `FuelModelArray` using array indexing instead of struct access.
 
-**Phase 1+ (planned):** GPU kernels, ensemble support, and optimization. See below.
+**Phase 1 (complete):** GPU kernels for velocity, CFL, RK2, and simulation driver.
+
+- `simulate_gpu!` and `simulate_gpu_uniform!` run complete fire simulations on GPU.
+- Spread rate kernel computes Rothermel + elliptical spread + velocity components per cell.
+- CFL reduction kernel for adaptive timestep control.
+- RK2 level set update kernel with narrow band masking.
+- Supports `accel_time_constant` for fire acceleration (computed on host, passed as scalar).
+- Tested with `KernelAbstractions.CPU()` backend in CI.
+
+**Phase 2+ (planned):** GPU ensemble support and optimization. See below.
 
 ## Computational Profile
 
@@ -68,26 +77,6 @@ The narrow band is managed on the CPU (it uses `Set` operations). Each timestep:
 Grid arrays (`phi`, `ux`, `uy`) stay resident on the GPU between timesteps to minimize transfers.
 
 ## Planned Phases
-
-### Phase 1: GPU Velocity Kernel
-
-The velocity calculation (Rothermel + elliptical spread + normal computation) dominates runtime. A single `@kernel` computes spread rate and velocity components for all active cells in parallel:
-
-```julia
-@kernel function velocity_kernel!(ux, uy, phi, active_mask, fuel_ids,
-                                   fuel_array, slope, aspect, weather_fields,
-                                   cellsize, padding, ncols, nrows)
-    px, py = @index(Global, NTuple)
-    active_mask[px, py] || return
-    # Rothermel spread rate from fuel_array
-    # Normal vector from phi stencil
-    # Elliptical spread + velocity components
-    ux[px, py] = ...
-    uy[px, py] = ...
-end
-```
-
-This phase also includes CFL reduction and RK2 stencil kernels.
 
 ### Phase 2: GPU Ensemble Support
 

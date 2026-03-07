@@ -152,19 +152,19 @@
         sim_xllcorner = 1000.0  # meters
         sim_yllcorner = 1000.0
 
-        icol_map, irow_map = create_grid_mapping(
+        xcol_map, yrow_map = create_grid_mapping(
             wg,
             sim_ncols, sim_nrows,
             sim_cellsize,
             sim_xllcorner, sim_yllcorner
         )
 
-        @test length(icol_map) == sim_ncols
-        @test length(irow_map) == sim_nrows
+        @test length(xcol_map) == sim_ncols
+        @test length(yrow_map) == sim_nrows
 
-        # All indices should be within weather grid bounds
-        @test all(1 .<= icol_map .<= 5)
-        @test all(1 .<= irow_map .<= 5)
+        # All fractional positions should be within weather grid bounds
+        @test all(1.0 .<= xcol_map .<= 5.0)
+        @test all(1.0 .<= yrow_map .<= 5.0)
     end
 
     @testset "WeatherInterpolator Construction" begin
@@ -180,8 +180,8 @@
 
         @test interp.sim_ncols == 50
         @test interp.sim_nrows == 50
-        @test length(interp.icol_map) == 50
-        @test length(interp.irow_map) == 50
+        @test length(interp.xcol_map) == 50
+        @test length(interp.yrow_map) == 50
         @test eltype(interp) == Float64
     end
 

@@ -173,8 +173,12 @@ simulate!(
     t_start::T,
     t_stop::T;
     dt_initial = 1.0,
-    target_cfl = 0.9,
+    target_cfl = 0.45,
     dt_max = 10.0,
+    spread_rate_adj = 1.0,
+    accel_time_constant = 0.0,
+    diurnal = nothing,
+    dampening = SpreadRateDampeningConfig{T}(),
     callback = nothing
 )
 ```
@@ -189,6 +193,9 @@ simulate!(
 | `aspect` | Aspect direction in degrees |
 | `t_start` | Start time (minutes) |
 | `t_stop` | Stop time (minutes) |
+| `accel_time_constant` | Fire acceleration time constant (minutes). 0 = no acceleration ramp. |
+| `diurnal` | `DiurnalConfig` for day/night spread rate modulation, or `nothing` |
+| `dampening` | `SpreadRateDampeningConfig` for spread rate dampening |
 
 ```{julia}
 fuel_table = create_standard_fuel_table(Float64)
@@ -257,12 +264,18 @@ simulate_full!(
     canopy = nothing,
     config = SimulationConfig{T}(),
     dt_initial = 1.0,
-    target_cfl = 0.9,
+    target_cfl = 0.45,
     dt_max = 10.0,
+    spread_rate_adj = 1.0,
+    accel_time_constant = 0.0,
+    diurnal = nothing,
+    dampening = SpreadRateDampeningConfig{T}(),
     callback = nothing,
     rng = Random.default_rng()
 ) -> SpotFireTracker
 ```
+
+When a `CanopyGrid` is provided, `simulate_full!` uses the sheltered wind adjustment factor (3-argument `wind_adjustment_factor`) to account for canopy cover and height, reducing mid-flame wind speed under forest canopy.
 
 ```{julia}
 using Random
@@ -421,18 +434,27 @@ println("Burned area: $(round(get_burned_area_acres(state), digits=2)) acres")
 
 Calculate wind adjustment factor (WAF) from 20-ft wind to mid-flame wind.
 
+**Unsheltered (no canopy):**
+
 ```julia
 wind_adjustment_factor(fuel_bed_depth::T) -> T
 ```
 
-Uses the unsheltered (no canopy) formula.
+**Sheltered (under canopy):**
+
+```julia
+wind_adjustment_factor(fuel_bed_depth::T, canopy_cover::T, canopy_height::T) -> T
+```
+
+Uses the Albini & Baughman (1979) sheltered formula when canopy cover and height are non-trivial. The 3-argument form is used automatically by `simulate_full!` when a `CanopyGrid` is provided.
 
 ```{julia}
 depths = [0.5, 1.0, 2.0, 3.0, 4.0]
 wafs = [wind_adjustment_factor(d) for d in depths]
+wafs_sheltered = [wind_adjustment_factor(d, 0.6, 20.0) for d in depths]
 
-for (d, w) in zip(depths, wafs)
-    println("Depth $d ft: WAF = $(round(w, digits=3))")
+for (d, w, ws) in zip(depths, wafs, wafs_sheltered)
+    println("Depth $d ft: WAF = $(round(w, digits=3)) (unsheltered), $(round(ws, digits=3)) (sheltered)")
 end
 ```
 
@@ -459,6 +481,89 @@ padded_to_grid(state::FireState, px::Int, py::Int) -> Tuple{Int, Int}
 ```
 
 Convert between grid coordinates (1:ncols, 1:nrows) and padded array coordinates.
+
+## Fire Acceleration
+
+### acceleration_factor
+
+Compute the fire acceleration factor `1 - exp(-t/τ)`, modeling the buildup from ignition to steady-state spread rate. When `τ ≤ 0.5` or `t/τ > 7`, returns `1.0` (full spread).
+
+```julia
+acceleration_factor(t::T, tau::T) -> T
+```
+
+Pass `accel_time_constant` to `simulate!` or `simulate_full!` to apply this automatically.
+
+```{julia}
+tau = 10.0  # 10-minute time constant
+times = 0.0:0.5:60.0
+factors = [acceleration_factor(t, tau) for t in times]
+
+plot(times, factors,
+    xlabel = "Time since ignition (min)",
+    ylabel = "Acceleration Factor",
+    title = "Fire Acceleration (τ = $tau min)",
+    linewidth = 2,
+    legend = false,
+    ylims = (0, 1.1)
+)
+```
+
+```{julia}
+# Effect on burned area
+state1 = FireState{Float64}(100, 100, 30.0)
+ignite!(state1, 50, 50, 0.0)
+simulate_uniform!(state1, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0)
+
+state2 = FireState{Float64}(100, 100, 30.0)
+ignite!(state2, 50, 50, 0.0)
+simulate_uniform!(state2, 1, fuel_table, weather, 0.0, 0.0, 0.0, 30.0;
+    accel_time_constant = 10.0)
+
+println("No acceleration: $(round(get_burned_area_acres(state1), digits=2)) acres")
+println("With τ=10 min:   $(round(get_burned_area_acres(state2), digits=2)) acres")
+```
+
+## Diurnal Adjustment
+
+### DiurnalConfig
+
+Configuration for day/night spread rate modulation. During the burn period (daytime), spread rate is unmodified. Outside the burn period, it is multiplied by `overnight_factor` (default 0.1).
+
+```julia
+struct DiurnalConfig{T<:AbstractFloat}
+    forecast_start_hour::T          # Hour of day when simulation starts (default: 12)
+    sunrise_hour::T                 # Hour of sunrise (default: 6)
+    sunset_hour::T                  # Hour of sunset (default: 20)
+    burn_period_center_frac::T      # Fraction of daylight for burn center (default: 0.667)
+    burn_period_length::T           # Length of burn period in hours (default: 10)
+    overnight_factor::T             # Spread rate multiplier at night (default: 0.1)
+end
+```
+
+### diurnal_adjustment
+
+Returns the spread rate multiplier at simulation time `t` (minutes).
+
+```julia
+diurnal_adjustment(config::DiurnalConfig{T}, t::T) -> T
+```
+
+```{julia}
+config = DiurnalConfig{Float64}()
+
+times = 0.0:5.0:1440.0  # 24 hours in minutes
+factors = [diurnal_adjustment(config, t) for t in times]
+
+plot(times ./ 60, factors,
+    xlabel = "Hours from simulation start",
+    ylabel = "Diurnal Factor",
+    title = "Diurnal Spread Rate Adjustment",
+    linewidth = 2,
+    legend = false,
+    ylims = (0, 1.2)
+)
+```
 
 ## Callbacks
 
