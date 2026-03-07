@@ -33,7 +33,7 @@ state_no_wind = FireState(100, 100, 10.0)
 # Ignite center of the grid
 ignite!(state_no_wind, 50, 50, 0.0)
 
-# Create fuel table (standard 40 fuel models)
+# Create fuel table (standard 13 fuel models)
 fuel_table = create_standard_fuel_table()
 
 # Set up weather conditions - no wind, moderate moisture
