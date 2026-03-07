@@ -144,12 +144,21 @@ Julia's `transport_ember` now supports wind-field advection: when a `WeatherInte
 | Spatial | Bilinear interpolation | Bilinear interpolation |
 | Wind direction | Decompose to (u,v), interpolate, recombine | Decompose to (sin,cos), interpolate, recombine — identical approach |
 | Update intervals | Independent per variable | All variables updated together |
-| Diurnal adjustment | Multiplicative factor on spread rate | Implemented (`DiurnalConfig`) |
-| Acceleration factor | `1 - exp(-t/τ)` buildup to steady-state | Implemented (`acceleration_factor`) |
 
 Julia's `get_weather_at` now uses `bilinear_interp` for all scalar weather fields and `bilinear_interp_wind_direction` (sin/cos decomposition) for wind direction, producing smooth spatial gradients matching the Fortran approach.
 
-## 8. Features in Fortran Not in Julia
+## 8. Fire Acceleration & Diurnal Adjustment
+
+**Verdict: Matching** (resolved)
+
+| Aspect | Fortran | Julia |
+|--------|---------|-------|
+| Acceleration factor | `1 - exp(-t/τ)` buildup to steady-state | Identical (`acceleration_factor`) |
+| Diurnal adjustment | Multiplicative factor on spread rate by time of day | Implemented (`DiurnalConfig`, `diurnal_adjustment`) |
+
+Both features are applied as multiplicative factors on the spread rate after Rothermel + dampening calculation.
+
+## 9. Features in Fortran Not in Julia
 
 | Feature | Description |
 |---------|-------------|
@@ -157,7 +166,7 @@ Julia's `get_weather_at` now uses `bilinear_interp` for all scalar weather field
 | DEM-aware ember landing | Terrain intersection for spotting |
 | Independent update intervals | Per-variable weather refresh rates |
 
-## 9. Features in Julia Not in Fortran
+## 10. Features in Julia Not in Fortran
 
 | Feature | Description |
 |---------|-------------|
@@ -168,7 +177,7 @@ Julia's `get_weather_at` now uses `bilinear_interp` for all scalar weather field
 | WUI building ignition models | Radiative heat flux, Hamada urban spread |
 | Suppression/containment models | Resource allocation, containment lines |
 
-## 10. Summary of Remaining Differences
+## 11. Summary of Remaining Differences
 
 1. **Band thickness** — Julia uses 5 cells vs. Fortran's 2. More robust but less efficient. This is a tuning parameter, not a physics difference.
 
