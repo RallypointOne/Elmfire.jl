@@ -144,8 +144,8 @@ Julia's `transport_ember` now supports wind-field advection: when a `WeatherInte
 | Spatial | Bilinear interpolation | Bilinear interpolation |
 | Wind direction | Decompose to (u,v), interpolate, recombine | Decompose to (sin,cos), interpolate, recombine — identical approach |
 | Update intervals | Independent per variable | All variables updated together |
-| Diurnal adjustment | Multiplicative factor on spread rate | Not implemented |
-| Acceleration factor | Time-varying buildup to steady-state | Not implemented |
+| Diurnal adjustment | Multiplicative factor on spread rate | Implemented (`DiurnalConfig`) |
+| Acceleration factor | `1 - exp(-t/τ)` buildup to steady-state | Implemented (`acceleration_factor`) |
 
 Julia's `get_weather_at` now uses `bilinear_interp` for all scalar weather fields and `bilinear_interp_wind_direction` (sin/cos decomposition) for wind direction, producing smooth spatial gradients matching the Fortran approach.
 
@@ -153,7 +153,6 @@ Julia's `get_weather_at` now uses `bilinear_interp` for all scalar weather field
 
 | Feature | Description |
 |---------|-------------|
-| Diurnal adjustment factor | Time-of-day multiplier on fire spread |
 | Himoto structure fire spotting | Urban firebrand model |
 | DEM-aware ember landing | Terrain intersection for spotting |
 | Independent update intervals | Per-variable weather refresh rates |
@@ -175,6 +174,4 @@ Julia's `get_weather_at` now uses `bilinear_interp` for all scalar weather field
 
 2. **Ember landing** — Julia does not check terrain intersection for firebrand landing. Minor for flat terrain, potentially significant in mountainous areas.
 
-3. **Diurnal adjustment factor** — Fortran applies time-of-day spread rate multipliers; Julia does not. This is an empirical correction rather than core physics.
-
-4. **Himoto urban fire model** — Fortran supports structure fire spotting for urban fuel models; Julia does not implement this.
+3. **Himoto urban fire model** — Fortran supports structure fire spotting for urban fuel models; Julia does not implement this.

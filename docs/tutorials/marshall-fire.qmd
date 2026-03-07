@@ -453,6 +453,121 @@ lines!(ga2, perim_x_crs, perim_y_crs; color = :cyan, linestyle = :dash, linewidt
 fig
 ```
 
+## Quantitative Validation
+
+Comparing the simulated burned area against the NIFC perimeter cell-by-cell. We rasterize the observed perimeter polygon using a ray-casting point-in-polygon test, then compute standard binary classification metrics.
+
+The primary metric is the **Sørensen coefficient** (also called the Dice score), defined as:
+
+$$
+\text{SC} = \frac{2 |A \cap B|}{|A| + |B|}
+$$
+
+where $A$ is the set of simulated burned cells and $B$ is the set of observed burned cells. SC ranges from 0 (no overlap) to 1 (perfect agreement). It is the standard metric for fire spread model validation (Duff et al. 2018; Filippi et al. 2014) because it penalizes both **commission errors** (cells the model burned but the fire did not) and **omission errors** (cells the fire burned but the model missed), while being insensitive to the large number of true-negative (unburned) cells that dominate the domain.
+
+We also report the **Jaccard index** ($|A \cap B| / |A \cup B|$), which is a monotonic transformation of SC and is sometimes preferred in spatial analysis.
+
+```{julia}
+#| code-summary: "Rasterize NIFC perimeter and compute overlap metrics"
+
+# Ray-casting point-in-polygon test
+function point_in_polygon(px, py, poly_x, poly_y)
+    n = length(poly_x)
+    inside = false
+    j = n
+    for i in 1:n
+        yi, yj = poly_y[i], poly_y[j]
+        xi, xj = poly_x[i], poly_x[j]
+        if ((yi > py) != (yj > py)) &&
+           (px < (xj - xi) * (py - yi) / (yj - yi) + xi)
+            inside = !inside
+        end
+        j = i
+    end
+    return inside
+end
+
+# Rasterize: for each grid cell, check if its center falls inside the NIFC polygon
+observed_burned = falses(ncols, nrows)
+for ix in 1:ncols, iy in 1:nrows
+    if point_in_polygon(xs[ix], ys[iy], perim_x_crs, perim_y_crs)
+        observed_burned[ix, iy] = true
+    end
+end
+
+sim_burned = state.burned
+
+# Binary classification
+tp = count(sim_burned .& observed_burned)       # true positive
+fp = count(sim_burned .& .!observed_burned)      # false positive (commission)
+fn = count(.!sim_burned .& observed_burned)      # false negative (omission)
+tn = count(.!sim_burned .& .!observed_burned)    # true negative
+
+sorensen = 2tp / (2tp + fp + fn)
+jaccard = tp / (tp + fp + fn)
+commission_rate = fp / (tp + fp)   # fraction of simulated area that is false
+omission_rate = fn / (tp + fn)     # fraction of observed area that was missed
+
+obs_acres = count(observed_burned) * (cellsize_m^2 / 4046.86)
+sim_acres = get_burned_area_acres(state)
+
+println("=" ^ 50)
+println("Validation Metrics")
+println("=" ^ 50)
+println("  Observed burned:    $(round(obs_acres, digits=0)) acres ($(count(observed_burned)) cells)")
+println("  Simulated burned:   $(round(sim_acres, digits=0)) acres ($(count(sim_burned)) cells)")
+println("  Area ratio (S/O):   $(round(sim_acres / obs_acres, digits=2))")
+println()
+println("  True positive:      $tp cells")
+println("  False positive:     $fp cells (commission)")
+println("  False negative:     $fn cells (omission)")
+println()
+println("  Sørensen coeff:     $(round(sorensen, digits=3))")
+println("  Jaccard index:      $(round(jaccard, digits=3))")
+println("  Commission rate:    $(round(100 * commission_rate, digits=1))%")
+println("  Omission rate:      $(round(100 * omission_rate, digits=1))%")
+```
+
+### Spatial Agreement Map
+
+Green = true positive (both agree the cell burned), red = commission error (simulated but not observed), blue = omission error (observed but not simulated).
+
+```{julia}
+# Encode agreement: 0=TN, 1=TP (green), 2=FP/commission (red), 3=FN/omission (blue)
+agreement = fill(NaN, ncols, nrows)
+for ix in 1:ncols, iy in 1:nrows
+    s, o = sim_burned[ix, iy], observed_burned[ix, iy]
+    if s && o
+        agreement[ix, iy] = 1.0  # TP
+    elseif s && !o
+        agreement[ix, iy] = 2.0  # FP (commission)
+    elseif !s && o
+        agreement[ix, iy] = 3.0  # FN (omission)
+    end
+end
+
+dest_crs = "+proj=longlat +datum=WGS84"
+fig = Figure(size = (700, 500))
+ga = GeoAxis(fig[1, 1]; source = proj4_str, dest = dest_crs,
+    title = "Spatial Agreement (Sørensen = $(round(sorensen, digits=3)))")
+
+heatmap!(ga, xs, ys, agreement;
+    colormap = [:green, :red, :royalblue],
+    colorrange = (1, 3),
+    nan_color = :transparent)
+
+lines!(ga, perim_x_crs, perim_y_crs; color = :black, linestyle = :dash, linewidth = 1)
+
+# Legend
+Legend(fig[1, 2], [
+    MarkerElement(marker = :rect, color = :green, markersize = 15),
+    MarkerElement(marker = :rect, color = :red, markersize = 15),
+    MarkerElement(marker = :rect, color = :royalblue, markersize = 15)
+], ["True Positive", "Commission", "Omission"])
+
+fig
+```
+
 ## Data Sources
 
 - **LANDFIRE FBFM13 & Elevation**: [LANDFIRE Product Service](https://lfps.usgs.gov) v2.5.0, downloaded via [Landfire.jl](https://github.com/RallypointOne/Landfire.jl)
