@@ -51,6 +51,8 @@ jobs:
       - uses: quarto-dev/quarto-actions/render@v2
         with:
           path: docs
+        env:
+          LANDFIRE_EMAIL: ${{ secrets.LANDFIRE_EMAIL }}
 
       # Deploy to gh-pages branch
       - name: Deploy to gh-pages
