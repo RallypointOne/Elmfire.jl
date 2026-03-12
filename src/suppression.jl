@@ -597,11 +597,7 @@ function simulate_with_suppression!(
             es = elliptical_spread(dampened_velocity, effective_ws_mph)
             wind_dir_rad = w.wd * pio180(T)
 
-            ux, uy = velocity_components(
-                es.head, es.back,
-                wind_dir_rad,
-                normal_x, normal_y
-            )
+            ux, uy = velocity_components(es, wind_dir_rad, normal_x, normal_y)
 
             # Apply containment reduction
             eff = suppression.containment_effectiveness[ix, iy]
