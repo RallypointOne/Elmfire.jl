@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-03-02 16:43:56</td>
+            <td class="headerValue">2026-03-12 00:37:17</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -303,7 +303,7 @@
 <span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">          13 :         for ix in 1:ncols</span></span>
 <span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">         290 :             for iy in 1:nrows</span></span>
 <span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">        6700 :                 if member.burned[ix, iy]</span></span>
-<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">        2128 :                     burn_count[ix, iy] += 1</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">        1665 :                     burn_count[ix, iy] += 1</span></span>
 <span id="L245"><span class="lineNum">     245</span>              :                 end</span>
 <span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">       13110 :             end</span></span>
 <span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">         567 :         end</span></span>
@@ -340,8 +340,8 @@
 <span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">         140 :             for iy in 1:nrows</span></span>
 <span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">        3200 :                 toa = member.time_of_arrival[ix, iy]</span></span>
 <span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">        3200 :                 if toa &gt;= zero(T)</span></span>
-<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">        2303 :                     sum_toa[ix, iy] += toa</span></span>
-<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">        2303 :                     count[ix, iy] += 1</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">        1840 :                     sum_toa[ix, iy] += toa</span></span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">        1840 :                     count[ix, iy] += 1</span></span>
 <span id="L283"><span class="lineNum">     283</span>              :                 end</span>
 <span id="L284"><span class="lineNum">     284</span> <span class="tlaGNC">        6260 :             end</span></span>
 <span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">         272 :         end</span></span>
@@ -350,7 +350,7 @@
 <span id="L288"><span class="lineNum">     288</span> <span class="tlaGNC">           2 :     for ix in 1:ncols</span></span>
 <span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">          40 :         for iy in 1:nrows</span></span>
 <span id="L290"><span class="lineNum">     290</span> <span class="tlaGNC">        1000 :             if count[ix, iy] &gt; 0</span></span>
-<span id="L291"><span class="lineNum">     291</span> <span class="tlaGNC">         760 :                 mean_toa[ix, iy] = sum_toa[ix, iy] / T(count[ix, iy])</span></span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaGNC">         636 :                 mean_toa[ix, iy] = sum_toa[ix, iy] / T(count[ix, iy])</span></span>
 <span id="L292"><span class="lineNum">     292</span>              :             end</span>
 <span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">        1960 :         end</span></span>
 <span id="L294"><span class="lineNum">     294</span> <span class="tlaGNC">          78 :     end</span></span>
@@ -362,8 +362,8 @@
 <span id="L300"><span class="lineNum">     300</span> <span class="tlaGNC">         140 :             for iy in 1:nrows</span></span>
 <span id="L301"><span class="lineNum">     301</span> <span class="tlaGNC">        3200 :                 toa = member.time_of_arrival[ix, iy]</span></span>
 <span id="L302"><span class="lineNum">     302</span> <span class="tlaGNC">        3200 :                 if toa &gt;= zero(T) &amp;&amp; mean_toa[ix, iy] &gt;= zero(T)</span></span>
-<span id="L303"><span class="lineNum">     303</span> <span class="tlaGNC">        2303 :                     diff = toa - mean_toa[ix, iy]</span></span>
-<span id="L304"><span class="lineNum">     304</span> <span class="tlaGNC">        2303 :                     sum_sq[ix, iy] += diff^2</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaGNC">        1840 :                     diff = toa - mean_toa[ix, iy]</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaGNC">        1840 :                     sum_sq[ix, iy] += diff^2</span></span>
 <span id="L305"><span class="lineNum">     305</span>              :                 end</span>
 <span id="L306"><span class="lineNum">     306</span> <span class="tlaGNC">        6260 :             end</span></span>
 <span id="L307"><span class="lineNum">     307</span> <span class="tlaGNC">         272 :         end</span></span>
@@ -372,7 +372,7 @@
 <span id="L310"><span class="lineNum">     310</span> <span class="tlaGNC">           2 :     for ix in 1:ncols</span></span>
 <span id="L311"><span class="lineNum">     311</span> <span class="tlaGNC">          40 :         for iy in 1:nrows</span></span>
 <span id="L312"><span class="lineNum">     312</span> <span class="tlaGNC">        1000 :             if count[ix, iy] &gt; 1</span></span>
-<span id="L313"><span class="lineNum">     313</span> <span class="tlaGNC">         719 :                 std_toa[ix, iy] = sqrt(sum_sq[ix, iy] / T(count[ix, iy] - 1))</span></span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaGNC">         544 :                 std_toa[ix, iy] = sqrt(sum_sq[ix, iy] / T(count[ix, iy] - 1))</span></span>
 <span id="L314"><span class="lineNum">     314</span>              :             end</span>
 <span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC">        1960 :         end</span></span>
 <span id="L316"><span class="lineNum">     316</span> <span class="tlaGNC">          78 :     end</span></span>
@@ -549,7 +549,7 @@
 <span id="L487"><span class="lineNum">     487</span> <span class="tlaGNC">           3 :         for ix in 1:ncols</span></span>
 <span id="L488"><span class="lineNum">     488</span> <span class="tlaGNC">          90 :             for iy in 1:nrows</span></span>
 <span id="L489"><span class="lineNum">     489</span> <span class="tlaGNC">        2700 :                 if state.burned[ix, iy]</span></span>
-<span id="L490"><span class="lineNum">     490</span> <span class="tlaGNC">        1803 :                     burn_count[ix, iy] += 1</span></span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaGNC">        1340 :                     burn_count[ix, iy] += 1</span></span>
 <span id="L491"><span class="lineNum">     491</span>              :                 end</span>
 <span id="L492"><span class="lineNum">     492</span> <span class="tlaGNC">        5310 :             end</span></span>
 <span id="L493"><span class="lineNum">     493</span> <span class="tlaGNC">         177 :         end</span></span>

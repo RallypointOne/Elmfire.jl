@@ -524,11 +524,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong>Level set PDE</strong> with upwind differencing and narrow-band tracking</li>
 <li><strong>Superbee flux limiter</strong> for gradient calculation</li>
 <li><strong>2nd-order Runge-Kutta</strong> time integration</li>
-<li><strong>CFL-adaptive timestep</strong> for numerical stability</li>
+<li><strong>CFL-adaptive timestep</strong> (target CFL = 0.45) for numerical stability</li>
 <li><strong>Van Wagner (1977)</strong> crown fire initiation</li>
 <li><strong>Cruz et al.&nbsp;(2005)</strong> active crown fire spread rate</li>
 <li><strong>53 standard FBFM</strong> fuel models</li>
-<li><strong>Elliptical fire shape</strong> (Anderson, 1983)</li>
+<li><strong>Elliptical fire shape</strong> (Richards 1990 velocity decomposition, Anderson 1983 shape)</li>
+<li><strong>Sheltered wind adjustment factor</strong> (Albini &amp; Baughman 1979) under forest canopy</li>
+<li><strong>Bilinear spatial interpolation</strong> for weather grids</li>
+<li><strong>Fire acceleration ramp</strong> (<code>1 - exp(-t/τ)</code>) from ignition to steady state</li>
+<li><strong>Diurnal spread rate adjustment</strong> (day/night modulation)</li>
+<li><strong>Wind-field-aware ember transport</strong> (embers advected through spatially varying wind)</li>
 </ul>
 <p>For equivalent inputs, the two implementations should produce consistent fire behavior outputs.</p>
 
@@ -955,7 +960,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       &nbsp;
     </div>   
     <div class="nav-footer-center">
-<p>Built on 2026-03-02</p>
+<p>Built on 2026-03-12</p>
 </div>
     <div class="nav-footer-right">
       &nbsp;

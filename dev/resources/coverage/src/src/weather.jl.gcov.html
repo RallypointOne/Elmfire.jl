@@ -32,12 +32,12 @@
             <td></td>
             <td class="headerItem">Lines:</td>
             <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
-            <td class="headerCovTableEntry">87</td>
-            <td class="headerCovTableEntry">87</td>
+            <td class="headerCovTableEntry">123</td>
+            <td class="headerCovTableEntry">123</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-03-02 16:43:56</td>
+            <td class="headerValue">2026-03-12 00:37:17</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -81,7 +81,7 @@
 <span id="L19"><span class="lineNum">      19</span>              : Constant (spatially and temporally uniform) weather conditions.</span>
 <span id="L20"><span class="lineNum">      20</span>              : &quot;&quot;&quot;</span>
 <span id="L21"><span class="lineNum">      21</span>              : struct ConstantWeather{T&lt;:AbstractFloat}</span>
-<span id="L22"><span class="lineNum">      22</span> <span class="tlaGNC tlaBgGNC">          34 :     wind_speed_20ft::T      # 20-ft wind speed (mph)</span></span>
+<span id="L22"><span class="lineNum">      22</span> <span class="tlaGNC tlaBgGNC">          36 :     wind_speed_20ft::T      # 20-ft wind speed (mph)</span></span>
 <span id="L23"><span class="lineNum">      23</span>              :     wind_direction::T       # Wind direction (degrees, meteorological: FROM)</span>
 <span id="L24"><span class="lineNum">      24</span>              :     M1::T                   # 1-hr dead fuel moisture (fraction)</span>
 <span id="L25"><span class="lineNum">      25</span>              :     M10::T                  # 10-hr dead fuel moisture (fraction)</span>
@@ -105,7 +105,7 @@
 <span id="L43"><span class="lineNum">      43</span>              : end</span>
 <span id="L44"><span class="lineNum">      44</span>              : </span>
 <span id="L45"><span class="lineNum">      45</span>              : # Default to Float64 for backwards compatibility</span>
-<span id="L46"><span class="lineNum">      46</span> <span class="tlaGNC">          17 : function ConstantWeather(;</span></span>
+<span id="L46"><span class="lineNum">      46</span> <span class="tlaGNC">          19 : function ConstantWeather(;</span></span>
 <span id="L47"><span class="lineNum">      47</span>              :     wind_speed_mph::Float64 = 10.0,</span>
 <span id="L48"><span class="lineNum">      48</span>              :     wind_direction::Float64 = 0.0,</span>
 <span id="L49"><span class="lineNum">      49</span>              :     M1::Float64 = 0.06,</span>
@@ -114,7 +114,7 @@
 <span id="L52"><span class="lineNum">      52</span>              :     MLH::Float64 = 0.60,</span>
 <span id="L53"><span class="lineNum">      53</span>              :     MLW::Float64 = 0.90</span>
 <span id="L54"><span class="lineNum">      54</span>              : )</span>
-<span id="L55"><span class="lineNum">      55</span> <span class="tlaGNC">          17 :     ConstantWeather{Float64}(wind_speed_mph, wind_direction, M1, M10, M100, MLH, MLW)</span></span>
+<span id="L55"><span class="lineNum">      55</span> <span class="tlaGNC">          19 :     ConstantWeather{Float64}(wind_speed_mph, wind_direction, M1, M10, M100, MLH, MLW)</span></span>
 <span id="L56"><span class="lineNum">      56</span>              : end</span>
 <span id="L57"><span class="lineNum">      57</span>              : </span>
 <span id="L58"><span class="lineNum">      58</span>              : </span>
@@ -262,34 +262,34 @@
 <span id="L200"><span class="lineNum">     200</span>              : value = (1-f) * grids[i_lo] + f * grids[i_hi]</span>
 <span id="L201"><span class="lineNum">     201</span>              : &quot;&quot;&quot;</span>
 <span id="L202"><span class="lineNum">     202</span> <span class="tlaGNC">           5 : function find_time_indices(wts::WeatherTimeSeries{T}, t::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L203"><span class="lineNum">     203</span> <span class="tlaGNC">        5347 :     n = length(wts.times)</span></span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaGNC">        5359 :     n = length(wts.times)</span></span>
 <span id="L204"><span class="lineNum">     204</span>              : </span>
-<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">        5347 :     if n == 1</span></span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">        5359 :     if n == 1</span></span>
 <span id="L206"><span class="lineNum">     206</span> <span class="tlaGNC">           1 :         return (1, 1, zero(T))</span></span>
 <span id="L207"><span class="lineNum">     207</span>              :     end</span>
 <span id="L208"><span class="lineNum">     208</span>              : </span>
 <span id="L209"><span class="lineNum">     209</span>              :     # Find bracketing indices</span>
-<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">        5346 :     i_lo = 1</span></span>
-<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">        5346 :     for i in 1:n-1</span></span>
-<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">        5351 :         if wts.times[i] &lt;= t &lt; wts.times[i+1]</span></span>
-<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">        5343 :             i_lo = i</span></span>
-<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">        5343 :             break</span></span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">        5358 :     i_lo = 1</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">        5358 :     for i in 1:n-1</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">        5363 :         if wts.times[i] &lt;= t &lt; wts.times[i+1]</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">        5355 :             i_lo = i</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">        5355 :             break</span></span>
 <span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">           8 :         elseif i == n-1 &amp;&amp; t &gt;= wts.times[n]</span></span>
 <span id="L216"><span class="lineNum">     216</span> <span class="tlaGNC">           3 :             i_lo = n</span></span>
 <span id="L217"><span class="lineNum">     217</span>              :         end</span>
 <span id="L218"><span class="lineNum">     218</span> <span class="tlaGNC">           8 :     end</span></span>
 <span id="L219"><span class="lineNum">     219</span>              : </span>
-<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">        5346 :     i_hi = min(i_lo + 1, n)</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">        5358 :     i_hi = min(i_lo + 1, n)</span></span>
 <span id="L221"><span class="lineNum">     221</span>              : </span>
 <span id="L222"><span class="lineNum">     222</span>              :     # Interpolation weight</span>
-<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">        5346 :     if i_lo == i_hi</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">        5358 :     if i_lo == i_hi</span></span>
 <span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC">           3 :         f = zero(T)</span></span>
 <span id="L225"><span class="lineNum">     225</span>              :     else</span>
-<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">        5343 :         f = (t - wts.times[i_lo]) / (wts.times[i_hi] - wts.times[i_lo])</span></span>
-<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">        5343 :         f = clamp(f, zero(T), one(T))</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">        5355 :         f = (t - wts.times[i_lo]) / (wts.times[i_hi] - wts.times[i_lo])</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">        5355 :         f = clamp(f, zero(T), one(T))</span></span>
 <span id="L228"><span class="lineNum">     228</span>              :     end</span>
 <span id="L229"><span class="lineNum">     229</span>              : </span>
-<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">        5346 :     return (i_lo, i_hi, f)</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">        5358 :     return (i_lo, i_hi, f)</span></span>
 <span id="L231"><span class="lineNum">     231</span>              : end</span>
 <span id="L232"><span class="lineNum">     232</span>              : </span>
 <span id="L233"><span class="lineNum">     233</span>              : </span>
@@ -298,26 +298,26 @@
 <span id="L236"><span class="lineNum">     236</span>              : </span>
 <span id="L237"><span class="lineNum">     237</span>              : Interpolate wind direction, handling the 0°/360° wrap-around.</span>
 <span id="L238"><span class="lineNum">     238</span>              : &quot;&quot;&quot;</span>
-<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">        5348 : function interpolate_wind_direction(wd1::T, wd2::T, f::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">        5360 : function interpolate_wind_direction(wd1::T, wd2::T, f::T) where {T&lt;:AbstractFloat}</span></span>
 <span id="L240"><span class="lineNum">     240</span>              :     # Convert to radians</span>
-<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">        5348 :     r1 = wd1 * pio180(T)</span></span>
-<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">        5348 :     r2 = wd2 * pio180(T)</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">        5360 :     r1 = wd1 * pio180(T)</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">        5360 :     r2 = wd2 * pio180(T)</span></span>
 <span id="L243"><span class="lineNum">     243</span>              : </span>
 <span id="L244"><span class="lineNum">     244</span>              :     # Compute unit vectors</span>
-<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">        5348 :     x1, y1 = sin(r1), cos(r1)</span></span>
-<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">        5348 :     x2, y2 = sin(r2), cos(r2)</span></span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">        5360 :     x1, y1 = sin(r1), cos(r1)</span></span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">        5360 :     x2, y2 = sin(r2), cos(r2)</span></span>
 <span id="L247"><span class="lineNum">     247</span>              : </span>
 <span id="L248"><span class="lineNum">     248</span>              :     # Interpolate unit vectors</span>
-<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">        5348 :     x = (one(T) - f) * x1 + f * x2</span></span>
-<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">        5348 :     y = (one(T) - f) * y1 + f * y2</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">        5360 :     x = (one(T) - f) * x1 + f * x2</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">        5360 :     y = (one(T) - f) * y1 + f * y2</span></span>
 <span id="L251"><span class="lineNum">     251</span>              : </span>
 <span id="L252"><span class="lineNum">     252</span>              :     # Convert back to degrees</span>
-<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">        5348 :     wd = atan(x, y) / pio180(T)</span></span>
-<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">        5348 :     if wd &lt; zero(T)</span></span>
-<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">        5341 :         wd += T(360)</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">        5360 :     wd = atan(x, y) / pio180(T)</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">        5360 :     if wd &lt; zero(T)</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">        5353 :         wd += T(360)</span></span>
 <span id="L256"><span class="lineNum">     256</span>              :     end</span>
 <span id="L257"><span class="lineNum">     257</span>              : </span>
-<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">        5348 :     return wd</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">        5360 :     return wd</span></span>
 <span id="L259"><span class="lineNum">     259</span>              : end</span>
 <span id="L260"><span class="lineNum">     260</span>              : </span>
 <span id="L261"><span class="lineNum">     261</span>              : </span>
@@ -332,12 +332,12 @@
 <span id="L270"><span class="lineNum">     270</span>              :         sim_cellsize::T,</span>
 <span id="L271"><span class="lineNum">     271</span>              :         sim_xllcorner::T,</span>
 <span id="L272"><span class="lineNum">     272</span>              :         sim_yllcorner::T</span>
-<span id="L273"><span class="lineNum">     273</span>              :     ) -&gt; Tuple{Vector{Int}, Vector{Int}}</span>
+<span id="L273"><span class="lineNum">     273</span>              :     ) -&gt; Tuple{Vector{T}, Vector{T}}</span>
 <span id="L274"><span class="lineNum">     274</span>              : </span>
-<span id="L275"><span class="lineNum">     275</span>              : Create mapping from simulation grid to weather grid indices.</span>
+<span id="L275"><span class="lineNum">     275</span>              : Create mapping from simulation grid to weather grid fractional coordinates.</span>
 <span id="L276"><span class="lineNum">     276</span>              : </span>
-<span id="L277"><span class="lineNum">     277</span>              : Returns (icol_weather, irow_weather) vectors such that</span>
-<span id="L278"><span class="lineNum">     278</span>              : simulation cell (ix, iy) maps to weather cell (icol_weather[ix], irow_weather[iy]).</span>
+<span id="L277"><span class="lineNum">     277</span>              : Returns (xcol_weather, yrow_weather) vectors of fractional weather grid positions</span>
+<span id="L278"><span class="lineNum">     278</span>              : for bilinear interpolation. Values are clamped to [1, ncols] and [1, nrows].</span>
 <span id="L279"><span class="lineNum">     279</span>              : &quot;&quot;&quot;</span>
 <span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">           1 : function create_grid_mapping(</span></span>
 <span id="L281"><span class="lineNum">     281</span>              :     weather_grid::WeatherGrid{T},</span>
@@ -352,136 +352,207 @@
 <span id="L290"><span class="lineNum">     290</span>              :     # Y coordinates of simulation grid cell centers</span>
 <span id="L291"><span class="lineNum">     291</span> <span class="tlaGNC">          18 :     y_sim = [sim_yllcorner + (T(iy) - T(0.5)) * sim_cellsize * ft_to_m(T) for iy in 1:sim_nrows]</span></span>
 <span id="L292"><span class="lineNum">     292</span>              : </span>
-<span id="L293"><span class="lineNum">     293</span>              :     # Map to weather grid indices</span>
-<span id="L294"><span class="lineNum">     294</span> <span class="tlaGNC">          18 :     icol_weather = [</span></span>
-<span id="L295"><span class="lineNum">     295</span>              :         clamp(ceil(Int, (x - weather_grid.xllcorner) / weather_grid.cellsize), 1, weather_grid.ncols)</span>
+<span id="L293"><span class="lineNum">     293</span>              :     # Map to fractional weather grid coordinates (cell-centered: 1.0 = center of first cell)</span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaGNC">          18 :     xcol_weather = [</span></span>
+<span id="L295"><span class="lineNum">     295</span>              :         clamp((x - weather_grid.xllcorner) / weather_grid.cellsize + T(0.5), one(T), T(weather_grid.ncols))</span>
 <span id="L296"><span class="lineNum">     296</span>              :         for x in x_sim</span>
 <span id="L297"><span class="lineNum">     297</span>              :     ]</span>
 <span id="L298"><span class="lineNum">     298</span>              : </span>
-<span id="L299"><span class="lineNum">     299</span> <span class="tlaGNC">          18 :     irow_weather = [</span></span>
-<span id="L300"><span class="lineNum">     300</span>              :         clamp(ceil(Int, (y - weather_grid.yllcorner) / weather_grid.cellsize), 1, weather_grid.nrows)</span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaGNC">          18 :     yrow_weather = [</span></span>
+<span id="L300"><span class="lineNum">     300</span>              :         clamp((y - weather_grid.yllcorner) / weather_grid.cellsize + T(0.5), one(T), T(weather_grid.nrows))</span>
 <span id="L301"><span class="lineNum">     301</span>              :         for y in y_sim</span>
 <span id="L302"><span class="lineNum">     302</span>              :     ]</span>
 <span id="L303"><span class="lineNum">     303</span>              : </span>
-<span id="L304"><span class="lineNum">     304</span> <span class="tlaGNC">          18 :     return (icol_weather, irow_weather)</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaGNC">          18 :     return (xcol_weather, yrow_weather)</span></span>
 <span id="L305"><span class="lineNum">     305</span>              : end</span>
 <span id="L306"><span class="lineNum">     306</span>              : </span>
 <span id="L307"><span class="lineNum">     307</span>              : </span>
-<span id="L308"><span class="lineNum">     308</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L309"><span class="lineNum">     309</span>              : #                     Weather Interpolator</span>
-<span id="L310"><span class="lineNum">     310</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L311"><span class="lineNum">     311</span>              : </span>
-<span id="L312"><span class="lineNum">     312</span>              : &quot;&quot;&quot;</span>
-<span id="L313"><span class="lineNum">     313</span>              :     WeatherInterpolator{T&lt;:AbstractFloat}</span>
-<span id="L314"><span class="lineNum">     314</span>              : </span>
-<span id="L315"><span class="lineNum">     315</span>              : Handles interpolation of weather data to simulation grid and time.</span>
-<span id="L316"><span class="lineNum">     316</span>              : &quot;&quot;&quot;</span>
-<span id="L317"><span class="lineNum">     317</span>              : struct WeatherInterpolator{T&lt;:AbstractFloat}</span>
-<span id="L318"><span class="lineNum">     318</span> <span class="tlaGNC">          17 :     weather_series::WeatherTimeSeries{T}</span></span>
-<span id="L319"><span class="lineNum">     319</span>              :     icol_map::Vector{Int}    # Mapping from sim column to weather column</span>
-<span id="L320"><span class="lineNum">     320</span>              :     irow_map::Vector{Int}    # Mapping from sim row to weather row</span>
-<span id="L321"><span class="lineNum">     321</span>              :     sim_ncols::Int</span>
-<span id="L322"><span class="lineNum">     322</span>              :     sim_nrows::Int</span>
-<span id="L323"><span class="lineNum">     323</span>              : end</span>
-<span id="L324"><span class="lineNum">     324</span>              : </span>
-<span id="L325"><span class="lineNum">     325</span> <span class="tlaGNC">           2 : Base.eltype(::WeatherInterpolator{T}) where {T} = T</span></span>
-<span id="L326"><span class="lineNum">     326</span>              : </span>
+<span id="L308"><span class="lineNum">     308</span>              : &quot;&quot;&quot;</span>
+<span id="L309"><span class="lineNum">     309</span>              :     bilinear_interp(grid::Matrix{T}, fx::T, fy::T) -&gt; T</span>
+<span id="L310"><span class="lineNum">     310</span>              : </span>
+<span id="L311"><span class="lineNum">     311</span>              : Bilinear interpolation on a 2D grid at fractional position (fx, fy).</span>
+<span id="L312"><span class="lineNum">     312</span>              : Positions are 1-based cell centers (1.0 = center of first cell).</span>
+<span id="L313"><span class="lineNum">     313</span>              : &quot;&quot;&quot;</span>
+<span id="L314"><span class="lineNum">     314</span> <span class="tlaGNC">     2197914 : function bilinear_interp(grid::Matrix{T}, fx::T, fy::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC">     2197914 :     nc, nr = size(grid)</span></span>
+<span id="L316"><span class="lineNum">     316</span> <span class="tlaGNC">     4395828 :     x0 = clamp(floor(Int, fx), 1, nc)</span></span>
+<span id="L317"><span class="lineNum">     317</span> <span class="tlaGNC">     4395828 :     y0 = clamp(floor(Int, fy), 1, nr)</span></span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaGNC">     2197914 :     x1 = min(x0 + 1, nc)</span></span>
+<span id="L319"><span class="lineNum">     319</span> <span class="tlaGNC">     2197914 :     y1 = min(y0 + 1, nr)</span></span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaGNC">     4395828 :     sx = clamp(fx - T(x0), zero(T), one(T))</span></span>
+<span id="L321"><span class="lineNum">     321</span> <span class="tlaGNC">     4395828 :     sy = clamp(fy - T(y0), zero(T), one(T))</span></span>
+<span id="L322"><span class="lineNum">     322</span> <span class="tlaGNC">     2197914 :     return (one(T) - sx) * (one(T) - sy) * grid[x0, y0] +</span></span>
+<span id="L323"><span class="lineNum">     323</span>              :            sx * (one(T) - sy) * grid[x1, y0] +</span>
+<span id="L324"><span class="lineNum">     324</span>              :            (one(T) - sx) * sy * grid[x0, y1] +</span>
+<span id="L325"><span class="lineNum">     325</span>              :            sx * sy * grid[x1, y1]</span>
+<span id="L326"><span class="lineNum">     326</span>              : end</span>
 <span id="L327"><span class="lineNum">     327</span>              : </span>
-<span id="L328"><span class="lineNum">     328</span>              : &quot;&quot;&quot;</span>
-<span id="L329"><span class="lineNum">     329</span>              :     WeatherInterpolator(</span>
-<span id="L330"><span class="lineNum">     330</span>              :         weather_series::WeatherTimeSeries{T},</span>
-<span id="L331"><span class="lineNum">     331</span>              :         sim_ncols::Int, sim_nrows::Int,</span>
-<span id="L332"><span class="lineNum">     332</span>              :         sim_cellsize::T,</span>
-<span id="L333"><span class="lineNum">     333</span>              :         sim_xllcorner::T = zero(T),</span>
-<span id="L334"><span class="lineNum">     334</span>              :         sim_yllcorner::T = zero(T)</span>
-<span id="L335"><span class="lineNum">     335</span>              :     )</span>
-<span id="L336"><span class="lineNum">     336</span>              : </span>
-<span id="L337"><span class="lineNum">     337</span>              : Create a weather interpolator for the given simulation grid.</span>
-<span id="L338"><span class="lineNum">     338</span>              : &quot;&quot;&quot;</span>
-<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">           6 : function WeatherInterpolator(</span></span>
-<span id="L340"><span class="lineNum">     340</span>              :     weather_series::WeatherTimeSeries{T},</span>
-<span id="L341"><span class="lineNum">     341</span>              :     sim_ncols::Int, sim_nrows::Int,</span>
-<span id="L342"><span class="lineNum">     342</span>              :     sim_cellsize::T,</span>
-<span id="L343"><span class="lineNum">     343</span>              :     sim_xllcorner::T = zero(T),</span>
-<span id="L344"><span class="lineNum">     344</span>              :     sim_yllcorner::T = zero(T)</span>
-<span id="L345"><span class="lineNum">     345</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L346"><span class="lineNum">     346</span>              :     # Create mapping using first weather grid</span>
-<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">          49 :     first_grid = weather_series.grids[1]</span></span>
-<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">          17 :     icol_map, irow_map = create_grid_mapping(</span></span>
-<span id="L349"><span class="lineNum">     349</span>              :         first_grid,</span>
-<span id="L350"><span class="lineNum">     350</span>              :         sim_ncols, sim_nrows,</span>
-<span id="L351"><span class="lineNum">     351</span>              :         sim_cellsize,</span>
-<span id="L352"><span class="lineNum">     352</span>              :         sim_xllcorner, sim_yllcorner</span>
-<span id="L353"><span class="lineNum">     353</span>              :     )</span>
-<span id="L354"><span class="lineNum">     354</span>              : </span>
-<span id="L355"><span class="lineNum">     355</span> <span class="tlaGNC">          17 :     WeatherInterpolator{T}(weather_series, icol_map, irow_map, sim_ncols, sim_nrows)</span></span>
-<span id="L356"><span class="lineNum">     356</span>              : end</span>
-<span id="L357"><span class="lineNum">     357</span>              : </span>
-<span id="L358"><span class="lineNum">     358</span>              : </span>
-<span id="L359"><span class="lineNum">     359</span>              : &quot;&quot;&quot;</span>
-<span id="L360"><span class="lineNum">     360</span>              :     get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) -&gt; NamedTuple</span>
-<span id="L361"><span class="lineNum">     361</span>              : </span>
-<span id="L362"><span class="lineNum">     362</span>              : Get interpolated weather values at simulation grid cell (ix, iy) and time t.</span>
+<span id="L328"><span class="lineNum">     328</span>              : </span>
+<span id="L329"><span class="lineNum">     329</span>              : &quot;&quot;&quot;</span>
+<span id="L330"><span class="lineNum">     330</span>              :     bilinear_interp_wind_direction(grid::Matrix{T}, fx::T, fy::T) -&gt; T</span>
+<span id="L331"><span class="lineNum">     331</span>              : </span>
+<span id="L332"><span class="lineNum">     332</span>              : Bilinear interpolation of wind direction (degrees), handling 0/360 wrap-around.</span>
+<span id="L333"><span class="lineNum">     333</span>              : Decomposes to (sin, cos) unit vectors, interpolates, and recombines.</span>
+<span id="L334"><span class="lineNum">     334</span>              : &quot;&quot;&quot;</span>
+<span id="L335"><span class="lineNum">     335</span> <span class="tlaGNC">      366319 : function bilinear_interp_wind_direction(grid::Matrix{T}, fx::T, fy::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L336"><span class="lineNum">     336</span> <span class="tlaGNC">      366319 :     nc, nr = size(grid)</span></span>
+<span id="L337"><span class="lineNum">     337</span> <span class="tlaGNC">      732638 :     x0 = clamp(floor(Int, fx), 1, nc)</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">      732638 :     y0 = clamp(floor(Int, fy), 1, nr)</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">      366319 :     x1 = min(x0 + 1, nc)</span></span>
+<span id="L340"><span class="lineNum">     340</span> <span class="tlaGNC">      366319 :     y1 = min(y0 + 1, nr)</span></span>
+<span id="L341"><span class="lineNum">     341</span> <span class="tlaGNC">      732638 :     sx = clamp(fx - T(x0), zero(T), one(T))</span></span>
+<span id="L342"><span class="lineNum">     342</span> <span class="tlaGNC">      732638 :     sy = clamp(fy - T(y0), zero(T), one(T))</span></span>
+<span id="L343"><span class="lineNum">     343</span>              : </span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaGNC">      366319 :     w00 = (one(T) - sx) * (one(T) - sy)</span></span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaGNC">      366319 :     w10 = sx * (one(T) - sy)</span></span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC">      366319 :     w01 = (one(T) - sx) * sy</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">      366319 :     w11 = sx * sy</span></span>
+<span id="L348"><span class="lineNum">     348</span>              : </span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaGNC">      366319 :     sin_val = zero(T)</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaGNC">      366319 :     cos_val = zero(T)</span></span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaGNC">      366319 :     for (wi, xi, yi) in ((w00, x0, y0), (w10, x1, y0), (w01, x0, y1), (w11, x1, y1))</span></span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaGNC">     1465276 :         r = grid[xi, yi] * pio180(T)</span></span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaGNC">     1465276 :         sin_val += wi * sin(r)</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">     1465276 :         cos_val += wi * cos(r)</span></span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaGNC">     1831595 :     end</span></span>
+<span id="L356"><span class="lineNum">     356</span>              : </span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">      366319 :     wd = atan(sin_val, cos_val) / pio180(T)</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaGNC">      366319 :     if wd &lt; zero(T)</span></span>
+<span id="L359"><span class="lineNum">     359</span> <span class="tlaGNC">      223034 :         wd += T(360)</span></span>
+<span id="L360"><span class="lineNum">     360</span>              :     end</span>
+<span id="L361"><span class="lineNum">     361</span> <span class="tlaGNC">      366319 :     return wd</span></span>
+<span id="L362"><span class="lineNum">     362</span>              : end</span>
 <span id="L363"><span class="lineNum">     363</span>              : </span>
-<span id="L364"><span class="lineNum">     364</span>              : Returns named tuple with fields: ws, wd, m1, m10, m100, mlh, mlw</span>
-<span id="L365"><span class="lineNum">     365</span>              : &quot;&quot;&quot;</span>
-<span id="L366"><span class="lineNum">     366</span> <span class="tlaGNC">      279748 : function get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L367"><span class="lineNum">     367</span> <span class="tlaGNC">      279748 :     wts = interp.weather_series</span></span>
+<span id="L364"><span class="lineNum">     364</span>              : </span>
+<span id="L365"><span class="lineNum">     365</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L366"><span class="lineNum">     366</span>              : #                     Weather Interpolator</span>
+<span id="L367"><span class="lineNum">     367</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L368"><span class="lineNum">     368</span>              : </span>
-<span id="L369"><span class="lineNum">     369</span>              :     # Get weather grid indices</span>
-<span id="L370"><span class="lineNum">     370</span> <span class="tlaGNC">      279748 :     wix = interp.icol_map[ix]</span></span>
-<span id="L371"><span class="lineNum">     371</span> <span class="tlaGNC">      279748 :     wiy = interp.irow_map[iy]</span></span>
-<span id="L372"><span class="lineNum">     372</span>              : </span>
-<span id="L373"><span class="lineNum">     373</span>              :     # Short-circuit for single time step (constant weather)</span>
-<span id="L374"><span class="lineNum">     374</span> <span class="tlaGNC">      279748 :     if length(wts.times) == 1</span></span>
-<span id="L375"><span class="lineNum">     375</span> <span class="tlaGNC">      274406 :         g = wts.grids[1]</span></span>
-<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC">      274406 :         return (ws=g.ws[wix, wiy], wd=g.wd[wix, wiy], m1=g.m1[wix, wiy],</span></span>
-<span id="L377"><span class="lineNum">     377</span>              :                 m10=g.m10[wix, wiy], m100=g.m100[wix, wiy], mlh=g.mlh[wix, wiy], mlw=g.mlw[wix, wiy])</span>
-<span id="L378"><span class="lineNum">     378</span>              :     end</span>
-<span id="L379"><span class="lineNum">     379</span>              : </span>
-<span id="L380"><span class="lineNum">     380</span>              :     # Get time indices and interpolation weight</span>
-<span id="L381"><span class="lineNum">     381</span> <span class="tlaGNC">       10684 :     i_lo, i_hi, f = find_time_indices(wts, t)</span></span>
+<span id="L369"><span class="lineNum">     369</span>              : &quot;&quot;&quot;</span>
+<span id="L370"><span class="lineNum">     370</span>              :     WeatherInterpolator{T&lt;:AbstractFloat}</span>
+<span id="L371"><span class="lineNum">     371</span>              : </span>
+<span id="L372"><span class="lineNum">     372</span>              : Handles bilinear spatial and linear temporal interpolation of weather data</span>
+<span id="L373"><span class="lineNum">     373</span>              : to simulation grid and time.</span>
+<span id="L374"><span class="lineNum">     374</span>              : &quot;&quot;&quot;</span>
+<span id="L375"><span class="lineNum">     375</span>              : struct WeatherInterpolator{T&lt;:AbstractFloat}</span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC">          17 :     weather_series::WeatherTimeSeries{T}</span></span>
+<span id="L377"><span class="lineNum">     377</span>              :     xcol_map::Vector{T}    # Fractional weather column for each sim column</span>
+<span id="L378"><span class="lineNum">     378</span>              :     yrow_map::Vector{T}    # Fractional weather row for each sim row</span>
+<span id="L379"><span class="lineNum">     379</span>              :     sim_ncols::Int</span>
+<span id="L380"><span class="lineNum">     380</span>              :     sim_nrows::Int</span>
+<span id="L381"><span class="lineNum">     381</span>              : end</span>
 <span id="L382"><span class="lineNum">     382</span>              : </span>
-<span id="L383"><span class="lineNum">     383</span> <span class="tlaGNC">        5342 :     g_lo = wts.grids[i_lo]</span></span>
-<span id="L384"><span class="lineNum">     384</span> <span class="tlaGNC">        5342 :     g_hi = wts.grids[i_hi]</span></span>
+<span id="L383"><span class="lineNum">     383</span> <span class="tlaGNC">           2 : Base.eltype(::WeatherInterpolator{T}) where {T} = T</span></span>
+<span id="L384"><span class="lineNum">     384</span>              : </span>
 <span id="L385"><span class="lineNum">     385</span>              : </span>
-<span id="L386"><span class="lineNum">     386</span>              :     # Interpolate values</span>
-<span id="L387"><span class="lineNum">     387</span> <span class="tlaGNC">        5342 :     ws = (one(T) - f) * g_lo.ws[wix, wiy] + f * g_hi.ws[wix, wiy]</span></span>
-<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">        5342 :     wd = interpolate_wind_direction(g_lo.wd[wix, wiy], g_hi.wd[wix, wiy], f)</span></span>
-<span id="L389"><span class="lineNum">     389</span> <span class="tlaGNC">        5342 :     m1 = (one(T) - f) * g_lo.m1[wix, wiy] + f * g_hi.m1[wix, wiy]</span></span>
-<span id="L390"><span class="lineNum">     390</span> <span class="tlaGNC">        5342 :     m10 = (one(T) - f) * g_lo.m10[wix, wiy] + f * g_hi.m10[wix, wiy]</span></span>
-<span id="L391"><span class="lineNum">     391</span> <span class="tlaGNC">        5342 :     m100 = (one(T) - f) * g_lo.m100[wix, wiy] + f * g_hi.m100[wix, wiy]</span></span>
-<span id="L392"><span class="lineNum">     392</span> <span class="tlaGNC">        5342 :     mlh = (one(T) - f) * g_lo.mlh[wix, wiy] + f * g_hi.mlh[wix, wiy]</span></span>
-<span id="L393"><span class="lineNum">     393</span> <span class="tlaGNC">        5342 :     mlw = (one(T) - f) * g_lo.mlw[wix, wiy] + f * g_hi.mlw[wix, wiy]</span></span>
+<span id="L386"><span class="lineNum">     386</span>              : &quot;&quot;&quot;</span>
+<span id="L387"><span class="lineNum">     387</span>              :     WeatherInterpolator(</span>
+<span id="L388"><span class="lineNum">     388</span>              :         weather_series::WeatherTimeSeries{T},</span>
+<span id="L389"><span class="lineNum">     389</span>              :         sim_ncols::Int, sim_nrows::Int,</span>
+<span id="L390"><span class="lineNum">     390</span>              :         sim_cellsize::T,</span>
+<span id="L391"><span class="lineNum">     391</span>              :         sim_xllcorner::T = zero(T),</span>
+<span id="L392"><span class="lineNum">     392</span>              :         sim_yllcorner::T = zero(T)</span>
+<span id="L393"><span class="lineNum">     393</span>              :     )</span>
 <span id="L394"><span class="lineNum">     394</span>              : </span>
-<span id="L395"><span class="lineNum">     395</span> <span class="tlaGNC">        5342 :     return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)</span></span>
-<span id="L396"><span class="lineNum">     396</span>              : end</span>
-<span id="L397"><span class="lineNum">     397</span>              : </span>
-<span id="L398"><span class="lineNum">     398</span>              : </span>
-<span id="L399"><span class="lineNum">     399</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L400"><span class="lineNum">     400</span>              : #                     Convenience Functions</span>
-<span id="L401"><span class="lineNum">     401</span>              : #-----------------------------------------------------------------------------#</span>
-<span id="L402"><span class="lineNum">     402</span>              : </span>
-<span id="L403"><span class="lineNum">     403</span>              : &quot;&quot;&quot;</span>
-<span id="L404"><span class="lineNum">     404</span>              :     create_constant_interpolator(</span>
-<span id="L405"><span class="lineNum">     405</span>              :         weather::ConstantWeather{T},</span>
-<span id="L406"><span class="lineNum">     406</span>              :         sim_ncols::Int, sim_nrows::Int,</span>
-<span id="L407"><span class="lineNum">     407</span>              :         sim_cellsize::T</span>
-<span id="L408"><span class="lineNum">     408</span>              :     ) -&gt; WeatherInterpolator{T}</span>
-<span id="L409"><span class="lineNum">     409</span>              : </span>
-<span id="L410"><span class="lineNum">     410</span>              : Create a weather interpolator for constant weather conditions.</span>
-<span id="L411"><span class="lineNum">     411</span>              : &quot;&quot;&quot;</span>
-<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC">          11 : function create_constant_interpolator(</span></span>
-<span id="L413"><span class="lineNum">     413</span>              :     weather::ConstantWeather{T},</span>
-<span id="L414"><span class="lineNum">     414</span>              :     sim_ncols::Int, sim_nrows::Int,</span>
-<span id="L415"><span class="lineNum">     415</span>              :     sim_cellsize::T</span>
-<span id="L416"><span class="lineNum">     416</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L417"><span class="lineNum">     417</span>              :     # Create a 1x1 weather grid</span>
-<span id="L418"><span class="lineNum">     418</span> <span class="tlaGNC">          11 :     wgrid = WeatherGrid{T}(weather, 1, 1, T(1e6))  # Large cell to cover everything</span></span>
-<span id="L419"><span class="lineNum">     419</span> <span class="tlaGNC">          11 :     wts = WeatherTimeSeries{T}([wgrid], [zero(T)])</span></span>
-<span id="L420"><span class="lineNum">     420</span>              : </span>
-<span id="L421"><span class="lineNum">     421</span> <span class="tlaGNC">          11 :     WeatherInterpolator(wts, sim_ncols, sim_nrows, sim_cellsize)</span></span>
-<span id="L422"><span class="lineNum">     422</span>              : end</span>
+<span id="L395"><span class="lineNum">     395</span>              : Create a weather interpolator for the given simulation grid.</span>
+<span id="L396"><span class="lineNum">     396</span>              : &quot;&quot;&quot;</span>
+<span id="L397"><span class="lineNum">     397</span> <span class="tlaGNC">           6 : function WeatherInterpolator(</span></span>
+<span id="L398"><span class="lineNum">     398</span>              :     weather_series::WeatherTimeSeries{T},</span>
+<span id="L399"><span class="lineNum">     399</span>              :     sim_ncols::Int, sim_nrows::Int,</span>
+<span id="L400"><span class="lineNum">     400</span>              :     sim_cellsize::T,</span>
+<span id="L401"><span class="lineNum">     401</span>              :     sim_xllcorner::T = zero(T),</span>
+<span id="L402"><span class="lineNum">     402</span>              :     sim_yllcorner::T = zero(T)</span>
+<span id="L403"><span class="lineNum">     403</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L404"><span class="lineNum">     404</span>              :     # Create mapping using first weather grid</span>
+<span id="L405"><span class="lineNum">     405</span> <span class="tlaGNC">          49 :     first_grid = weather_series.grids[1]</span></span>
+<span id="L406"><span class="lineNum">     406</span> <span class="tlaGNC">          17 :     xcol_map, yrow_map = create_grid_mapping(</span></span>
+<span id="L407"><span class="lineNum">     407</span>              :         first_grid,</span>
+<span id="L408"><span class="lineNum">     408</span>              :         sim_ncols, sim_nrows,</span>
+<span id="L409"><span class="lineNum">     409</span>              :         sim_cellsize,</span>
+<span id="L410"><span class="lineNum">     410</span>              :         sim_xllcorner, sim_yllcorner</span>
+<span id="L411"><span class="lineNum">     411</span>              :     )</span>
+<span id="L412"><span class="lineNum">     412</span>              : </span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaGNC">          17 :     WeatherInterpolator{T}(weather_series, xcol_map, yrow_map, sim_ncols, sim_nrows)</span></span>
+<span id="L414"><span class="lineNum">     414</span>              : end</span>
+<span id="L415"><span class="lineNum">     415</span>              : </span>
+<span id="L416"><span class="lineNum">     416</span>              : </span>
+<span id="L417"><span class="lineNum">     417</span>              : &quot;&quot;&quot;</span>
+<span id="L418"><span class="lineNum">     418</span>              :     get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) -&gt; NamedTuple</span>
+<span id="L419"><span class="lineNum">     419</span>              : </span>
+<span id="L420"><span class="lineNum">     420</span>              : Get bilinearly interpolated weather values at simulation grid cell (ix, iy) and time t.</span>
+<span id="L421"><span class="lineNum">     421</span>              : </span>
+<span id="L422"><span class="lineNum">     422</span>              : Returns named tuple with fields: ws, wd, m1, m10, m100, mlh, mlw</span>
+<span id="L423"><span class="lineNum">     423</span>              : &quot;&quot;&quot;</span>
+<span id="L424"><span class="lineNum">     424</span> <span class="tlaGNC">      360965 : function get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L425"><span class="lineNum">     425</span> <span class="tlaGNC">      360965 :     wts = interp.weather_series</span></span>
+<span id="L426"><span class="lineNum">     426</span>              : </span>
+<span id="L427"><span class="lineNum">     427</span>              :     # Get fractional weather grid position</span>
+<span id="L428"><span class="lineNum">     428</span> <span class="tlaGNC">      360965 :     fx = interp.xcol_map[ix]</span></span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaGNC">      360965 :     fy = interp.yrow_map[iy]</span></span>
+<span id="L430"><span class="lineNum">     430</span>              : </span>
+<span id="L431"><span class="lineNum">     431</span>              :     # Short-circuit for single time step (constant weather)</span>
+<span id="L432"><span class="lineNum">     432</span> <span class="tlaGNC">      360965 :     if length(wts.times) == 1</span></span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaGNC">      355611 :         g = wts.grids[1]</span></span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">      355611 :         return (</span></span>
+<span id="L435"><span class="lineNum">     435</span>              :             ws = bilinear_interp(g.ws, fx, fy),</span>
+<span id="L436"><span class="lineNum">     436</span>              :             wd = bilinear_interp_wind_direction(g.wd, fx, fy),</span>
+<span id="L437"><span class="lineNum">     437</span>              :             m1 = bilinear_interp(g.m1, fx, fy),</span>
+<span id="L438"><span class="lineNum">     438</span>              :             m10 = bilinear_interp(g.m10, fx, fy),</span>
+<span id="L439"><span class="lineNum">     439</span>              :             m100 = bilinear_interp(g.m100, fx, fy),</span>
+<span id="L440"><span class="lineNum">     440</span>              :             mlh = bilinear_interp(g.mlh, fx, fy),</span>
+<span id="L441"><span class="lineNum">     441</span>              :             mlw = bilinear_interp(g.mlw, fx, fy)</span>
+<span id="L442"><span class="lineNum">     442</span>              :         )</span>
+<span id="L443"><span class="lineNum">     443</span>              :     end</span>
+<span id="L444"><span class="lineNum">     444</span>              : </span>
+<span id="L445"><span class="lineNum">     445</span>              :     # Get time indices and interpolation weight</span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaGNC">       10708 :     i_lo, i_hi, f = find_time_indices(wts, t)</span></span>
+<span id="L447"><span class="lineNum">     447</span>              : </span>
+<span id="L448"><span class="lineNum">     448</span> <span class="tlaGNC">        5354 :     g_lo = wts.grids[i_lo]</span></span>
+<span id="L449"><span class="lineNum">     449</span> <span class="tlaGNC">        5354 :     g_hi = wts.grids[i_hi]</span></span>
+<span id="L450"><span class="lineNum">     450</span>              : </span>
+<span id="L451"><span class="lineNum">     451</span>              :     # Spatially interpolate each grid, then temporally blend</span>
+<span id="L452"><span class="lineNum">     452</span> <span class="tlaGNC">        5354 :     ws_lo = bilinear_interp(g_lo.ws, fx, fy)</span></span>
+<span id="L453"><span class="lineNum">     453</span> <span class="tlaGNC">        5354 :     ws_hi = bilinear_interp(g_hi.ws, fx, fy)</span></span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaGNC">        5354 :     ws = (one(T) - f) * ws_lo + f * ws_hi</span></span>
+<span id="L455"><span class="lineNum">     455</span>              : </span>
+<span id="L456"><span class="lineNum">     456</span> <span class="tlaGNC">        5354 :     wd_lo = bilinear_interp_wind_direction(g_lo.wd, fx, fy)</span></span>
+<span id="L457"><span class="lineNum">     457</span> <span class="tlaGNC">        5354 :     wd_hi = bilinear_interp_wind_direction(g_hi.wd, fx, fy)</span></span>
+<span id="L458"><span class="lineNum">     458</span> <span class="tlaGNC">        5354 :     wd = interpolate_wind_direction(wd_lo, wd_hi, f)</span></span>
+<span id="L459"><span class="lineNum">     459</span>              : </span>
+<span id="L460"><span class="lineNum">     460</span> <span class="tlaGNC">        5354 :     m1 = (one(T) - f) * bilinear_interp(g_lo.m1, fx, fy) + f * bilinear_interp(g_hi.m1, fx, fy)</span></span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaGNC">        5354 :     m10 = (one(T) - f) * bilinear_interp(g_lo.m10, fx, fy) + f * bilinear_interp(g_hi.m10, fx, fy)</span></span>
+<span id="L462"><span class="lineNum">     462</span> <span class="tlaGNC">        5354 :     m100 = (one(T) - f) * bilinear_interp(g_lo.m100, fx, fy) + f * bilinear_interp(g_hi.m100, fx, fy)</span></span>
+<span id="L463"><span class="lineNum">     463</span> <span class="tlaGNC">        5354 :     mlh = (one(T) - f) * bilinear_interp(g_lo.mlh, fx, fy) + f * bilinear_interp(g_hi.mlh, fx, fy)</span></span>
+<span id="L464"><span class="lineNum">     464</span> <span class="tlaGNC">        5354 :     mlw = (one(T) - f) * bilinear_interp(g_lo.mlw, fx, fy) + f * bilinear_interp(g_hi.mlw, fx, fy)</span></span>
+<span id="L465"><span class="lineNum">     465</span>              : </span>
+<span id="L466"><span class="lineNum">     466</span> <span class="tlaGNC">        5354 :     return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)</span></span>
+<span id="L467"><span class="lineNum">     467</span>              : end</span>
+<span id="L468"><span class="lineNum">     468</span>              : </span>
+<span id="L469"><span class="lineNum">     469</span>              : </span>
+<span id="L470"><span class="lineNum">     470</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L471"><span class="lineNum">     471</span>              : #                     Convenience Functions</span>
+<span id="L472"><span class="lineNum">     472</span>              : #-----------------------------------------------------------------------------#</span>
+<span id="L473"><span class="lineNum">     473</span>              : </span>
+<span id="L474"><span class="lineNum">     474</span>              : &quot;&quot;&quot;</span>
+<span id="L475"><span class="lineNum">     475</span>              :     create_constant_interpolator(</span>
+<span id="L476"><span class="lineNum">     476</span>              :         weather::ConstantWeather{T},</span>
+<span id="L477"><span class="lineNum">     477</span>              :         sim_ncols::Int, sim_nrows::Int,</span>
+<span id="L478"><span class="lineNum">     478</span>              :         sim_cellsize::T</span>
+<span id="L479"><span class="lineNum">     479</span>              :     ) -&gt; WeatherInterpolator{T}</span>
+<span id="L480"><span class="lineNum">     480</span>              : </span>
+<span id="L481"><span class="lineNum">     481</span>              : Create a weather interpolator for constant weather conditions.</span>
+<span id="L482"><span class="lineNum">     482</span>              : &quot;&quot;&quot;</span>
+<span id="L483"><span class="lineNum">     483</span> <span class="tlaGNC">          11 : function create_constant_interpolator(</span></span>
+<span id="L484"><span class="lineNum">     484</span>              :     weather::ConstantWeather{T},</span>
+<span id="L485"><span class="lineNum">     485</span>              :     sim_ncols::Int, sim_nrows::Int,</span>
+<span id="L486"><span class="lineNum">     486</span>              :     sim_cellsize::T</span>
+<span id="L487"><span class="lineNum">     487</span>              : ) where {T&lt;:AbstractFloat}</span>
+<span id="L488"><span class="lineNum">     488</span>              :     # Create a 1x1 weather grid</span>
+<span id="L489"><span class="lineNum">     489</span> <span class="tlaGNC">          11 :     wgrid = WeatherGrid{T}(weather, 1, 1, T(1e6))  # Large cell to cover everything</span></span>
+<span id="L490"><span class="lineNum">     490</span> <span class="tlaGNC">          11 :     wts = WeatherTimeSeries{T}([wgrid], [zero(T)])</span></span>
+<span id="L491"><span class="lineNum">     491</span>              : </span>
+<span id="L492"><span class="lineNum">     492</span> <span class="tlaGNC">          11 :     WeatherInterpolator(wts, sim_ncols, sim_nrows, sim_cellsize)</span></span>
+<span id="L493"><span class="lineNum">     493</span>              : end</span>
         </pre>
               </td>
             </tr>

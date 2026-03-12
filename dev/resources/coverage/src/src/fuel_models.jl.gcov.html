@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-03-02 16:43:56</td>
+            <td class="headerValue">2026-03-12 00:37:17</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -69,7 +69,7 @@
 <span id="L7"><span class="lineNum">       7</span>              : Raw fuel model parameters as read from CSV file before coefficient calculation.</span>
 <span id="L8"><span class="lineNum">       8</span>              : &quot;&quot;&quot;</span>
 <span id="L9"><span class="lineNum">       9</span>              : struct RawFuelModel{T&lt;:AbstractFloat}</span>
-<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC tlaBgGNC">         929 :     id::Int</span></span>
+<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC tlaBgGNC">         985 :     id::Int</span></span>
 <span id="L11"><span class="lineNum">      11</span>              :     name::String</span>
 <span id="L12"><span class="lineNum">      12</span>              :     dynamic::Bool</span>
 <span id="L13"><span class="lineNum">      13</span>              : </span>
@@ -130,7 +130,7 @@
 <span id="L68"><span class="lineNum">      68</span>              : &quot;&quot;&quot;</span>
 <span id="L69"><span class="lineNum">      69</span>              : struct FuelModel{T&lt;:AbstractFloat}</span>
 <span id="L70"><span class="lineNum">      70</span>              :     # Identification</span>
-<span id="L71"><span class="lineNum">      71</span> <span class="tlaGNC tlaBgGNC">       42136 :     id::Int</span></span>
+<span id="L71"><span class="lineNum">      71</span> <span class="tlaGNC tlaBgGNC">       44684 :     id::Int</span></span>
 <span id="L72"><span class="lineNum">      72</span>              :     name::String</span>
 <span id="L73"><span class="lineNum">      73</span>              :     dynamic::Bool</span>
 <span id="L74"><span class="lineNum">      74</span>              : </span>
@@ -210,28 +210,28 @@
 <span id="L148"><span class="lineNum">     148</span>              : </span>
 <span id="L149"><span class="lineNum">     149</span>              : Implementation follows `elmfire_init.f90:786-880`.</span>
 <span id="L150"><span class="lineNum">     150</span>              : &quot;&quot;&quot;</span>
-<span id="L151"><span class="lineNum">     151</span> <span class="tlaGNC">       42136 : function compute_fuel_model(raw::RawFuelModel{T}, live_moisture_class::Int=30) where {T&lt;:AbstractFloat}</span></span>
+<span id="L151"><span class="lineNum">     151</span> <span class="tlaGNC">       44684 : function compute_fuel_model(raw::RawFuelModel{T}, live_moisture_class::Int=30) where {T&lt;:AbstractFloat}</span></span>
 <span id="L152"><span class="lineNum">     152</span>              :     # Initialize W0 and SIG arrays</span>
-<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">      252816 :     W0 = zeros(T, 6)</span></span>
-<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">      252816 :     SIG = zeros(T, 6)</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">      268104 :     W0 = zeros(T, 6)</span></span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">      268104 :     SIG = zeros(T, 6)</span></span>
 <span id="L155"><span class="lineNum">     155</span>              : </span>
 <span id="L156"><span class="lineNum">     156</span>              :     # Set fixed SAV values</span>
-<span id="L157"><span class="lineNum">     157</span> <span class="tlaGNC">       42136 :     SIG[2] = sig_10hr(T)   # 109 1/ft</span></span>
-<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">       42136 :     SIG[3] = sig_100hr(T)  # 30 1/ft</span></span>
-<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">       42136 :     SIG[4] = T(9999)       # Dynamic dead (unused unless dynamic model)</span></span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaGNC">       44684 :     SIG[2] = sig_10hr(T)   # 109 1/ft</span></span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">       44684 :     SIG[3] = sig_100hr(T)  # 30 1/ft</span></span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">       44684 :     SIG[4] = T(9999)       # Dynamic dead (unused unless dynamic model)</span></span>
 <span id="L160"><span class="lineNum">     160</span>              : </span>
 <span id="L161"><span class="lineNum">     161</span>              :     # Copy raw values</span>
-<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">       42136 :     W0[1] = raw.W0_1hr</span></span>
-<span id="L163"><span class="lineNum">     163</span> <span class="tlaGNC">       42136 :     W0[2] = raw.W0_10hr</span></span>
-<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">       42136 :     W0[3] = raw.W0_100hr</span></span>
-<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">       42136 :     W0[5] = raw.W0_herb</span></span>
-<span id="L166"><span class="lineNum">     166</span> <span class="tlaGNC">       42136 :     W0[6] = raw.W0_woody</span></span>
-<span id="L167"><span class="lineNum">     167</span> <span class="tlaGNC">       42136 :     SIG[1] = raw.SIG_1hr</span></span>
-<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">       42136 :     SIG[5] = raw.SIG_live_herb</span></span>
-<span id="L169"><span class="lineNum">     169</span> <span class="tlaGNC">       42136 :     SIG[6] = raw.SIG_live_woody</span></span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">       44684 :     W0[1] = raw.W0_1hr</span></span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaGNC">       44684 :     W0[2] = raw.W0_10hr</span></span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">       44684 :     W0[3] = raw.W0_100hr</span></span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">       44684 :     W0[5] = raw.W0_herb</span></span>
+<span id="L166"><span class="lineNum">     166</span> <span class="tlaGNC">       44684 :     W0[6] = raw.W0_woody</span></span>
+<span id="L167"><span class="lineNum">     167</span> <span class="tlaGNC">       44684 :     SIG[1] = raw.SIG_1hr</span></span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">       44684 :     SIG[5] = raw.SIG_live_herb</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaGNC">       44684 :     SIG[6] = raw.SIG_live_woody</span></span>
 <span id="L170"><span class="lineNum">     170</span>              : </span>
 <span id="L171"><span class="lineNum">     171</span>              :     # Handle dynamic fuel models - transfer herbaceous fuel based on moisture</span>
-<span id="L172"><span class="lineNum">     172</span> <span class="tlaGNC">       42136 :     if raw.dynamic</span></span>
+<span id="L172"><span class="lineNum">     172</span> <span class="tlaGNC">       44684 :     if raw.dynamic</span></span>
 <span id="L173"><span class="lineNum">     173</span> <span class="tlaGNC">           2 :         lh = T(live_moisture_class)</span></span>
 <span id="L174"><span class="lineNum">     174</span> <span class="tlaGNC">           4 :         livefrac = clamp((lh - T(30)) / (T(120) - T(30)), zero(T), one(T))</span></span>
 <span id="L175"><span class="lineNum">     175</span> <span class="tlaGNC">           2 :         deadfrac = one(T) - livefrac</span></span>
@@ -250,117 +250,117 @@
 <span id="L188"><span class="lineNum">     188</span> <span class="tlaGNC">           2 :         W0[4] = zero(T)</span></span>
 <span id="L189"><span class="lineNum">     189</span> <span class="tlaGNC">           2 :         SIG[4] = T(9999)</span></span>
 <span id="L190"><span class="lineNum">     190</span>              :     else</span>
-<span id="L191"><span class="lineNum">     191</span> <span class="tlaGNC">       42134 :         W0[4] = zero(T)</span></span>
-<span id="L192"><span class="lineNum">     192</span> <span class="tlaGNC">       42134 :         SIG[4] = T(9999)</span></span>
+<span id="L191"><span class="lineNum">     191</span> <span class="tlaGNC">       44682 :         W0[4] = zero(T)</span></span>
+<span id="L192"><span class="lineNum">     192</span> <span class="tlaGNC">       44682 :         SIG[4] = T(9999)</span></span>
 <span id="L193"><span class="lineNum">     193</span>              :     end</span>
 <span id="L194"><span class="lineNum">     194</span>              : </span>
 <span id="L195"><span class="lineNum">     195</span>              :     # Physical constants</span>
-<span id="L196"><span class="lineNum">     196</span> <span class="tlaGNC">       42136 :     rhop = rhop_default(T)</span></span>
-<span id="L197"><span class="lineNum">     197</span> <span class="tlaGNC">       42136 :     st = st_default(T)</span></span>
-<span id="L198"><span class="lineNum">     198</span> <span class="tlaGNC">       42136 :     etas = etas_default(T)</span></span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaGNC">       44684 :     rhop = rhop_default(T)</span></span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaGNC">       44684 :     st = st_default(T)</span></span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaGNC">       44684 :     etas = etas_default(T)</span></span>
 <span id="L199"><span class="lineNum">     199</span>              : </span>
 <span id="L200"><span class="lineNum">     200</span>              :     # Area factors: A(i) = σ(i) * W0(i) / ρp</span>
-<span id="L201"><span class="lineNum">     201</span> <span class="tlaGNC">       84272 :     A = ntuple(i -&gt; SIG[i] * W0[i] / rhop, 6)</span></span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaGNC">       89368 :     A = ntuple(i -&gt; SIG[i] * W0[i] / rhop, 6)</span></span>
 <span id="L202"><span class="lineNum">     202</span>              : </span>
-<span id="L203"><span class="lineNum">     203</span> <span class="tlaGNC">       42136 :     A_dead = max(sum(A[1:4]), T(1e-9))</span></span>
-<span id="L204"><span class="lineNum">     204</span> <span class="tlaGNC">       42136 :     A_live = max(sum(A[5:6]), T(1e-9))</span></span>
-<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">       42136 :     A_overall = A_dead + A_live</span></span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaGNC">       44684 :     A_dead = max(sum(A[1:4]), T(1e-9))</span></span>
+<span id="L204"><span class="lineNum">     204</span> <span class="tlaGNC">       44684 :     A_live = max(sum(A[5:6]), T(1e-9))</span></span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">       44684 :     A_overall = A_dead + A_live</span></span>
 <span id="L206"><span class="lineNum">     206</span>              : </span>
 <span id="L207"><span class="lineNum">     207</span>              :     # Fraction factors: f(i) = A(i) / A_class</span>
-<span id="L208"><span class="lineNum">     208</span> <span class="tlaGNC">      252816 :     F_arr = zeros(T, 6)</span></span>
-<span id="L209"><span class="lineNum">     209</span> <span class="tlaGNC">       42136 :     F_arr[1:4] .= [A[i] / A_dead for i in 1:4]</span></span>
-<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">       42136 :     F_arr[5:6] .= [A[i] / A_live for i in 5:6]</span></span>
-<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">       84272 :     F = ntuple(i -&gt; F_arr[i], 6)</span></span>
+<span id="L208"><span class="lineNum">     208</span> <span class="tlaGNC">      268104 :     F_arr = zeros(T, 6)</span></span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaGNC">       44684 :     F_arr[1:4] .= [A[i] / A_dead for i in 1:4]</span></span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">       44684 :     F_arr[5:6] .= [A[i] / A_live for i in 5:6]</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">       89368 :     F = ntuple(i -&gt; F_arr[i], 6)</span></span>
 <span id="L212"><span class="lineNum">     212</span>              : </span>
-<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">       42136 :     F_dead = A_dead / A_overall</span></span>
-<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">       42136 :     F_live = A_live / A_overall</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">       44684 :     F_dead = A_dead / A_overall</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">       44684 :     F_live = A_live / A_overall</span></span>
 <span id="L215"><span class="lineNum">     215</span>              : </span>
 <span id="L216"><span class="lineNum">     216</span>              :     # FMEX: f * mex_dead (dead classes only)</span>
-<span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC">       84272 :     FMEX = ntuple(i -&gt; F[i] * raw.mex_dead, 4)</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC">       89368 :     FMEX = ntuple(i -&gt; F[i] * raw.mex_dead, 4)</span></span>
 <span id="L218"><span class="lineNum">     218</span>              : </span>
 <span id="L219"><span class="lineNum">     219</span>              :     # FW0: f * W0</span>
-<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">       84272 :     FW0 = ntuple(i -&gt; F[i] * W0[i], 6)</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">       89368 :     FW0 = ntuple(i -&gt; F[i] * W0[i], 6)</span></span>
 <span id="L221"><span class="lineNum">     221</span>              : </span>
 <span id="L222"><span class="lineNum">     222</span>              :     # FSIG: f * σ</span>
-<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">       84272 :     FSIG = ntuple(i -&gt; F[i] * SIG[i], 6)</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">       89368 :     FSIG = ntuple(i -&gt; F[i] * SIG[i], 6)</span></span>
 <span id="L224"><span class="lineNum">     224</span>              : </span>
 <span id="L225"><span class="lineNum">     225</span>              :     # Surface heating numbers: ε = exp(-138/σ)</span>
-<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">       84272 :     EPS = ntuple(i -&gt; exp(T(-138) / SIG[i]), 6)</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">       89368 :     EPS = ntuple(i -&gt; exp(T(-138) / SIG[i]), 6)</span></span>
 <span id="L227"><span class="lineNum">     227</span>              : </span>
 <span id="L228"><span class="lineNum">     228</span>              :     # FEPS: f * ε</span>
-<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">       84272 :     FEPS = ntuple(i -&gt; F[i] * EPS[i], 6)</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">       89368 :     FEPS = ntuple(i -&gt; F[i] * EPS[i], 6)</span></span>
 <span id="L230"><span class="lineNum">     230</span>              : </span>
 <span id="L231"><span class="lineNum">     231</span>              :     # W' numerator for dead classes: W0(i) * ε(i)</span>
-<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">       84272 :     WPRIMENUMER = ntuple(i -&gt; W0[i] * EPS[i], 4)</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">       89368 :     WPRIMENUMER = ntuple(i -&gt; W0[i] * EPS[i], 4)</span></span>
 <span id="L233"><span class="lineNum">     233</span>              : </span>
 <span id="L234"><span class="lineNum">     234</span>              :     # W' denominator for live classes: W0(i) * exp(-500/σ(i))</span>
-<span id="L235"><span class="lineNum">     235</span> <span class="tlaGNC">       42136 :     WPRIMEDENOM56 = (W0[5] * exp(T(-500) / SIG[5]), W0[6] * exp(T(-500) / SIG[6]))</span></span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaGNC">       44684 :     WPRIMEDENOM56 = (W0[5] * exp(T(-500) / SIG[5]), W0[6] * exp(T(-500) / SIG[6]))</span></span>
 <span id="L236"><span class="lineNum">     236</span>              : </span>
 <span id="L237"><span class="lineNum">     237</span>              :     # M' denominator for dead classes</span>
-<span id="L238"><span class="lineNum">     238</span> <span class="tlaGNC">       84272 :     MPRIMEDENOM = ntuple(i -&gt; W0[i] * EPS[i], 4)</span></span>
+<span id="L238"><span class="lineNum">     238</span> <span class="tlaGNC">       89368 :     MPRIMEDENOM = ntuple(i -&gt; W0[i] * EPS[i], 4)</span></span>
 <span id="L239"><span class="lineNum">     239</span>              : </span>
 <span id="L240"><span class="lineNum">     240</span>              :     # Net fuel loadings</span>
-<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">       42136 :     W0_dead = sum(FW0[1:4])</span></span>
-<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">       42136 :     W0_live = sum(FW0[5:6])</span></span>
-<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">       42136 :     WN_dead = W0_dead * (one(T) - st)</span></span>
-<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">       42136 :     WN_live = W0_live * (one(T) - st)</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">       44684 :     W0_dead = sum(FW0[1:4])</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">       44684 :     W0_live = sum(FW0[5:6])</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">       44684 :     WN_dead = W0_dead * (one(T) - st)</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">       44684 :     WN_live = W0_live * (one(T) - st)</span></span>
 <span id="L245"><span class="lineNum">     245</span>              : </span>
 <span id="L246"><span class="lineNum">     246</span>              :     # Weighted SAV ratios</span>
-<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">       42136 :     SIG_dead = sum(FSIG[1:4])</span></span>
-<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">       42136 :     SIG_live = sum(FSIG[5:6])</span></span>
-<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">       42136 :     SIG_overall = F_dead * SIG_dead + F_live * SIG_live</span></span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">       44684 :     SIG_dead = sum(FSIG[1:4])</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">       44684 :     SIG_live = sum(FSIG[5:6])</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">       44684 :     SIG_overall = F_dead * SIG_dead + F_live * SIG_live</span></span>
 <span id="L250"><span class="lineNum">     250</span>              : </span>
 <span id="L251"><span class="lineNum">     251</span>              :     # Packing ratios</span>
-<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">       84272 :     total_W0 = sum(W0)</span></span>
-<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">       42136 :     beta = total_W0 / (raw.delta * rhop)</span></span>
-<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">       84272 :     betaop = T(3.348) / (SIG_overall^T(0.8189))</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">       89368 :     total_W0 = sum(W0)</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">       44684 :     beta = total_W0 / (raw.delta * rhop)</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">       89368 :     betaop = T(3.348) / (SIG_overall^T(0.8189))</span></span>
 <span id="L255"><span class="lineNum">     255</span>              : </span>
 <span id="L256"><span class="lineNum">     256</span>              :     # Bulk density</span>
-<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">       42136 :     rhob = total_W0 / raw.delta</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">       44684 :     rhob = total_W0 / raw.delta</span></span>
 <span id="L258"><span class="lineNum">     258</span>              : </span>
 <span id="L259"><span class="lineNum">     259</span>              :     # Propagating flux ratio</span>
-<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">       42136 :     xi = exp((T(0.792) + T(0.681) * sqrt(SIG_overall)) * (T(0.1) + beta)) /</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">       44684 :     xi = exp((T(0.792) + T(0.681) * sqrt(SIG_overall)) * (T(0.1) + beta)) /</span></span>
 <span id="L261"><span class="lineNum">     261</span>              :          (T(192) + T(0.2595) * SIG_overall)</span>
 <span id="L262"><span class="lineNum">     262</span>              : </span>
 <span id="L263"><span class="lineNum">     263</span>              :     # Rothermel A, B, C, E coefficients</span>
-<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">       84272 :     A_coeff = T(133) / (SIG_overall^T(0.7913))</span></span>
-<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">       84272 :     B_coeff = T(0.02526) * SIG_overall^T(0.54)</span></span>
-<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">       84272 :     C_coeff = T(7.47) * exp(T(-0.133) * SIG_overall^T(0.55))</span></span>
-<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">       42136 :     E_coeff = T(0.715) * exp(T(-0.000359) * SIG_overall)</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">       89368 :     A_coeff = T(133) / (SIG_overall^T(0.7913))</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">       89368 :     B_coeff = T(0.02526) * SIG_overall^T(0.54)</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">       89368 :     C_coeff = T(7.47) * exp(T(-0.133) * SIG_overall^T(0.55))</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">       44684 :     E_coeff = T(0.715) * exp(T(-0.000359) * SIG_overall)</span></span>
 <span id="L268"><span class="lineNum">     268</span>              : </span>
 <span id="L269"><span class="lineNum">     269</span>              :     # Reaction velocity</span>
-<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">       84272 :     gammaprime_peak = SIG_overall^T(1.5) / (T(495) + T(0.0594) * SIG_overall^T(1.5))</span></span>
-<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">       42136 :     beta_ratio = beta / betaop</span></span>
-<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">       42136 :     gammaprime = gammaprime_peak * beta_ratio^A_coeff * exp(A_coeff * (one(T) - beta_ratio))</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">       89368 :     gammaprime_peak = SIG_overall^T(1.5) / (T(495) + T(0.0594) * SIG_overall^T(1.5))</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">       44684 :     beta_ratio = beta / betaop</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">       44684 :     gammaprime = gammaprime_peak * beta_ratio^A_coeff * exp(A_coeff * (one(T) - beta_ratio))</span></span>
 <span id="L273"><span class="lineNum">     273</span>              : </span>
 <span id="L274"><span class="lineNum">     274</span>              :     # Residence time</span>
-<span id="L275"><span class="lineNum">     275</span> <span class="tlaGNC">       42136 :     tr = T(384) / SIG_overall</span></span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaGNC">       44684 :     tr = T(384) / SIG_overall</span></span>
 <span id="L276"><span class="lineNum">     276</span>              : </span>
 <span id="L277"><span class="lineNum">     277</span>              :     # Pre-computed reaction intensity terms</span>
-<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">       42136 :     GP_WND_ETAS_HOC = gammaprime * WN_dead * etas * raw.hoc</span></span>
-<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">       42136 :     GP_WNL_ETAS_HOC = gammaprime * WN_live * etas * raw.hoc</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">       44684 :     GP_WND_ETAS_HOC = gammaprime * WN_dead * etas * raw.hoc</span></span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">       44684 :     GP_WNL_ETAS_HOC = gammaprime * WN_live * etas * raw.hoc</span></span>
 <span id="L280"><span class="lineNum">     280</span>              : </span>
 <span id="L281"><span class="lineNum">     281</span>              :     # Pre-computed slope/wind terms</span>
-<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">       84272 :     phisterm = T(5.275) * beta^T(-0.3)</span></span>
-<span id="L283"><span class="lineNum">     283</span> <span class="tlaGNC">       42136 :     phiwterm = C_coeff * beta_ratio^(-E_coeff)</span></span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">       89368 :     phisterm = T(5.275) * beta^T(-0.3)</span></span>
+<span id="L283"><span class="lineNum">     283</span> <span class="tlaGNC">       44684 :     phiwterm = C_coeff * beta_ratio^(-E_coeff)</span></span>
 <span id="L284"><span class="lineNum">     284</span>              : </span>
 <span id="L285"><span class="lineNum">     285</span>              :     # Optimization term</span>
-<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC">       42136 :     WPRIMEDENOM56SUM = sum(WPRIMEDENOM56)</span></span>
-<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC">       42136 :     WPRIMENUMER14SUM = sum(WPRIMENUMER)</span></span>
-<span id="L288"><span class="lineNum">     288</span> <span class="tlaGNC">       42136 :     MPRIMEDENOM14SUM = sum(MPRIMEDENOM)</span></span>
-<span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">       42136 :     R_MPRIMEDENOME14SUM_MEX_DEAD = one(T) / (MPRIMEDENOM14SUM * raw.mex_dead)</span></span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC">       44684 :     WPRIMEDENOM56SUM = sum(WPRIMEDENOM56)</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC">       44684 :     WPRIMENUMER14SUM = sum(WPRIMENUMER)</span></span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaGNC">       44684 :     MPRIMEDENOM14SUM = sum(MPRIMEDENOM)</span></span>
+<span id="L289"><span class="lineNum">     289</span> <span class="tlaGNC">       44684 :     R_MPRIMEDENOME14SUM_MEX_DEAD = one(T) / (MPRIMEDENOM14SUM * raw.mex_dead)</span></span>
 <span id="L290"><span class="lineNum">     290</span>              : </span>
 <span id="L291"><span class="lineNum">     291</span>              :     # Live fuel moisture of extinction (initial)</span>
-<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">       42136 :     mex_live = if WPRIMEDENOM56SUM &gt; T(1e-6)</span></span>
-<span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">       15016 :         T(2.9) * WPRIMENUMER14SUM / WPRIMEDENOM56SUM</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">       44684 :     mex_live = if WPRIMEDENOM56SUM &gt; T(1e-6)</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">       15926 :         T(2.9) * WPRIMENUMER14SUM / WPRIMEDENOM56SUM</span></span>
 <span id="L294"><span class="lineNum">     294</span>              :     else</span>
-<span id="L295"><span class="lineNum">     295</span> <span class="tlaGNC">       69256 :         T(100)</span></span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaGNC">       73442 :         T(100)</span></span>
 <span id="L296"><span class="lineNum">     296</span>              :     end</span>
 <span id="L297"><span class="lineNum">     297</span>              : </span>
-<span id="L298"><span class="lineNum">     298</span> <span class="tlaGNC">       42136 :     return FuelModel{T}(</span></span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaGNC">       44684 :     return FuelModel{T}(</span></span>
 <span id="L299"><span class="lineNum">     299</span>              :         raw.id, raw.name, raw.dynamic,</span>
-<span id="L300"><span class="lineNum">     300</span> <span class="tlaGNC">       42136 :         ntuple(i -&gt; W0[i], 6), WN_dead, WN_live,</span></span>
-<span id="L301"><span class="lineNum">     301</span> <span class="tlaGNC">       42136 :         ntuple(i -&gt; SIG[i], 6), SIG_dead, SIG_live, SIG_overall,</span></span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaGNC">       44684 :         ntuple(i -&gt; W0[i], 6), WN_dead, WN_live,</span></span>
+<span id="L301"><span class="lineNum">     301</span> <span class="tlaGNC">       44684 :         ntuple(i -&gt; SIG[i], 6), SIG_dead, SIG_live, SIG_overall,</span></span>
 <span id="L302"><span class="lineNum">     302</span>              :         raw.delta, raw.mex_dead, mex_live, raw.hoc,</span>
 <span id="L303"><span class="lineNum">     303</span>              :         rhob, rhop, beta, betaop, xi, etas,</span>
 <span id="L304"><span class="lineNum">     304</span>              :         A_coeff, B_coeff, C_coeff, E_coeff,</span>
@@ -384,12 +384,12 @@
 <span id="L322"><span class="lineNum">     322</span>              : Live moisture class ranges from 30 to 120 (representing 30% to 120% moisture).</span>
 <span id="L323"><span class="lineNum">     323</span>              : &quot;&quot;&quot;</span>
 <span id="L324"><span class="lineNum">     324</span>              : struct FuelModelTable{T&lt;:AbstractFloat}</span>
-<span id="L325"><span class="lineNum">     325</span> <span class="tlaGNC">          34 :     models::Dict{Tuple{Int,Int}, FuelModel{T}}</span></span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaGNC">          36 :     models::Dict{Tuple{Int,Int}, FuelModel{T}}</span></span>
 <span id="L326"><span class="lineNum">     326</span>              :     raw_models::Dict{Int, RawFuelModel{T}}</span>
 <span id="L327"><span class="lineNum">     327</span>              : end</span>
 <span id="L328"><span class="lineNum">     328</span>              : </span>
 <span id="L329"><span class="lineNum">     329</span>              : function FuelModelTable{T}() where {T&lt;:AbstractFloat}</span>
-<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">          34 :     FuelModelTable{T}(Dict{Tuple{Int,Int}, FuelModel{T}}(), Dict{Int, RawFuelModel{T}}())</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">          36 :     FuelModelTable{T}(Dict{Tuple{Int,Int}, FuelModel{T}}(), Dict{Int, RawFuelModel{T}}())</span></span>
 <span id="L331"><span class="lineNum">     331</span>              : end</span>
 <span id="L332"><span class="lineNum">     332</span>              : </span>
 <span id="L333"><span class="lineNum">     333</span> <span class="tlaGNC">           1 : FuelModelTable() = FuelModelTable{DefaultFloat}()</span></span>
@@ -402,19 +402,19 @@
 <span id="L340"><span class="lineNum">     340</span>              : Add a raw fuel model to the table and compute coefficients for all</span>
 <span id="L341"><span class="lineNum">     341</span>              : live moisture classes (30-120).</span>
 <span id="L342"><span class="lineNum">     342</span>              : &quot;&quot;&quot;</span>
-<span id="L343"><span class="lineNum">     343</span> <span class="tlaGNC">         463 : function add_raw_model!(table::FuelModelTable{T}, raw::RawFuelModel) where {T}</span></span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaGNC">         491 : function add_raw_model!(table::FuelModelTable{T}, raw::RawFuelModel) where {T}</span></span>
 <span id="L344"><span class="lineNum">     344</span>              :     # Convert raw model to table's precision if needed</span>
-<span id="L345"><span class="lineNum">     345</span> <span class="tlaGNC">         463 :     raw_T = RawFuelModel{T}(</span></span>
+<span id="L345"><span class="lineNum">     345</span> <span class="tlaGNC">         491 :     raw_T = RawFuelModel{T}(</span></span>
 <span id="L346"><span class="lineNum">     346</span>              :         raw.id, raw.name, raw.dynamic,</span>
 <span id="L347"><span class="lineNum">     347</span>              :         T(raw.W0_1hr), T(raw.W0_10hr), T(raw.W0_100hr), T(raw.W0_herb), T(raw.W0_woody),</span>
 <span id="L348"><span class="lineNum">     348</span>              :         T(raw.SIG_1hr), T(raw.SIG_live_herb), T(raw.SIG_live_woody),</span>
 <span id="L349"><span class="lineNum">     349</span>              :         T(raw.delta), T(raw.mex_dead), T(raw.hoc)</span>
 <span id="L350"><span class="lineNum">     350</span>              :     )</span>
-<span id="L351"><span class="lineNum">     351</span> <span class="tlaGNC">         463 :     table.raw_models[raw.id] = raw_T</span></span>
-<span id="L352"><span class="lineNum">     352</span> <span class="tlaGNC">         463 :     for ilh in 30:120</span></span>
-<span id="L353"><span class="lineNum">     353</span> <span class="tlaGNC">       42133 :         table.models[(raw.id, ilh)] = compute_fuel_model(raw_T, ilh)</span></span>
-<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">       83803 :     end</span></span>
-<span id="L355"><span class="lineNum">     355</span> <span class="tlaGNC">         463 :     return table</span></span>
+<span id="L351"><span class="lineNum">     351</span> <span class="tlaGNC">         491 :     table.raw_models[raw.id] = raw_T</span></span>
+<span id="L352"><span class="lineNum">     352</span> <span class="tlaGNC">         491 :     for ilh in 30:120</span></span>
+<span id="L353"><span class="lineNum">     353</span> <span class="tlaGNC">       44681 :         table.models[(raw.id, ilh)] = compute_fuel_model(raw_T, ilh)</span></span>
+<span id="L354"><span class="lineNum">     354</span> <span class="tlaGNC">       88871 :     end</span></span>
+<span id="L355"><span class="lineNum">     355</span> <span class="tlaGNC">         491 :     return table</span></span>
 <span id="L356"><span class="lineNum">     356</span>              : end</span>
 <span id="L357"><span class="lineNum">     357</span>              : </span>
 <span id="L358"><span class="lineNum">     358</span>              : &quot;&quot;&quot;</span>
@@ -434,8 +434,8 @@
 <span id="L372"><span class="lineNum">     372</span>              : Get the fuel model for the given fuel ID and live moisture class (30-120).</span>
 <span id="L373"><span class="lineNum">     373</span>              : &quot;&quot;&quot;</span>
 <span id="L374"><span class="lineNum">     374</span> <span class="tlaGNC">         119 : function get_fuel_model(table::FuelModelTable, fuel_id::Int, live_moisture_class::Int)</span></span>
-<span id="L375"><span class="lineNum">     375</span> <span class="tlaGNC">      574964 :     ilh = clamp(live_moisture_class, 30, 120)</span></span>
-<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC">      287482 :     return table.models[(fuel_id, ilh)]</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaGNC">      727486 :     ilh = clamp(live_moisture_class, 30, 120)</span></span>
+<span id="L376"><span class="lineNum">     376</span> <span class="tlaGNC">      363743 :     return table.models[(fuel_id, ilh)]</span></span>
 <span id="L377"><span class="lineNum">     377</span>              : end</span>
 <span id="L378"><span class="lineNum">     378</span>              : </span>
 <span id="L379"><span class="lineNum">     379</span>              : </span>
@@ -447,7 +447,7 @@
 <span id="L385"><span class="lineNum">     385</span>              : </span>
 <span id="L386"><span class="lineNum">     386</span>              : Check if a fuel model is non-burnable (fuel model 256 or similar).</span>
 <span id="L387"><span class="lineNum">     387</span>              : &quot;&quot;&quot;</span>
-<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">     1589468 : isnonburnable(fm::FuelModel{T}) where {T} = fm.id == FUEL_MODEL_NONBURNABLE || fm.W0[1] &lt; T(1e-6)</span></span>
+<span id="L388"><span class="lineNum">     388</span> <span class="tlaGNC">     2231716 : isnonburnable(fm::FuelModel{T}) where {T} = fm.id == FUEL_MODEL_NONBURNABLE || fm.W0[1] &lt; T(1e-6)</span></span>
 <span id="L389"><span class="lineNum">     389</span>              : </span>
 <span id="L390"><span class="lineNum">     390</span>              : </span>
 <span id="L391"><span class="lineNum">     391</span>              : #-----------------------------------------------------------------------------#</span>

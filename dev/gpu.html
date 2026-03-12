@@ -373,7 +373,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   <li><a href="#planned-phases" id="toc-planned-phases" class="nav-link" data-scroll-target="#planned-phases">Planned Phases</a>
   <ul class="collapse">
-  <li><a href="#phase-1-gpu-velocity-kernel" id="toc-phase-1-gpu-velocity-kernel" class="nav-link" data-scroll-target="#phase-1-gpu-velocity-kernel">Phase 1: GPU Velocity Kernel</a></li>
   <li><a href="#phase-2-gpu-ensemble-support" id="toc-phase-2-gpu-ensemble-support" class="nav-link" data-scroll-target="#phase-2-gpu-ensemble-support">Phase 2: GPU Ensemble Support</a></li>
   <li><a href="#phase-3-optimization" id="toc-phase-3-optimization" class="nav-link" data-scroll-target="#phase-3-optimization">Phase 3: Optimization</a></li>
   </ul></li>
@@ -414,7 +413,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><code>active_mask()</code> converts the narrow band’s <code>Set</code> to a dense <code>BitMatrix</code> for GPU kernel masking.</li>
 <li><code>surface_spread_rate_flat()</code> computes Rothermel spread rates from <code>FuelModelArray</code> using array indexing instead of struct access.</li>
 </ul>
-<p><strong>Phase 1+ (planned):</strong> GPU kernels, ensemble support, and optimization. See below.</p>
+<p><strong>Phase 1 (complete):</strong> GPU kernels for velocity, CFL, RK2, and simulation driver.</p>
+<ul>
+<li><code>simulate_gpu!</code> and <code>simulate_gpu_uniform!</code> run complete fire simulations on GPU.</li>
+<li>Spread rate kernel computes Rothermel + elliptical spread + velocity components per cell.</li>
+<li>CFL reduction kernel for adaptive timestep control.</li>
+<li>RK2 level set update kernel with narrow band masking.</li>
+<li>Supports <code>accel_time_constant</code> for fire acceleration (computed on host, passed as scalar).</li>
+<li>Tested with <code>KernelAbstractions.CPU()</code> backend in CI.</li>
+</ul>
+<p><strong>Phase 2+ (planned):</strong> GPU ensemble support and optimization. See below.</p>
 </section>
 <section id="computational-profile" class="level2">
 <h2 class="anchored" data-anchor-id="computational-profile">Computational Profile</h2>
@@ -500,22 +508,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="planned-phases" class="level2">
 <h2 class="anchored" data-anchor-id="planned-phases">Planned Phases</h2>
-<section id="phase-1-gpu-velocity-kernel" class="level3">
-<h3 class="anchored" data-anchor-id="phase-1-gpu-velocity-kernel">Phase 1: GPU Velocity Kernel</h3>
-<p>The velocity calculation (Rothermel + elliptical spread + normal computation) dominates runtime. A single <code>@kernel</code> computes spread rate and velocity components for all active cells in parallel:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="pp">@kernel</span> <span class="kw">function</span> <span class="fu">velocity_kernel!</span>(ux, uy, phi, active_mask, fuel_ids,</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>                                   fuel_array, slope, aspect, weather_fields,</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>                                   cellsize, padding, ncols, nrows)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    px, py <span class="op">=</span> <span class="pp">@index</span>(Global, <span class="dt">NTuple</span>)</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    active_mask[px, py] <span class="op">||</span> <span class="cf">return</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Rothermel spread rate from fuel_array</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Normal vector from phi stencil</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Elliptical spread + velocity components</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    ux[px, py] <span class="op">=</span> <span class="op">...</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    uy[px, py] <span class="op">=</span> <span class="op">...</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This phase also includes CFL reduction and RK2 stencil kernels.</p>
-</section>
 <section id="phase-2-gpu-ensemble-support" class="level3">
 <h3 class="anchored" data-anchor-id="phase-2-gpu-ensemble-support">Phase 2: GPU Ensemble Support</h3>
 <p>Multiple ensemble members run concurrently using GPU streams. Each stream executes an independent simulation, reusing the <code>run_ensemble_threaded!</code> pattern with GPU-accelerated inner loops.</p>
@@ -1000,7 +992,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       &nbsp;
     </div>   
     <div class="nav-footer-center">
-<p>Built on 2026-03-02</p>
+<p>Built on 2026-03-12</p>
 </div>
     <div class="nav-footer-right">
       &nbsp;

@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-03-02 16:43:56</td>
+            <td class="headerValue">2026-03-12 00:37:17</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -93,7 +93,7 @@
 <span id="L31"><span class="lineNum">      31</span>              : &quot;&quot;&quot;</span>
 <span id="L32"><span class="lineNum">      32</span> <span class="tlaGNC tlaBgGNC">           8 : @inline function half_superbee(r::T) where {T&lt;:AbstractFloat}</span></span>
 <span id="L33"><span class="lineNum">      33</span>              :     # ψ(r)/2 = max(0, max(min(r/2, 1), min(r, 1/2)))</span>
-<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">     3666442 :     return max(zero(T), max(min(T(0.5)*r, one(T)), min(r, T(0.5))))</span></span>
+<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">     4757665 :     return max(zero(T), max(min(T(0.5)*r, one(T)), min(r, T(0.5))))</span></span>
 <span id="L35"><span class="lineNum">      35</span>              : end</span>
 <span id="L36"><span class="lineNum">      36</span>              : </span>
 <span id="L37"><span class="lineNum">      37</span>              : </span>
@@ -125,116 +125,116 @@
 <span id="L63"><span class="lineNum">      63</span>              : # Returns</span>
 <span id="L64"><span class="lineNum">      64</span>              : - `(dphidx, dphidy)`: Flux-limited gradients</span>
 <span id="L65"><span class="lineNum">      65</span>              : &quot;&quot;&quot;</span>
-<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">     1013447 : function limit_gradients(</span></span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">     1311015 : function limit_gradients(</span></span>
 <span id="L67"><span class="lineNum">      67</span>              :     phi::AbstractMatrix{T},</span>
 <span id="L68"><span class="lineNum">      68</span>              :     ux::T, uy::T,</span>
 <span id="L69"><span class="lineNum">      69</span>              :     ix::Int, iy::Int,</span>
 <span id="L70"><span class="lineNum">      70</span>              :     rcellsize::T</span>
 <span id="L71"><span class="lineNum">      71</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L72"><span class="lineNum">      72</span> <span class="tlaGNC">     1013447 :     EPSILON = T(1e-30)</span></span>
-<span id="L73"><span class="lineNum">      73</span> <span class="tlaGNC">     1013447 :     CEILING = T(1e3)</span></span>
+<span id="L72"><span class="lineNum">      72</span> <span class="tlaGNC">     1311015 :     EPSILON = T(1e-30)</span></span>
+<span id="L73"><span class="lineNum">      73</span> <span class="tlaGNC">     1311015 :     CEILING = T(1e3)</span></span>
 <span id="L74"><span class="lineNum">      74</span>              : </span>
 <span id="L75"><span class="lineNum">      75</span>              :     # X-direction gradient</span>
-<span id="L76"><span class="lineNum">      76</span> <span class="tlaGNC">     1013447 :     dphidx = zero(T)</span></span>
-<span id="L77"><span class="lineNum">      77</span> <span class="tlaGNC">     1013447 :     if ux &gt;= zero(T)</span></span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaGNC">     1311015 :     dphidx = zero(T)</span></span>
+<span id="L77"><span class="lineNum">      77</span> <span class="tlaGNC">     1311015 :     if ux &gt;= zero(T)</span></span>
 <span id="L78"><span class="lineNum">      78</span>              :         # Upwind from west</span>
-<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">      561098 :         deltaup = phi[ix, iy] - phi[ix-1, iy]</span></span>
-<span id="L80"><span class="lineNum">      80</span> <span class="tlaGNC">      561098 :         deltaloc = phi[ix+1, iy] - phi[ix, iy]</span></span>
+<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">      912740 :         deltaup = phi[ix, iy] - phi[ix-1, iy]</span></span>
+<span id="L80"><span class="lineNum">      80</span> <span class="tlaGNC">      912740 :         deltaloc = phi[ix+1, iy] - phi[ix, iy]</span></span>
 <span id="L81"><span class="lineNum">      81</span>              : </span>
 <span id="L82"><span class="lineNum">      82</span>              :         # East face</span>
-<span id="L83"><span class="lineNum">      83</span> <span class="tlaGNC">      561098 :         phieast = phi[ix, iy]</span></span>
-<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">      561098 :         if abs(deltaloc) &gt; EPSILON</span></span>
-<span id="L85"><span class="lineNum">      85</span> <span class="tlaGNC">      472605 :             phieast = phi[ix, iy] + half_superbee(deltaup / deltaloc) * deltaloc</span></span>
+<span id="L83"><span class="lineNum">      83</span> <span class="tlaGNC">      912740 :         phieast = phi[ix, iy]</span></span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">      912740 :         if abs(deltaloc) &gt; EPSILON</span></span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaGNC">      796534 :             phieast = phi[ix, iy] + half_superbee(deltaup / deltaloc) * deltaloc</span></span>
 <span id="L86"><span class="lineNum">      86</span>              :         end</span>
 <span id="L87"><span class="lineNum">      87</span>              : </span>
 <span id="L88"><span class="lineNum">      88</span>              :         # West face</span>
-<span id="L89"><span class="lineNum">      89</span> <span class="tlaGNC">      561098 :         deltaloc_west = -deltaup</span></span>
-<span id="L90"><span class="lineNum">      90</span> <span class="tlaGNC">      561098 :         phiwest = phi[ix-1, iy]</span></span>
-<span id="L91"><span class="lineNum">      91</span> <span class="tlaGNC">      561098 :         if abs(deltaloc_west) &gt; EPSILON</span></span>
-<span id="L92"><span class="lineNum">      92</span> <span class="tlaGNC">      483034 :             deltaup_west = phi[ix-2, iy] - phi[ix-1, iy]</span></span>
-<span id="L93"><span class="lineNum">      93</span> <span class="tlaGNC">      483034 :             phiwest = phi[ix-1, iy] - half_superbee(deltaup_west / deltaloc_west) * deltaloc_west</span></span>
+<span id="L89"><span class="lineNum">      89</span> <span class="tlaGNC">      912740 :         deltaloc_west = -deltaup</span></span>
+<span id="L90"><span class="lineNum">      90</span> <span class="tlaGNC">      912740 :         phiwest = phi[ix-1, iy]</span></span>
+<span id="L91"><span class="lineNum">      91</span> <span class="tlaGNC">      912740 :         if abs(deltaloc_west) &gt; EPSILON</span></span>
+<span id="L92"><span class="lineNum">      92</span> <span class="tlaGNC">      808701 :             deltaup_west = phi[ix-2, iy] - phi[ix-1, iy]</span></span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaGNC">      808701 :             phiwest = phi[ix-1, iy] - half_superbee(deltaup_west / deltaloc_west) * deltaloc_west</span></span>
 <span id="L94"><span class="lineNum">      94</span>              :         end</span>
 <span id="L95"><span class="lineNum">      95</span>              : </span>
-<span id="L96"><span class="lineNum">      96</span> <span class="tlaGNC">      561098 :         dphidx = (phieast - phiwest) * rcellsize</span></span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaGNC">      912740 :         dphidx = (phieast - phiwest) * rcellsize</span></span>
 <span id="L97"><span class="lineNum">      97</span>              :     else</span>
 <span id="L98"><span class="lineNum">      98</span>              :         # Upwind from east</span>
-<span id="L99"><span class="lineNum">      99</span> <span class="tlaGNC">      452349 :         deltaloc = phi[ix+1, iy] - phi[ix, iy]</span></span>
+<span id="L99"><span class="lineNum">      99</span> <span class="tlaGNC">      398275 :         deltaloc = phi[ix+1, iy] - phi[ix, iy]</span></span>
 <span id="L100"><span class="lineNum">     100</span>              : </span>
 <span id="L101"><span class="lineNum">     101</span>              :         # East face</span>
-<span id="L102"><span class="lineNum">     102</span> <span class="tlaGNC">      452349 :         phieast = phi[ix+1, iy]</span></span>
-<span id="L103"><span class="lineNum">     103</span> <span class="tlaGNC">      452349 :         if abs(deltaloc) &gt; EPSILON</span></span>
-<span id="L104"><span class="lineNum">     104</span> <span class="tlaGNC">      449864 :             deltaup = phi[ix+2, iy] - phi[ix+1, iy]</span></span>
-<span id="L105"><span class="lineNum">     105</span> <span class="tlaGNC">      449864 :             phieast = phi[ix+1, iy] - half_superbee(deltaup / deltaloc) * deltaloc</span></span>
+<span id="L102"><span class="lineNum">     102</span> <span class="tlaGNC">      398275 :         phieast = phi[ix+1, iy]</span></span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaGNC">      398275 :         if abs(deltaloc) &gt; EPSILON</span></span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaGNC">      380682 :             deltaup = phi[ix+2, iy] - phi[ix+1, iy]</span></span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaGNC">      380682 :             phieast = phi[ix+1, iy] - half_superbee(deltaup / deltaloc) * deltaloc</span></span>
 <span id="L106"><span class="lineNum">     106</span>              :         end</span>
 <span id="L107"><span class="lineNum">     107</span>              : </span>
 <span id="L108"><span class="lineNum">     108</span>              :         # West face</span>
-<span id="L109"><span class="lineNum">     109</span> <span class="tlaGNC">      452349 :         deltaup_west = -deltaloc</span></span>
-<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">      452349 :         deltaloc_west = phi[ix-1, iy] - phi[ix, iy]</span></span>
-<span id="L111"><span class="lineNum">     111</span> <span class="tlaGNC">      452349 :         phiwest = phi[ix, iy]</span></span>
-<span id="L112"><span class="lineNum">     112</span> <span class="tlaGNC">      452349 :         if abs(deltaloc_west) &gt; EPSILON</span></span>
-<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">      432599 :             phiwest = phi[ix, iy] + half_superbee(deltaup_west / deltaloc_west) * deltaloc_west</span></span>
+<span id="L109"><span class="lineNum">     109</span> <span class="tlaGNC">      398275 :         deltaup_west = -deltaloc</span></span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">      398275 :         deltaloc_west = phi[ix-1, iy] - phi[ix, iy]</span></span>
+<span id="L111"><span class="lineNum">     111</span> <span class="tlaGNC">      398275 :         phiwest = phi[ix, iy]</span></span>
+<span id="L112"><span class="lineNum">     112</span> <span class="tlaGNC">      398275 :         if abs(deltaloc_west) &gt; EPSILON</span></span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">      371242 :             phiwest = phi[ix, iy] + half_superbee(deltaup_west / deltaloc_west) * deltaloc_west</span></span>
 <span id="L114"><span class="lineNum">     114</span>              :         end</span>
 <span id="L115"><span class="lineNum">     115</span>              : </span>
-<span id="L116"><span class="lineNum">     116</span> <span class="tlaGNC">      452349 :         dphidx = (phieast - phiwest) * rcellsize</span></span>
+<span id="L116"><span class="lineNum">     116</span> <span class="tlaGNC">      398275 :         dphidx = (phieast - phiwest) * rcellsize</span></span>
 <span id="L117"><span class="lineNum">     117</span>              :     end</span>
 <span id="L118"><span class="lineNum">     118</span>              : </span>
 <span id="L119"><span class="lineNum">     119</span>              :     # Y-direction gradient</span>
-<span id="L120"><span class="lineNum">     120</span> <span class="tlaGNC">     1013447 :     dphidy = zero(T)</span></span>
-<span id="L121"><span class="lineNum">     121</span> <span class="tlaGNC">     1013447 :     if uy &gt; zero(T)</span></span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaGNC">     1311015 :     dphidy = zero(T)</span></span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaGNC">     1311015 :     if uy &gt; zero(T)</span></span>
 <span id="L122"><span class="lineNum">     122</span>              :         # Upwind from south</span>
-<span id="L123"><span class="lineNum">     123</span> <span class="tlaGNC">      402378 :         deltaup = phi[ix, iy] - phi[ix, iy-1]</span></span>
-<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC">      402378 :         deltaloc = phi[ix, iy+1] - phi[ix, iy]</span></span>
+<span id="L123"><span class="lineNum">     123</span> <span class="tlaGNC">      554294 :         deltaup = phi[ix, iy] - phi[ix, iy-1]</span></span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC">      554294 :         deltaloc = phi[ix, iy+1] - phi[ix, iy]</span></span>
 <span id="L125"><span class="lineNum">     125</span>              : </span>
 <span id="L126"><span class="lineNum">     126</span>              :         # North face</span>
-<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC">      402378 :         phinorth = phi[ix, iy]</span></span>
-<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">      402378 :         if abs(deltaloc) &gt; EPSILON</span></span>
-<span id="L129"><span class="lineNum">     129</span> <span class="tlaGNC">      392731 :             phinorth = phi[ix, iy] + half_superbee(deltaup / deltaloc) * deltaloc</span></span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC">      554294 :         phinorth = phi[ix, iy]</span></span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">      554294 :         if abs(deltaloc) &gt; EPSILON</span></span>
+<span id="L129"><span class="lineNum">     129</span> <span class="tlaGNC">      474293 :             phinorth = phi[ix, iy] + half_superbee(deltaup / deltaloc) * deltaloc</span></span>
 <span id="L130"><span class="lineNum">     130</span>              :         end</span>
 <span id="L131"><span class="lineNum">     131</span>              : </span>
 <span id="L132"><span class="lineNum">     132</span>              :         # South face</span>
-<span id="L133"><span class="lineNum">     133</span> <span class="tlaGNC">      402378 :         deltaloc_south = -deltaup</span></span>
-<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">      402378 :         phisouth = phi[ix, iy-1]</span></span>
-<span id="L135"><span class="lineNum">     135</span> <span class="tlaGNC">      402378 :         if abs(deltaloc_south) &gt; EPSILON</span></span>
-<span id="L136"><span class="lineNum">     136</span> <span class="tlaGNC">      401846 :             deltaup_south = phi[ix, iy-2] - phi[ix, iy-1]</span></span>
-<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">      401846 :             phisouth = phi[ix, iy-1] - half_superbee(deltaup_south / deltaloc_south) * deltaloc_south</span></span>
+<span id="L133"><span class="lineNum">     133</span> <span class="tlaGNC">      554294 :         deltaloc_south = -deltaup</span></span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">      554294 :         phisouth = phi[ix, iy-1]</span></span>
+<span id="L135"><span class="lineNum">     135</span> <span class="tlaGNC">      554294 :         if abs(deltaloc_south) &gt; EPSILON</span></span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaGNC">      498375 :             deltaup_south = phi[ix, iy-2] - phi[ix, iy-1]</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">      498375 :             phisouth = phi[ix, iy-1] - half_superbee(deltaup_south / deltaloc_south) * deltaloc_south</span></span>
 <span id="L138"><span class="lineNum">     138</span>              :         end</span>
 <span id="L139"><span class="lineNum">     139</span>              : </span>
-<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">      402378 :         dphidy = (phinorth - phisouth) * rcellsize</span></span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">      554294 :         dphidy = (phinorth - phisouth) * rcellsize</span></span>
 <span id="L141"><span class="lineNum">     141</span>              :     else</span>
 <span id="L142"><span class="lineNum">     142</span>              :         # Upwind from north</span>
-<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">      611069 :         deltaloc = phi[ix, iy+1] - phi[ix, iy]</span></span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">      756721 :         deltaloc = phi[ix, iy+1] - phi[ix, iy]</span></span>
 <span id="L144"><span class="lineNum">     144</span>              : </span>
 <span id="L145"><span class="lineNum">     145</span>              :         # North face</span>
-<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">      611069 :         phinorth = phi[ix, iy+1]</span></span>
-<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">      611069 :         if abs(deltaloc) &gt; EPSILON</span></span>
-<span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">      519579 :             deltaup = phi[ix, iy+2] - phi[ix, iy+1]</span></span>
-<span id="L149"><span class="lineNum">     149</span> <span class="tlaGNC">      519579 :             phinorth = phi[ix, iy+1] - half_superbee(deltaup / deltaloc) * deltaloc</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">      756721 :         phinorth = phi[ix, iy+1]</span></span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">      756721 :         if abs(deltaloc) &gt; EPSILON</span></span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">      722082 :             deltaup = phi[ix, iy+2] - phi[ix, iy+1]</span></span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaGNC">      722082 :             phinorth = phi[ix, iy+1] - half_superbee(deltaup / deltaloc) * deltaloc</span></span>
 <span id="L150"><span class="lineNum">     150</span>              :         end</span>
 <span id="L151"><span class="lineNum">     151</span>              : </span>
 <span id="L152"><span class="lineNum">     152</span>              :         # South face</span>
-<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">      611069 :         deltaup_south = -deltaloc</span></span>
-<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">      611069 :         deltaloc_south = phi[ix, iy-1] - phi[ix, iy]</span></span>
-<span id="L155"><span class="lineNum">     155</span> <span class="tlaGNC">      611069 :         phisouth = phi[ix, iy]</span></span>
-<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">      611069 :         if abs(deltaloc_south) &gt; EPSILON</span></span>
-<span id="L157"><span class="lineNum">     157</span> <span class="tlaGNC">      514176 :             phisouth = phi[ix, iy] + half_superbee(deltaup_south / deltaloc_south) * deltaloc_south</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">      756721 :         deltaup_south = -deltaloc</span></span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">      756721 :         deltaloc_south = phi[ix, iy-1] - phi[ix, iy]</span></span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaGNC">      756721 :         phisouth = phi[ix, iy]</span></span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">      756721 :         if abs(deltaloc_south) &gt; EPSILON</span></span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaGNC">      705748 :             phisouth = phi[ix, iy] + half_superbee(deltaup_south / deltaloc_south) * deltaloc_south</span></span>
 <span id="L158"><span class="lineNum">     158</span>              :         end</span>
 <span id="L159"><span class="lineNum">     159</span>              : </span>
-<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">      611069 :         dphidy = (phinorth - phisouth) * rcellsize</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">      756721 :         dphidy = (phinorth - phisouth) * rcellsize</span></span>
 <span id="L161"><span class="lineNum">     161</span>              :     end</span>
 <span id="L162"><span class="lineNum">     162</span>              : </span>
 <span id="L163"><span class="lineNum">     163</span>              :     # Clamp to prevent numerical issues</span>
-<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">     2026688 :     dphidx = clamp(dphidx, -CEILING, CEILING)</span></span>
-<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">     2026702 :     dphidy = clamp(dphidy, -CEILING, CEILING)</span></span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">     2621555 :     dphidx = clamp(dphidx, -CEILING, CEILING)</span></span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">     2621491 :     dphidy = clamp(dphidy, -CEILING, CEILING)</span></span>
 <span id="L166"><span class="lineNum">     166</span>              : </span>
 <span id="L167"><span class="lineNum">     167</span>              :     # Handle NaN</span>
-<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">     1013447 :     if isnan(dphidx)</span></span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">     1311015 :     if isnan(dphidx)</span></span>
 <span id="L169"><span class="lineNum">     169</span> <span class="tlaUNC tlaBgUNC">           0 :         dphidx = zero(T)</span></span>
 <span id="L170"><span class="lineNum">     170</span>              :     end</span>
-<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC tlaBgGNC">     1013447 :     if isnan(dphidy)</span></span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC tlaBgGNC">     1311015 :     if isnan(dphidy)</span></span>
 <span id="L172"><span class="lineNum">     172</span> <span class="tlaUNC tlaBgUNC">           0 :         dphidy = zero(T)</span></span>
 <span id="L173"><span class="lineNum">     173</span>              :     end</span>
 <span id="L174"><span class="lineNum">     174</span>              : </span>
-<span id="L175"><span class="lineNum">     175</span> <span class="tlaGNC tlaBgGNC">     1013447 :     return (dphidx, dphidy)</span></span>
+<span id="L175"><span class="lineNum">     175</span> <span class="tlaGNC tlaBgGNC">     1311015 :     return (dphidx, dphidy)</span></span>
 <span id="L176"><span class="lineNum">     176</span>              : end</span>
 <span id="L177"><span class="lineNum">     177</span>              : </span>
 <span id="L178"><span class="lineNum">     178</span>              : </span>
@@ -259,7 +259,7 @@
 <span id="L197"><span class="lineNum">     197</span>              : </span>
 <span id="L198"><span class="lineNum">     198</span>              : Implementation follows `elmfire_level_set.f90:2010-2027`.</span>
 <span id="L199"><span class="lineNum">     199</span>              : &quot;&quot;&quot;</span>
-<span id="L200"><span class="lineNum">     200</span> <span class="tlaGNC">        1770 : function compute_cfl_timestep(</span></span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaGNC">        3376 : function compute_cfl_timestep(</span></span>
 <span id="L201"><span class="lineNum">     201</span>              :     ux::AbstractMatrix{T},</span>
 <span id="L202"><span class="lineNum">     202</span>              :     uy::AbstractMatrix{T},</span>
 <span id="L203"><span class="lineNum">     203</span>              :     active_cells::AbstractVector{CartesianIndex{2}},</span>
@@ -268,18 +268,18 @@
 <span id="L206"><span class="lineNum">     206</span>              :     target_cfl::T = T(0.9),</span>
 <span id="L207"><span class="lineNum">     207</span>              :     dt_max::T = T(10)</span>
 <span id="L208"><span class="lineNum">     208</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L209"><span class="lineNum">     209</span> <span class="tlaGNC">         885 :     umax = zero(T)</span></span>
-<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">        1768 :     for idx in active_cells</span></span>
-<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">      488013 :         u = max(abs(ux[idx]), abs(uy[idx]))</span></span>
-<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">      488013 :         if u &gt; umax</span></span>
-<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">        7215 :             umax = u</span></span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaGNC">        1688 :     umax = zero(T)</span></span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">        3374 :     for idx in active_cells</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">      635819 :         u = max(abs(ux[idx]), abs(uy[idx]))</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">      635819 :         if u &gt; umax</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">       15452 :             umax = u</span></span>
 <span id="L214"><span class="lineNum">     214</span>              :         end</span>
-<span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">      975141 :     end</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">     1269950 :     end</span></span>
 <span id="L216"><span class="lineNum">     216</span>              : </span>
-<span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC">         885 :     if umax &gt; T(1e-9)</span></span>
-<span id="L218"><span class="lineNum">     218</span> <span class="tlaGNC">         885 :         cfl = umax * dt_current / dx</span></span>
-<span id="L219"><span class="lineNum">     219</span> <span class="tlaGNC">         885 :         dt_new = target_cfl * dt_current / cfl</span></span>
-<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">         885 :         return min(dt_new, dt_max)</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC">        1688 :     if umax &gt; T(1e-9)</span></span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaGNC">        1688 :         cfl = umax * dt_current / dx</span></span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaGNC">        1688 :         dt_new = target_cfl * dt_current / cfl</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">        1688 :         return min(dt_new, dt_max)</span></span>
 <span id="L221"><span class="lineNum">     221</span>              :     else</span>
 <span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC tlaBgUNC">           0 :         return dt_max</span></span>
 <span id="L223"><span class="lineNum">     223</span>              :     end</span>
@@ -309,7 +309,7 @@
 <span id="L247"><span class="lineNum">     247</span>              : </span>
 <span id="L248"><span class="lineNum">     248</span>              : Implementation follows `elmfire_level_set.f90:1957-1983`.</span>
 <span id="L249"><span class="lineNum">     249</span>              : &quot;&quot;&quot;</span>
-<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC tlaBgGNC">        1925 : function rk2_step!(</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC tlaBgGNC">        3571 : function rk2_step!(</span></span>
 <span id="L251"><span class="lineNum">     251</span>              :     phi::AbstractMatrix{T},</span>
 <span id="L252"><span class="lineNum">     252</span>              :     phi_old::AbstractMatrix{T},</span>
 <span id="L253"><span class="lineNum">     253</span>              :     ux::AbstractMatrix{T},</span>
@@ -319,32 +319,32 @@
 <span id="L257"><span class="lineNum">     257</span>              :     dx::T,</span>
 <span id="L258"><span class="lineNum">     258</span>              :     stage::Int</span>
 <span id="L259"><span class="lineNum">     259</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">        1925 :     rcellsize = one(T) / dx</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">        3571 :     rcellsize = one(T) / dx</span></span>
 <span id="L261"><span class="lineNum">     261</span>              : </span>
-<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">        1925 :     if stage == 1</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">        3571 :     if stage == 1</span></span>
 <span id="L263"><span class="lineNum">     263</span>              :         # Stage 1: Forward Euler step</span>
-<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">        1925 :         for idx in active_cells</span></span>
-<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">      506730 :             ix, iy = idx[1], idx[2]</span></span>
-<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">      506730 :             dphidx, dphidy = limit_gradients(phi, ux[idx], uy[idx], ix, iy, rcellsize)</span></span>
-<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">      506730 :             phi_new = phi_old[idx] - dt * (ux[idx] * dphidx + uy[idx] * dphidy)</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">        3571 :         for idx in active_cells</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">      655514 :             ix, iy = idx[1], idx[2]</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">      655514 :             dphidx, dphidy = limit_gradients(phi, ux[idx], uy[idx], ix, iy, rcellsize)</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">      655514 :             phi_new = phi_old[idx] - dt * (ux[idx] * dphidx + uy[idx] * dphidy)</span></span>
 <span id="L268"><span class="lineNum">     268</span>              : </span>
 <span id="L269"><span class="lineNum">     269</span>              :             # Clamp and handle NaN</span>
-<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">      506730 :             if isnan(phi_new)</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">      655514 :             if isnan(phi_new)</span></span>
 <span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC tlaBgUNC">           0 :                 phi_new = one(T)</span></span>
 <span id="L272"><span class="lineNum">     272</span>              :             end</span>
-<span id="L273"><span class="lineNum">     273</span> <span class="tlaGNC tlaBgGNC">      506730 :             phi[idx] = clamp(phi_new, T(-100), T(100))</span></span>
-<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">     1012482 :         end</span></span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaGNC tlaBgGNC">      655514 :             phi[idx] = clamp(phi_new, T(-100), T(100))</span></span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">     1309227 :         end</span></span>
 <span id="L275"><span class="lineNum">     275</span>              :     else</span>
 <span id="L276"><span class="lineNum">     276</span>              :         # Stage 2: Average with original</span>
-<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">        1924 :         for idx in active_cells</span></span>
-<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">      506714 :             ix, iy = idx[1], idx[2]</span></span>
-<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">      506714 :             dphidx, dphidy = limit_gradients(phi, ux[idx], uy[idx], ix, iy, rcellsize)</span></span>
-<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">      506714 :             phi_rhs = phi[idx] - dt * (ux[idx] * dphidx + uy[idx] * dphidy)</span></span>
-<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">      506714 :             phi[idx] = T(0.5) * (phi_old[idx] + phi_rhs)</span></span>
-<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">      506714 :         end</span></span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">        3570 :         for idx in active_cells</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">      655498 :             ix, iy = idx[1], idx[2]</span></span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">      655498 :             dphidx, dphidy = limit_gradients(phi, ux[idx], uy[idx], ix, iy, rcellsize)</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">      655498 :             phi_rhs = phi[idx] - dt * (ux[idx] * dphidx + uy[idx] * dphidy)</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">      655498 :             phi[idx] = T(0.5) * (phi_old[idx] + phi_rhs)</span></span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">      655498 :         end</span></span>
 <span id="L283"><span class="lineNum">     283</span>              :     end</span>
 <span id="L284"><span class="lineNum">     284</span>              : </span>
-<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">        1925 :     return nothing</span></span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">        3571 :     return nothing</span></span>
 <span id="L286"><span class="lineNum">     286</span>              : end</span>
 <span id="L287"><span class="lineNum">     287</span>              : </span>
 <span id="L288"><span class="lineNum">     288</span>              : </span>
@@ -364,22 +364,22 @@
 <span id="L302"><span class="lineNum">     302</span>              : </span>
 <span id="L303"><span class="lineNum">     303</span>              : Uses central differences.</span>
 <span id="L304"><span class="lineNum">     304</span>              : &quot;&quot;&quot;</span>
-<span id="L305"><span class="lineNum">     305</span> <span class="tlaGNC">      388842 : function compute_normal(</span></span>
+<span id="L305"><span class="lineNum">     305</span> <span class="tlaGNC">      552345 : function compute_normal(</span></span>
 <span id="L306"><span class="lineNum">     306</span>              :     phi::AbstractMatrix{T},</span>
 <span id="L307"><span class="lineNum">     307</span>              :     ix::Int, iy::Int,</span>
 <span id="L308"><span class="lineNum">     308</span>              :     dx::T</span>
 <span id="L309"><span class="lineNum">     309</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L310"><span class="lineNum">     310</span> <span class="tlaGNC">      388842 :     rdx2 = T(0.5) / dx</span></span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaGNC">      552345 :     rdx2 = T(0.5) / dx</span></span>
 <span id="L311"><span class="lineNum">     311</span>              : </span>
-<span id="L312"><span class="lineNum">     312</span> <span class="tlaGNC">      388842 :     dphidx = (phi[ix+1, iy] - phi[ix-1, iy]) * rdx2</span></span>
-<span id="L313"><span class="lineNum">     313</span> <span class="tlaGNC">      388842 :     dphidy = (phi[ix, iy+1] - phi[ix, iy-1]) * rdx2</span></span>
+<span id="L312"><span class="lineNum">     312</span> <span class="tlaGNC">      552345 :     dphidx = (phi[ix+1, iy] - phi[ix-1, iy]) * rdx2</span></span>
+<span id="L313"><span class="lineNum">     313</span> <span class="tlaGNC">      552345 :     dphidy = (phi[ix, iy+1] - phi[ix, iy-1]) * rdx2</span></span>
 <span id="L314"><span class="lineNum">     314</span>              : </span>
-<span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC">      388842 :     mag = sqrt(dphidx^2 + dphidy^2)</span></span>
+<span id="L315"><span class="lineNum">     315</span> <span class="tlaGNC">      552345 :     mag = sqrt(dphidx^2 + dphidy^2)</span></span>
 <span id="L316"><span class="lineNum">     316</span>              : </span>
-<span id="L317"><span class="lineNum">     317</span> <span class="tlaGNC">      388842 :     if mag &gt; T(1e-10)</span></span>
-<span id="L318"><span class="lineNum">     318</span> <span class="tlaGNC">      350002 :         return (dphidx / mag, dphidy / mag)</span></span>
+<span id="L317"><span class="lineNum">     317</span> <span class="tlaGNC">      552345 :     if mag &gt; T(1e-10)</span></span>
+<span id="L318"><span class="lineNum">     318</span> <span class="tlaGNC">      512478 :         return (dphidx / mag, dphidy / mag)</span></span>
 <span id="L319"><span class="lineNum">     319</span>              :     else</span>
-<span id="L320"><span class="lineNum">     320</span> <span class="tlaGNC">       38840 :         return (zero(T), zero(T))</span></span>
+<span id="L320"><span class="lineNum">     320</span> <span class="tlaGNC">       39867 :         return (zero(T), zero(T))</span></span>
 <span id="L321"><span class="lineNum">     321</span>              :     end</span>
 <span id="L322"><span class="lineNum">     322</span>              : end</span>
 <span id="L323"><span class="lineNum">     323</span>              : </span>
@@ -398,7 +398,7 @@
 <span id="L336"><span class="lineNum">     336</span>              : packed Vector for cache-friendly iteration.</span>
 <span id="L337"><span class="lineNum">     337</span>              : &quot;&quot;&quot;</span>
 <span id="L338"><span class="lineNum">     338</span>              : mutable struct NarrowBand</span>
-<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">          35 :     is_active::BitMatrix                      # O(1) membership test</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">          39 :     is_active::BitMatrix                      # O(1) membership test</span></span>
 <span id="L340"><span class="lineNum">     340</span>              :     active_list::Vector{CartesianIndex{2}}    # packed iteration list</span>
 <span id="L341"><span class="lineNum">     341</span>              :     n_active::Int                             # valid length of active_list</span>
 <span id="L342"><span class="lineNum">     342</span>              :     ever_tagged::BitMatrix                    # cells that have ever been in the band</span>
@@ -406,7 +406,7 @@
 <span id="L344"><span class="lineNum">     344</span>              : end</span>
 <span id="L345"><span class="lineNum">     345</span>              : </span>
 <span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC">           1 : function NarrowBand(nx::Int, ny::Int, thickness::Int=5)</span></span>
-<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">          35 :     NarrowBand(falses(nx, ny), CartesianIndex{2}[], 0, falses(nx, ny), thickness)</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">          39 :     NarrowBand(falses(nx, ny), CartesianIndex{2}[], 0, falses(nx, ny), thickness)</span></span>
 <span id="L348"><span class="lineNum">     348</span>              : end</span>
 <span id="L349"><span class="lineNum">     349</span>              : </span>
 <span id="L350"><span class="lineNum">     350</span>              : </span>
@@ -415,33 +415,33 @@
 <span id="L353"><span class="lineNum">     353</span>              : </span>
 <span id="L354"><span class="lineNum">     354</span>              : Add cells within band_thickness of center to the active set.</span>
 <span id="L355"><span class="lineNum">     355</span>              : &quot;&quot;&quot;</span>
-<span id="L356"><span class="lineNum">     356</span> <span class="tlaGNC">        9306 : function tag_band!(nb::NarrowBand, center::CartesianIndex{2}, nx::Int, ny::Int, padding::Int=2)</span></span>
-<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">        9306 :     bt = nb.band_thickness</span></span>
-<span id="L358"><span class="lineNum">     358</span> <span class="tlaGNC">        9306 :     ix, iy = center[1], center[2]</span></span>
+<span id="L356"><span class="lineNum">     356</span> <span class="tlaGNC">        3411 : function tag_band!(nb::NarrowBand, center::CartesianIndex{2}, nx::Int, ny::Int, padding::Int=2)</span></span>
+<span id="L357"><span class="lineNum">     357</span> <span class="tlaGNC">        3411 :     bt = nb.band_thickness</span></span>
+<span id="L358"><span class="lineNum">     358</span> <span class="tlaGNC">        3411 :     ix, iy = center[1], center[2]</span></span>
 <span id="L359"><span class="lineNum">     359</span>              : </span>
 <span id="L360"><span class="lineNum">     360</span>              :     # Define bounds with padding consideration</span>
-<span id="L361"><span class="lineNum">     361</span> <span class="tlaGNC">        9306 :     ixstart = max(ix - bt, 1 + padding)</span></span>
-<span id="L362"><span class="lineNum">     362</span> <span class="tlaGNC">        9306 :     ixstop = min(ix + bt, nx - padding)</span></span>
-<span id="L363"><span class="lineNum">     363</span> <span class="tlaGNC">        9306 :     iystart = max(iy - bt, 1 + padding)</span></span>
-<span id="L364"><span class="lineNum">     364</span> <span class="tlaGNC">        9306 :     iystop = min(iy + bt, ny - padding)</span></span>
+<span id="L361"><span class="lineNum">     361</span> <span class="tlaGNC">        3411 :     ixstart = max(ix - bt, 1 + padding)</span></span>
+<span id="L362"><span class="lineNum">     362</span> <span class="tlaGNC">        3411 :     ixstop = min(ix + bt, nx - padding)</span></span>
+<span id="L363"><span class="lineNum">     363</span> <span class="tlaGNC">        3411 :     iystart = max(iy - bt, 1 + padding)</span></span>
+<span id="L364"><span class="lineNum">     364</span> <span class="tlaGNC">        3411 :     iystop = min(iy + bt, ny - padding)</span></span>
 <span id="L365"><span class="lineNum">     365</span>              : </span>
-<span id="L366"><span class="lineNum">     366</span> <span class="tlaGNC">        9306 :     for jx in ixstart:ixstop</span></span>
-<span id="L367"><span class="lineNum">     367</span> <span class="tlaGNC">       96950 :         for jy in iystart:iystop</span></span>
-<span id="L368"><span class="lineNum">     368</span> <span class="tlaGNC">     1028466 :             if !nb.is_active[jx, jy]</span></span>
-<span id="L369"><span class="lineNum">     369</span> <span class="tlaGNC">      109423 :                 nb.is_active[jx, jy] = true</span></span>
-<span id="L370"><span class="lineNum">     370</span> <span class="tlaGNC">      109423 :                 nb.n_active += 1</span></span>
-<span id="L371"><span class="lineNum">     371</span> <span class="tlaGNC">      109423 :                 idx = CartesianIndex(jx, jy)</span></span>
-<span id="L372"><span class="lineNum">     372</span> <span class="tlaGNC">      109423 :                 if nb.n_active &lt;= length(nb.active_list)</span></span>
-<span id="L373"><span class="lineNum">     373</span> <span class="tlaGNC">       91635 :                     nb.active_list[nb.n_active] = idx</span></span>
+<span id="L366"><span class="lineNum">     366</span> <span class="tlaGNC">        3411 :     for jx in ixstart:ixstop</span></span>
+<span id="L367"><span class="lineNum">     367</span> <span class="tlaGNC">       36310 :         for jy in iystart:iystop</span></span>
+<span id="L368"><span class="lineNum">     368</span> <span class="tlaGNC">      383780 :             if !nb.is_active[jx, jy]</span></span>
+<span id="L369"><span class="lineNum">     369</span> <span class="tlaGNC">       55706 :                 nb.is_active[jx, jy] = true</span></span>
+<span id="L370"><span class="lineNum">     370</span> <span class="tlaGNC">       55706 :                 nb.n_active += 1</span></span>
+<span id="L371"><span class="lineNum">     371</span> <span class="tlaGNC">       55706 :                 idx = CartesianIndex(jx, jy)</span></span>
+<span id="L372"><span class="lineNum">     372</span> <span class="tlaGNC">       55706 :                 if nb.n_active &lt;= length(nb.active_list)</span></span>
+<span id="L373"><span class="lineNum">     373</span> <span class="tlaGNC">       44680 :                     nb.active_list[nb.n_active] = idx</span></span>
 <span id="L374"><span class="lineNum">     374</span>              :                 else</span>
-<span id="L375"><span class="lineNum">     375</span> <span class="tlaGNC">       17788 :                     push!(nb.active_list, idx)</span></span>
+<span id="L375"><span class="lineNum">     375</span> <span class="tlaGNC">       11026 :                     push!(nb.active_list, idx)</span></span>
 <span id="L376"><span class="lineNum">     376</span>              :                 end</span>
 <span id="L377"><span class="lineNum">     377</span>              :             end</span>
-<span id="L378"><span class="lineNum">     378</span> <span class="tlaGNC">     1028466 :             nb.ever_tagged[jx, jy] = true</span></span>
-<span id="L379"><span class="lineNum">     379</span> <span class="tlaGNC">     1959982 :         end</span></span>
-<span id="L380"><span class="lineNum">     380</span> <span class="tlaGNC">      184594 :     end</span></span>
+<span id="L378"><span class="lineNum">     378</span> <span class="tlaGNC">      383780 :             nb.ever_tagged[jx, jy] = true</span></span>
+<span id="L379"><span class="lineNum">     379</span> <span class="tlaGNC">      731250 :         end</span></span>
+<span id="L380"><span class="lineNum">     380</span> <span class="tlaGNC">       69209 :     end</span></span>
 <span id="L381"><span class="lineNum">     381</span>              : </span>
-<span id="L382"><span class="lineNum">     382</span> <span class="tlaGNC">        9306 :     return nothing</span></span>
+<span id="L382"><span class="lineNum">     382</span> <span class="tlaGNC">        3411 :     return nothing</span></span>
 <span id="L383"><span class="lineNum">     383</span>              : end</span>
 <span id="L384"><span class="lineNum">     384</span>              : </span>
 <span id="L385"><span class="lineNum">     385</span>              : </span>
@@ -462,58 +462,58 @@
 <span id="L400"><span class="lineNum">     400</span>              : </span>
 <span id="L401"><span class="lineNum">     401</span>              : Uses swap-and-compact on the active list for zero-allocation removal.</span>
 <span id="L402"><span class="lineNum">     402</span>              : &quot;&quot;&quot;</span>
-<span id="L403"><span class="lineNum">     403</span> <span class="tlaGNC">        1122 : function untag_isolated!(</span></span>
+<span id="L403"><span class="lineNum">     403</span> <span class="tlaGNC">        2075 : function untag_isolated!(</span></span>
 <span id="L404"><span class="lineNum">     404</span>              :     nb::NarrowBand,</span>
 <span id="L405"><span class="lineNum">     405</span>              :     phi::AbstractMatrix{T},</span>
 <span id="L406"><span class="lineNum">     406</span>              :     burned::Union{AbstractMatrix{Bool}, BitMatrix},</span>
 <span id="L407"><span class="lineNum">     407</span>              :     padding::Int = 0</span>
 <span id="L408"><span class="lineNum">     408</span>              : ) where {T&lt;:AbstractFloat}</span>
-<span id="L409"><span class="lineNum">     409</span> <span class="tlaGNC">        1122 :     ncols, nrows = size(burned)</span></span>
+<span id="L409"><span class="lineNum">     409</span> <span class="tlaGNC">        2075 :     ncols, nrows = size(burned)</span></span>
 <span id="L410"><span class="lineNum">     410</span>              : </span>
-<span id="L411"><span class="lineNum">     411</span> <span class="tlaGNC">        1122 :     i = 1</span></span>
-<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC">      701109 :     while i &lt;= nb.n_active</span></span>
-<span id="L413"><span class="lineNum">     413</span> <span class="tlaGNC">      699987 :         idx = nb.active_list[i]</span></span>
-<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">      699987 :         px, py = idx[1], idx[2]</span></span>
+<span id="L411"><span class="lineNum">     411</span> <span class="tlaGNC">        2075 :     i = 1</span></span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC">      795029 :     while i &lt;= nb.n_active</span></span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaGNC">      792954 :         idx = nb.active_list[i]</span></span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">      792954 :         px, py = idx[1], idx[2]</span></span>
 <span id="L415"><span class="lineNum">     415</span>              : </span>
 <span id="L416"><span class="lineNum">     416</span>              :         # Convert to grid coordinates</span>
-<span id="L417"><span class="lineNum">     417</span> <span class="tlaGNC">      699987 :         ix, iy = px - padding, py - padding</span></span>
+<span id="L417"><span class="lineNum">     417</span> <span class="tlaGNC">      792954 :         ix, iy = px - padding, py - padding</span></span>
 <span id="L418"><span class="lineNum">     418</span>              : </span>
 <span id="L419"><span class="lineNum">     419</span>              :         # Skip if out of bounds for the burned grid</span>
-<span id="L420"><span class="lineNum">     420</span> <span class="tlaGNC">     1399974 :         if ix &lt; 1 || ix &gt; ncols || iy &lt; 1 || iy &gt; nrows</span></span>
+<span id="L420"><span class="lineNum">     420</span> <span class="tlaGNC">     1585908 :         if ix &lt; 1 || ix &gt; ncols || iy &lt; 1 || iy &gt; nrows</span></span>
 <span id="L421"><span class="lineNum">     421</span> <span class="tlaUNC tlaBgUNC">           0 :             i += 1</span></span>
 <span id="L422"><span class="lineNum">     422</span> <span class="tlaUNC">           0 :             continue</span></span>
 <span id="L423"><span class="lineNum">     423</span>              :         end</span>
 <span id="L424"><span class="lineNum">     424</span>              : </span>
 <span id="L425"><span class="lineNum">     425</span>              :         # Skip if not burned</span>
-<span id="L426"><span class="lineNum">     426</span> <span class="tlaGNC tlaBgGNC">      699987 :         if !burned[ix, iy]</span></span>
-<span id="L427"><span class="lineNum">     427</span> <span class="tlaGNC">      468734 :             i += 1</span></span>
-<span id="L428"><span class="lineNum">     428</span> <span class="tlaGNC">      468734 :             continue</span></span>
+<span id="L426"><span class="lineNum">     426</span> <span class="tlaGNC tlaBgGNC">      792954 :         if !burned[ix, iy]</span></span>
+<span id="L427"><span class="lineNum">     427</span> <span class="tlaGNC">      635362 :             i += 1</span></span>
+<span id="L428"><span class="lineNum">     428</span> <span class="tlaGNC">      635362 :             continue</span></span>
 <span id="L429"><span class="lineNum">     429</span>              :         end</span>
 <span id="L430"><span class="lineNum">     430</span>              : </span>
 <span id="L431"><span class="lineNum">     431</span>              :         # Check if any neighbor is not burned (in grid coordinates)</span>
-<span id="L432"><span class="lineNum">     432</span> <span class="tlaGNC">      231253 :         has_unburned_neighbor = false</span></span>
-<span id="L433"><span class="lineNum">     433</span> <span class="tlaGNC">      231253 :         for (dx, dy) in ((1,0), (-1,0), (0,1), (0,-1))</span></span>
-<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">      679894 :             nx, ny = ix + dx, iy + dy</span></span>
-<span id="L435"><span class="lineNum">     435</span> <span class="tlaGNC">      679894 :             if 1 &lt;= nx &lt;= ncols &amp;&amp; 1 &lt;= ny &lt;= nrows</span></span>
-<span id="L436"><span class="lineNum">     436</span> <span class="tlaGNC">      671601 :                 if !burned[nx, ny]</span></span>
-<span id="L437"><span class="lineNum">     437</span> <span class="tlaGNC">      134342 :                     has_unburned_neighbor = true</span></span>
-<span id="L438"><span class="lineNum">     438</span> <span class="tlaGNC">      134342 :                     break</span></span>
+<span id="L432"><span class="lineNum">     432</span> <span class="tlaGNC">      157592 :         has_unburned_neighbor = false</span></span>
+<span id="L433"><span class="lineNum">     433</span> <span class="tlaGNC">      157592 :         for (dx, dy) in ((1,0), (-1,0), (0,1), (0,-1))</span></span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">      448760 :             nx, ny = ix + dx, iy + dy</span></span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaGNC">      448760 :             if 1 &lt;= nx &lt;= ncols &amp;&amp; 1 &lt;= ny &lt;= nrows</span></span>
+<span id="L436"><span class="lineNum">     436</span> <span class="tlaGNC">      445090 :                 if !burned[nx, ny]</span></span>
+<span id="L437"><span class="lineNum">     437</span> <span class="tlaGNC">      111267 :                     has_unburned_neighbor = true</span></span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaGNC">      111267 :                     break</span></span>
 <span id="L439"><span class="lineNum">     439</span>              :                 end</span>
 <span id="L440"><span class="lineNum">     440</span>              :             end</span>
-<span id="L441"><span class="lineNum">     441</span> <span class="tlaGNC">      545552 :         end</span></span>
+<span id="L441"><span class="lineNum">     441</span> <span class="tlaGNC">      337493 :         end</span></span>
 <span id="L442"><span class="lineNum">     442</span>              : </span>
-<span id="L443"><span class="lineNum">     443</span> <span class="tlaGNC">      231253 :         if !has_unburned_neighbor</span></span>
+<span id="L443"><span class="lineNum">     443</span> <span class="tlaGNC">      157592 :         if !has_unburned_neighbor</span></span>
 <span id="L444"><span class="lineNum">     444</span>              :             # Swap-remove: replace with last element, clear bit</span>
-<span id="L445"><span class="lineNum">     445</span> <span class="tlaGNC">       96911 :             nb.is_active[px, py] = false</span></span>
-<span id="L446"><span class="lineNum">     446</span> <span class="tlaGNC">       96911 :             nb.active_list[i] = nb.active_list[nb.n_active]</span></span>
-<span id="L447"><span class="lineNum">     447</span> <span class="tlaGNC">       96911 :             nb.n_active -= 1</span></span>
+<span id="L445"><span class="lineNum">     445</span> <span class="tlaGNC">       46325 :             nb.is_active[px, py] = false</span></span>
+<span id="L446"><span class="lineNum">     446</span> <span class="tlaGNC">       46325 :             nb.active_list[i] = nb.active_list[nb.n_active]</span></span>
+<span id="L447"><span class="lineNum">     447</span> <span class="tlaGNC">       46325 :             nb.n_active -= 1</span></span>
 <span id="L448"><span class="lineNum">     448</span>              :             # Don't increment i — re-check the swapped element</span>
 <span id="L449"><span class="lineNum">     449</span>              :         else</span>
-<span id="L450"><span class="lineNum">     450</span> <span class="tlaGNC">      134342 :             i += 1</span></span>
+<span id="L450"><span class="lineNum">     450</span> <span class="tlaGNC">      111267 :             i += 1</span></span>
 <span id="L451"><span class="lineNum">     451</span>              :         end</span>
-<span id="L452"><span class="lineNum">     452</span> <span class="tlaGNC">      699987 :     end</span></span>
+<span id="L452"><span class="lineNum">     452</span> <span class="tlaGNC">      792954 :     end</span></span>
 <span id="L453"><span class="lineNum">     453</span>              : </span>
-<span id="L454"><span class="lineNum">     454</span> <span class="tlaGNC">        1122 :     return nothing</span></span>
+<span id="L454"><span class="lineNum">     454</span> <span class="tlaGNC">        2075 :     return nothing</span></span>
 <span id="L455"><span class="lineNum">     455</span>              : end</span>
 <span id="L456"><span class="lineNum">     456</span>              : </span>
 <span id="L457"><span class="lineNum">     457</span>              : </span>
@@ -523,7 +523,7 @@
 <span id="L461"><span class="lineNum">     461</span>              : Get a view of active cell indices for iteration. Zero-allocation.</span>
 <span id="L462"><span class="lineNum">     462</span>              : &quot;&quot;&quot;</span>
 <span id="L463"><span class="lineNum">     463</span>              : function get_active_cells(nb::NarrowBand)</span>
-<span id="L464"><span class="lineNum">     464</span> <span class="tlaGNC">         962 :     return @view nb.active_list[1:nb.n_active]</span></span>
+<span id="L464"><span class="lineNum">     464</span> <span class="tlaGNC">        1785 :     return @view nb.active_list[1:nb.n_active]</span></span>
 <span id="L465"><span class="lineNum">     465</span>              : end</span>
 <span id="L466"><span class="lineNum">     466</span>              : </span>
 <span id="L467"><span class="lineNum">     467</span>              : </span>
