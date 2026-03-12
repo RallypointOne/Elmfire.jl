@@ -486,17 +486,6 @@ window.Quarto = {
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="bu">Random</span>.<span class="fu">seed!</span>(<span class="fl">2021</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
-<div class="cell-output cell-output-stdout">
-<div class="ansi-escaped-output">
-<pre><span class="ansi-green-fg ansi-bold">Precompiling</span> packages...
-   7747.8 ms<span class="ansi-green-fg">  ✓ </span>QuartoNotebookWorkerMakieExt<span class="ansi-bright-black-fg"> (serial)</span>
-  1 dependency successfully precompiled in 8 seconds
-<span class="ansi-green-fg ansi-bold">Precompiling</span> packages...
-   5546.3 ms<span class="ansi-green-fg">  ✓ </span>QuartoNotebookWorkerCairoMakieExt<span class="ansi-bright-black-fg"> (serial)</span>
-  1 dependency successfully precompiled in 6 seconds
-</pre>
-</div>
-</div>
 <div class="cell-output cell-output-display" data-execution_count="1">
 <pre><code>TaskLocalRNG()</code></pre>
 </div>
@@ -527,60 +516,8 @@ window.Quarto = {
 </details>
 <div class="cell-output cell-output-stdout">
 <div class="ansi-escaped-output">
-<pre><span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Downloading dataset to /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_5675777464052990434.zip
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job submitted.  View job messages at: https://lfps.usgs.gov/job/604cee9f-658a-4111-a6c1-f18392c73604
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Submitted job with ID: 604cee9f-658a-4111-a6c1-f18392c73604.  Checking job every 5 seconds.
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Pending
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Pending
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Pending
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Executing
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Executing
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Succeeded
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Extracting dataset to /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_5675777464052990434
-
-7-Zip (a) 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
- 64-bit locale=C.UTF-8 Threads:4 OPEN_MAX:65536, ASM
-
-Scanning the drive for archives:
-1 file, 31219 bytes (31 KiB)
-
-Extracting archive: /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_5675777464052990434.zip
---
-Path = /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_5675777464052990434.zip
-Type = zip
-Physical Size = 31219
-
-Everything is Ok
-
-Files: 6
-Size:       30241
-Compressed: 31219
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Downloading dataset to /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_772624552205829546.zip
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job submitted.  View job messages at: https://lfps.usgs.gov/job/9c286fd2-6a1c-4d93-8ad7-bf17e4654d39
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Submitted job with ID: 9c286fd2-6a1c-4d93-8ad7-bf17e4654d39.  Checking job every 5 seconds.
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Pending
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Executing
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Executing
-.....<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Job Status: Succeeded
-<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Extracting dataset to /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_772624552205829546
-
-7-Zip (a) 25.01 (x64) : Copyright (c) 1999-2025 Igor Pavlov : 2025-08-03
- 64-bit locale=C.UTF-8 Threads:4 OPEN_MAX:65536, ASM
-
-Scanning the drive for archives:
-1 file, 73653 bytes (72 KiB)
-
-Extracting archive: /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_772624552205829546.zip
---
-Path = /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_772624552205829546.zip
-Type = zip
-Physical Size = 73653
-
-Everything is Ok
-
-Files: 6
-Size:       72675
-Compressed: 73653
+<pre><span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Using cached directory: /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_5675777464052990434
+<span class="ansi-cyan-fg ansi-bold">[ </span><span class="ansi-cyan-fg ansi-bold">Info: </span>Using cached directory: /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_772624552205829546
 Fuel models: /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_5675777464052990434/ja5b1450866554f1795b0fc529411b7f4.tif
 Elevation:   /home/runner/.julia/scratchspaces/16f38fd6-0379-4569-89bb-2d3d56e50de8/landfire_data/job_772624552205829546/j8b21231d969840bd926f0d3511e5130c.tif
 </pre>
