@@ -5,6 +5,8 @@ project:
 engine: julia
 julia:
   project: "."
+  env:
+    - "GKSwstype=100"
 
 book:
   title: "Elmfire.jl"
