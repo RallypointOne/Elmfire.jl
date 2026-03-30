@@ -766,7 +766,8 @@ function simulate!(
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)
 
             # Calculate velocity components using elliptical spread
-            effective_ws_mph = weather.wind_speed_20ft * waf / T(1.47)
+            # Midflame wind speed in mph = 20-ft wind speed × WAF (dimensionless)
+            effective_ws_mph = weather.wind_speed_20ft * waf
             es = elliptical_spread(dampened_velocity, effective_ws_mph)
 
             # Richards (1990) ellipse velocity decomposition
@@ -1261,7 +1262,8 @@ function simulate_full!(
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)
 
             # Calculate velocity components using elliptical spread
-            effective_ws_mph = w.ws * waf / T(1.47)
+            # Midflame wind speed in mph = 20-ft wind speed × WAF (dimensionless)
+            effective_ws_mph = w.ws * waf
             es = elliptical_spread(velocity, effective_ws_mph)
 
             # Wind direction in radians

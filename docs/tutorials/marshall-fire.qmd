@@ -79,14 +79,14 @@ fuel_ids = ArchGDAL.read(fbfm13_tif) do ds
 end
 
 # Map LANDFIRE special codes:
-#   91 (urban) → 2 (short grass): the Marshall Fire burned through residential areas
-#     with dry grass, so treating urban as short grass is a reasonable approximation
+#   91 (urban) → 3 (tall grass): WUI areas have dry grass/landscaping; tall grass
+#     better captures the rapid spread through residential neighborhoods
 #   93 (agriculture) → 1 (short grass): crop stubble burns like short grass
 #   98 (water), 99 (bare ground) → 256 (nonburnable)
 for i in eachindex(fuel_ids)
     v = fuel_ids[i]
     if v == 91
-        fuel_ids[i] = 2  # urban → short grass
+        fuel_ids[i] = 3  # urban → tall grass
     elseif v == 93
         fuel_ids[i] = 1  # agriculture → short grass
     elseif v <= 0 || v >= 98
@@ -265,28 +265,25 @@ avg_mph = round(avg_kt * 1.151, digits=0)
 avg_gust_kt = round(sum(peak[:, 4]) / size(peak, 1), digits=1)
 avg_gust_mph = round(avg_gust_kt * 1.151, digits=0)
 
-# Effective wind: average of sustained and gust (common in fire behavior modeling)
-eff_mph = round((avg_mph + avg_gust_mph) / 2, digits=0)
-
 println("Peak burning period (18:00-21:00 UTC = 11AM-2PM MST):")
 println("  Wind direction: $(avg_dir) degrees (WSW)")
 println("  Sustained:      $(avg_kt) kt = $(avg_mph) mph")
 println("  Gusts:          $(avg_gust_kt) kt = $(avg_gust_mph) mph")
-println("  Effective:      $(eff_mph) mph (mean of sustained and gust)")
 ```
 
 ## Run Simulation
 
 We simulate 360 minutes (6 hours) using the real landscape and observed weather conditions.
-The effective wind speed (average of sustained and gust) captures the influence of gusts
-on fire spread better than sustained speed alone.
+We use the sustained wind speed (not gusts) as the input: the Rothermel model assumes
+steady-state surface fire spread, so sustained winds are more physically appropriate than
+the gust average used in some fire behavior tools.
 
 ```{julia}
 fuel_table = create_standard_fuel_table(Float64)
 
-# Weather from KBDU observations: effective wind speed during peak period
+# Weather from KBDU observations: sustained wind speed during peak period
 weather = ConstantWeather(
-    wind_speed_mph = eff_mph,
+    wind_speed_mph = avg_mph,
     wind_direction = avg_dir,
     M1 = 0.03,    # 3% — extremely dry (December, chinook winds)
     M10 = 0.05,
@@ -313,7 +310,8 @@ for i in 1:n_frames
     t_stop = i * dt_frame
     simulate!(state, fuel_ids, fuel_table, weather,
         slope, aspect, t_start, t_stop;
-        dt_initial = 0.5)
+        dt_initial = 0.5,
+        dampening = SpreadRateDampeningConfig{Float64}(LINEAR_DAMPENING))
     push!(frames_burned, copy(state.burned))
     push!(frames_toa, copy(state.time_of_arrival))
     push!(frame_times, t_stop)
@@ -326,7 +324,7 @@ println("NIFC reported: $(round(feat.properties.poly_GISAcres, digits=0)) acres"
 
 ## Animated Fire Progression
 
-Five visual layers per frame: terrain contours, burned area (time-of-arrival), simulated fire perimeter, the NIFC real fire perimeter (cyan dashed), and wind particles.
+Five visual layers: terrain contours, burned area (time-of-arrival), simulated fire perimeter, the NIFC real fire perimeter (cyan dashed), and a static wind arrow field showing the constant WSW wind direction and relative speed.
 
 ```{julia}
 #| output: false
@@ -355,19 +353,22 @@ scatter!(ga, perim_obs; color = :orangered, markersize = 3, strokewidth = 0)
 # Layer 4: NIFC real fire perimeter (static)
 lines!(ga, perim_x_crs, perim_y_crs; color = :cyan, linestyle = :dash, linewidth = 1.5)
 
-# Layer 5: wind particles (dynamic)
-n_particles = 80
-x_min, x_max = xs[1], xs[end]
-y_lo, y_hi = min(ys[1], ys[end]), max(ys[1], ys[end])
-wx_crs = [x_min + rand() * (x_max - x_min) for _ in 1:n_particles]
-wy_crs = [y_lo + rand() * (y_hi - y_lo) for _ in 1:n_particles]
-wind_obs = Observable([Point2f(wx_crs[k], wy_crs[k]) for k in eachindex(wx_crs)])
-scatter!(ga, wind_obs; color = (:white, 0.6), markersize = 3, strokewidth = 0)
-
 # Wind vector components (from WSW = 250 deg → blows ENE)
 wind_rad = avg_dir * pi / 180
 wind_dx = -sin(wind_rad)
 wind_dy = -cos(wind_rad)
+
+# Layer 5: wind field arrows (static — constant wind throughout simulation)
+arrow_step = max(5, min(ncols, nrows) ÷ 8)
+ax_idx = (arrow_step ÷ 2):arrow_step:ncols
+ay_idx = (arrow_step ÷ 2):arrow_step:nrows
+arrow_xs = vec([xs[i] for i in ax_idx, j in ay_idx])
+arrow_ys = vec([ys[j] for i in ax_idx, j in ay_idx])
+arrow_len = arrow_step * cellsize_m * 0.75
+arrow_us = fill(wind_dx * arrow_len, length(arrow_xs))
+arrow_vs = fill(wind_dy * arrow_len, length(arrow_ys))
+arrows!(ga, arrow_xs, arrow_ys, arrow_us, arrow_vs;
+    color = (:white, 0.75), arrowsize = 10, linewidth = 1.2)
 
 record(fig, "marshall_fire.gif", eachindex(frame_times); framerate = 4) do i
     ga.title = "Marshall Fire — t = $(round(Int, frame_times[i])) min"
@@ -398,18 +399,6 @@ record(fig, "marshall_fire.gif", eachindex(frame_times); framerate = 4) do i
         end
     end
     perim_obs[] = pts
-
-    # Update wind particles
-    for k in eachindex(wx_crs)
-        wx_crs[k] += rand(3:6) * cellsize_m * wind_dx
-        wy_crs[k] += rand(3:6) * cellsize_m * wind_dy
-        if wx_crs[k] > x_max || wx_crs[k] < x_min
-            wx_crs[k] = x_min + rand() * cellsize_m * 5
-            wy_crs[k] = y_lo + rand() * (y_hi - y_lo)
-        end
-        wy_crs[k] = clamp(wy_crs[k], y_lo, y_hi)
-    end
-    wind_obs[] = [Point2f(wx_crs[k], wy_crs[k]) for k in eachindex(wx_crs)]
 end
 ```
 
@@ -427,7 +416,7 @@ println("=" ^ 50)
 println("  Grid:             $ncols x $nrows cells ($(round(ncols * cellsize_m / 1000, digits=1)) km x $(round(nrows * cellsize_m / 1000, digits=1)) km)")
 println("  Cell size:        $(round(cellsize_m, digits=0)) m ($(round(cellsize, digits=1)) ft)")
 println("  Duration:         360 min (6 hours)")
-println("  Wind:             $(round(Int, eff_mph)) mph from $(round(Int, avg_dir)) deg (KBDU ASOS effective)")
+println("  Wind:             $(round(Int, avg_mph)) mph from $(round(Int, avg_dir)) deg (KBDU ASOS sustained)")
 println("  Simulated area:   $burned_acres acres")
 println("  NIFC reported:    $real_acres acres")
 ```
