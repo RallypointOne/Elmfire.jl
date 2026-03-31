@@ -650,6 +650,7 @@ function simulate!(
     target_cfl::T = T(0.45),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
+    lb_cap::T = T(8),
     accel_time_constant::T = zero(T),
     diurnal::Union{Nothing, DiurnalConfig{T}} = nothing,
     dampening::SpreadRateDampeningConfig{T} = SpreadRateDampeningConfig{T}(),
@@ -768,7 +769,7 @@ function simulate!(
             # Calculate velocity components using elliptical spread
             # Midflame wind speed in mph = 20-ft wind speed × WAF (dimensionless)
             effective_ws_mph = weather.wind_speed_20ft * waf
-            es = elliptical_spread(dampened_velocity, effective_ws_mph)
+            es = elliptical_spread(dampened_velocity, effective_ws_mph; lb_cap)
 
             # Richards (1990) ellipse velocity decomposition
             ux, uy = velocity_components(es, wind_dir_rad, normal_x, normal_y)
@@ -1111,6 +1112,7 @@ function simulate_full!(
     target_cfl::T = T(0.45),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
+    lb_cap::T = T(8),
     accel_time_constant::T = zero(T),
     diurnal::Union{Nothing, DiurnalConfig{T}} = nothing,
     dampening::SpreadRateDampeningConfig{T} = SpreadRateDampeningConfig{T}(),
@@ -1264,7 +1266,7 @@ function simulate_full!(
             # Calculate velocity components using elliptical spread
             # Midflame wind speed in mph = 20-ft wind speed × WAF (dimensionless)
             effective_ws_mph = w.ws * waf
-            es = elliptical_spread(velocity, effective_ws_mph)
+            es = elliptical_spread(velocity, effective_ws_mph; lb_cap)
 
             # Wind direction in radians
             wind_dir_rad = w.wd * pio180(T)

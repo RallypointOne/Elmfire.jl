@@ -317,7 +317,7 @@ Base.eltype(::EllipticalSpread{T}) where {T} = T
 
 
 """
-    elliptical_spread(velocity::T, effective_windspeed::T) -> EllipticalSpread{T}
+    elliptical_spread(velocity::T, effective_windspeed::T; lb_cap::T=T(8)) -> EllipticalSpread{T}
 
 Calculate elliptical fire spread dimensions from the head fire rate and effective windspeed.
 
@@ -325,8 +325,12 @@ Uses Anderson (1982) length-to-breadth ratio:
 LB = 0.936 * exp(0.2566 * U) + 0.461 * exp(-0.1548 * U) - 0.397
 
 Where U is effective windspeed in mi/h.
+
+`lb_cap` limits the maximum length-to-breadth ratio. The default of 8 follows the
+Anderson (1982) empirical range; lower values (e.g. 4–5) produce a wider ellipse with
+faster flank spread relative to head fire.
 """
-function elliptical_spread(velocity::T, effective_windspeed_mph::T) where {T<:AbstractFloat}
+function elliptical_spread(velocity::T, effective_windspeed_mph::T; lb_cap::T=T(8)) where {T<:AbstractFloat}
     U = max(effective_windspeed_mph, zero(T))
 
     # Length to breadth ratio (Anderson 1982)
@@ -336,7 +340,7 @@ function elliptical_spread(velocity::T, effective_windspeed_mph::T) where {T<:Ab
         LB = one(T)  # Nearly circular at low wind speeds
     else
         LB = T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397)
-        LB = clamp(LB, one(T), T(8))  # Cap at realistic maximum
+        LB = clamp(LB, one(T), lb_cap)
     end
 
     # Eccentricity from L/B ratio

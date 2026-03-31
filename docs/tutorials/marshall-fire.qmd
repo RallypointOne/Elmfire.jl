@@ -78,15 +78,22 @@ fuel_ids = ArchGDAL.read(fbfm13_tif) do ds
     Int.(ArchGDAL.read(ArchGDAL.getband(ds, 1)))
 end
 
+original_fuel_ids = copy(fuel_ids)
+
+# Non-burnable display info (code, label, color) — used in both GIF and static plot
+nb_info = [
+    (91, "Urban → FBFM09",  RGBAf(0.45, 0.45, 0.45, 0.85)),
+    (98, "Water",            RGBAf(0.26, 0.52, 0.80, 0.85)),
+]
+
 # Map LANDFIRE special codes:
-#   91 (urban) → 3 (tall grass): WUI areas have dry grass/landscaping; tall grass
-#     better captures the rapid spread through residential neighborhoods
+#   91 (urban) → 9 (hardwood litter): slower-spreading surrogate for patchy WUI fuels
 #   93 (agriculture) → 1 (short grass): crop stubble burns like short grass
 #   98 (water), 99 (bare ground) → 256 (nonburnable)
 for i in eachindex(fuel_ids)
     v = fuel_ids[i]
     if v == 91
-        fuel_ids[i] = 3  # urban → tall grass
+        fuel_ids[i] = 9  # urban → hardwood litter
     elseif v == 93
         fuel_ids[i] = 1  # agriculture → short grass
     elseif v <= 0 || v >= 98
@@ -192,7 +199,7 @@ println("Ignition:  col=$ign_col, row=$ign_row ($ign_lon, $ign_lat)")
 Four-panel summary of the real input data.
 
 ```{julia}
-dest_crs = "+proj=longlat +datum=WGS84"
+dest_crs = "EPSG:3857"
 fig = Figure(size = (900, 700))
 
 # Panel 1: Elevation
@@ -311,6 +318,8 @@ for i in 1:n_frames
     simulate!(state, fuel_ids, fuel_table, weather,
         slope, aspect, t_start, t_stop;
         dt_initial = 0.5,
+        spread_rate_adj = 2.0,
+        lb_cap = 4.0,
         dampening = SpreadRateDampeningConfig{Float64}(LINEAR_DAMPENING))
     push!(frames_burned, copy(state.burned))
     push!(frames_toa, copy(state.time_of_arrival))
@@ -328,7 +337,7 @@ Five visual layers: terrain contours, burned area (time-of-arrival), simulated f
 
 ```{julia}
 #| output: false
-dest_crs = "+proj=longlat +datum=WGS84"
+dest_crs = "EPSG:3857"
 fig = Figure(size = (800, 500))
 
 ga = GeoAxis(fig[1, 1];
@@ -340,25 +349,37 @@ hidedecorations!(ga)
 # Layer 1: terrain contours (static base)
 contour!(ga, xs, ys, elevation; color = :gray70, linewidth = 0.4, levels = 10)
 
-# Layer 2: time-of-arrival heatmap (dynamic)
+# Layer 2: non-burnable background (matches static plot)
+for (code, label, color) in nb_info
+    mask = Float64.(original_fuel_ids .== code)
+    any(mask .> 0) || continue
+    mask[mask .== 0] .= NaN
+    heatmap!(ga, xs, ys, mask; colormap = [color, color], colorrange = (0.5, 1.5), nan_color = :transparent)
+end
+
+# Layer 3: time-of-arrival heatmap (dynamic)
 toa_obs = Observable(fill(NaN, ncols, nrows))
 hm = heatmap!(ga, xs, ys, toa_obs;
     colormap = :YlOrRd, colorrange = (0, 360), nan_color = :transparent)
 Colorbar(fig[1, 2], hm; label = "Time (min)")
 
-# Layer 3: simulated fire perimeter (dynamic)
+# Layer 4: simulated fire perimeter (dynamic, red)
 perim_obs = Observable(Point2f[])
-scatter!(ga, perim_obs; color = :orangered, markersize = 3, strokewidth = 0)
+scatter!(ga, perim_obs; color = :red, markersize = 3, strokewidth = 0)
 
-# Layer 4: NIFC real fire perimeter (static)
-lines!(ga, perim_x_crs, perim_y_crs; color = :cyan, linestyle = :dash, linewidth = 1.5)
+# Layer 5: NIFC real fire perimeter (static, solid black)
+lines!(ga, perim_x_crs, perim_y_crs; color = :black, linewidth = 1.5)
+
+# Layer 6: ignition star with black outline
+scatter!(ga, [ign_x], [ign_y]; marker = :star5, markersize = 15, color = :yellow,
+    strokecolor = :black, strokewidth = 1.5)
 
 # Wind vector components (from WSW = 250 deg → blows ENE)
 wind_rad = avg_dir * pi / 180
 wind_dx = -sin(wind_rad)
 wind_dy = -cos(wind_rad)
 
-# Layer 5: wind field arrows (static — constant wind throughout simulation)
+# Layer 7: wind field arrows (static — constant wind throughout simulation)
 arrow_step = max(5, min(ncols, nrows) ÷ 8)
 ax_idx = (arrow_step ÷ 2):arrow_step:ncols
 ay_idx = (arrow_step ÷ 2):arrow_step:nrows
@@ -426,7 +447,7 @@ println("  NIFC reported:    $real_acres acres")
 Two-panel comparison of the simulated burned area vs the NIFC-reported perimeter and the time-of-arrival map.
 
 ```{julia}
-dest_crs = "+proj=longlat +datum=WGS84"
+dest_crs = "EPSG:3857"
 fig = Figure(size = (900, 450))
 
 toa_final = copy(state.time_of_arrival)
@@ -526,6 +547,135 @@ println("  Commission rate:    $(round(100 * commission_rate, digits=1))%")
 println("  Omission rate:      $(round(100 * omission_rate, digits=1))%")
 ```
 
+### Perimeter Comparison
+
+```{julia}
+# Fill interior holes in the burned mask before extracting the perimeter.
+# Non-burnable cells (fuel code 256) inside the fire create unburned islands whose
+# edges are picked up by the edge-detection, producing spurious interior "holes".
+# Flood-fill from all grid edges to identify cells reachable from outside; any
+# unburned cell not reachable from outside is interior and treated as burned.
+function fill_holes(burned::AbstractMatrix{Bool})
+    filled = copy(burned)
+    outside = falses(size(burned))
+    queue = Tuple{Int,Int}[]
+    ncols, nrows = size(burned)
+    for ix in 1:ncols, iy in 1:nrows
+        if (ix == 1 || ix == ncols || iy == 1 || iy == nrows) && !burned[ix, iy]
+            outside[ix, iy] = true
+            push!(queue, (ix, iy))
+        end
+    end
+    while !isempty(queue)
+        ix, iy = pop!(queue)
+        for (ddx, ddy) in ((1,0), (-1,0), (0,1), (0,-1))
+            nx, ny = ix + ddx, iy + ddy
+            if 1 <= nx <= ncols && 1 <= ny <= nrows && !burned[nx, ny] && !outside[nx, ny]
+                outside[nx, ny] = true
+                push!(queue, (nx, ny))
+            end
+        end
+    end
+    for ix in 1:ncols, iy in 1:nrows
+        filled[ix, iy] = burned[ix, iy] || !outside[ix, iy]
+    end
+    return filled
+end
+
+sim_burned_filled = fill_holes(sim_burned)
+sim_burned_float  = Float64.(sim_burned_filled)
+
+dest_crs = "EPSG:3857"
+fig = Figure(size = (1000, 560))
+ga = GeoAxis(fig[1, 1]; source = proj4_str, dest = dest_crs,
+    title = "Simulated vs NIFC Perimeter — Sørensen = $(round(sorensen, digits=3))")
+hidedecorations!(ga)
+
+# Base: terrain contours
+contour!(ga, xs, ys, elevation; color = :gray80, linewidth = 0.4, levels = 10)
+
+# Anderson 13 FBFM colors (standard LANDFIRE symbology approximation)
+fbfm_colors = Dict(
+     1 => RGBAf(0.99, 0.99, 0.60, 0.9),   # short grass — pale yellow
+     2 => RGBAf(0.80, 0.90, 0.55, 0.9),   # timber grass — light yellow-green
+     3 => RGBAf(0.55, 0.85, 0.20, 0.9),   # tall grass — bright green
+     4 => RGBAf(0.90, 0.55, 0.15, 0.9),   # chaparral — orange
+     5 => RGBAf(0.45, 0.70, 0.35, 0.9),   # brush — olive green
+     6 => RGBAf(0.65, 0.50, 0.25, 0.9),   # dormant brush — tan-brown
+     7 => RGBAf(0.50, 0.40, 0.20, 0.9),   # southern rough — dark brown
+     8 => RGBAf(0.80, 0.72, 0.58, 0.9),   # compact timber litter — beige
+     9 => RGBAf(0.65, 0.50, 0.35, 0.9),   # hardwood litter — warm brown
+    10 => RGBAf(0.45, 0.33, 0.20, 0.9),   # timber litter — dark brown
+    11 => RGBAf(0.78, 0.75, 0.68, 0.9),   # light slash — light gray
+    12 => RGBAf(0.58, 0.55, 0.50, 0.9),   # medium slash — medium gray
+    13 => RGBAf(0.38, 0.35, 0.30, 0.9),   # heavy slash — dark gray
+)
+fbfm_names = Dict(
+     1 => "FBFM01: Short Grass",    2 => "FBFM02: Timber Grass",
+     3 => "FBFM03: Tall Grass",     4 => "FBFM04: Chaparral",
+     5 => "FBFM05: Brush",          6 => "FBFM06: Dormant Brush",
+     7 => "FBFM07: Southern Rough", 8 => "FBFM08: Compact Timber Litter",
+     9 => "FBFM09: Hardwood Litter",10 => "FBFM10: Timber Litter",
+    11 => "FBFM11: Light Slash",    12 => "FBFM12: Medium Slash",
+    13 => "FBFM13: Heavy Slash",
+)
+
+fbfm_legend_elems = LegendElement[]
+fbfm_legend_labels = String[]
+for id in 1:13
+    mask = Float64.(fuel_ids .== id)
+    any(mask .> 0) || continue
+    mask[mask .== 0] .= NaN
+    c = fbfm_colors[id]
+    heatmap!(ga, xs, ys, mask; colormap = [c, c], colorrange = (0.5, 1.5), nan_color = :transparent)
+    push!(fbfm_legend_elems, PolyElement(color = c, strokecolor = :transparent))
+    push!(fbfm_legend_labels, fbfm_names[id])
+end
+
+# Nonburnable cells (fuel_ids == 256) — barriers that split the fire front
+nb256_color = RGBAf(0.15, 0.15, 0.15, 0.85)
+nb256_mask = Float64.(fuel_ids .== 256)
+nb256_mask[nb256_mask .== 0] .= NaN
+heatmap!(ga, xs, ys, nb256_mask; colormap = [nb256_color, nb256_color], colorrange = (0.5, 1.5), nan_color = :transparent)
+
+# LANDFIRE non-burnable codes on top of FBFMs
+nb_legend_elems = LegendElement[]
+nb_legend_labels = String[]
+for (code, label, color) in nb_info
+    mask = Float64.(original_fuel_ids .== code)
+    any(mask .> 0) || continue
+    mask[mask .== 0] .= NaN
+    heatmap!(ga, xs, ys, mask; colormap = [color, color], colorrange = (0.5, 1.5), nan_color = :transparent)
+    push!(nb_legend_elems, PolyElement(color = color, strokecolor = :transparent))
+    push!(nb_legend_labels, label)
+end
+
+# Simulated: red fill + contour outline (marching squares — no diagonal gaps)
+burned_fill = copy(sim_burned_float)
+burned_fill[burned_fill .== 0] .= NaN
+heatmap!(ga, xs, ys, burned_fill;
+    colormap = [RGBAf(0.7,0,0,0.3), RGBAf(0.7,0,0,0.3)], colorrange = (0.5, 1.5), nan_color = :transparent)
+contour!(ga, xs, ys, sim_burned_float; levels = [0.5], color = RGBf(0.7, 0, 0), linewidth = 3)
+
+# NIFC perimeter: solid black
+lines!(ga, perim_x_crs, perim_y_crs; color = :black, linewidth = 2)
+
+# Ignition star with black outline
+scatter!(ga, [ign_x], [ign_y]; marker = :star5, markersize = 15, color = :yellow,
+    strokecolor = :black, strokewidth = 1.5)
+
+Legend(fig[1, 2],
+    [fbfm_legend_elems..., nb_legend_elems...,
+     PolyElement(color = RGBAf(0.7,0,0,0.3), strokecolor = RGBf(0.7,0,0), strokewidth = 1),
+     LineElement(color = :black, linewidth = 2),
+     MarkerElement(marker = :star5, color = :yellow, markersize = 12, strokecolor = :black, strokewidth = 1.5)],
+    [fbfm_legend_labels..., nb_legend_labels..., "Simulated", "NIFC", "Ignition"];
+    framevisible = false)
+
+save("marshall_fire_perimeter.png", fig; px_per_unit = 3)
+fig
+```
+
 ### Spatial Agreement Map
 
 Green = true positive (both agree the cell burned), red = commission error (simulated but not observed), blue = omission error (observed but not simulated).
@@ -544,7 +694,7 @@ for ix in 1:ncols, iy in 1:nrows
     end
 end
 
-dest_crs = "+proj=longlat +datum=WGS84"
+dest_crs = "EPSG:3857"
 fig = Figure(size = (700, 500))
 ga = GeoAxis(fig[1, 1]; source = proj4_str, dest = dest_crs,
     title = "Spatial Agreement (Sørensen = $(round(sorensen, digits=3)))")

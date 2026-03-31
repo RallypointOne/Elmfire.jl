@@ -8,6 +8,8 @@
 # - Spatial interpolation from coarse weather grid to fine simulation grid
 #-----------------------------------------------------------------------------#
 
+using Interpolations
+
 
 #-----------------------------------------------------------------------------#
 #                     Constant Weather (Uniform Conditions)
@@ -275,7 +277,7 @@ end
 Create mapping from simulation grid to weather grid fractional coordinates.
 
 Returns (xcol_weather, yrow_weather) vectors of fractional weather grid positions
-for bilinear interpolation. Values are clamped to [1, ncols] and [1, nrows].
+for interpolation. Values are clamped to [1, ncols] and [1, nrows].
 """
 function create_grid_mapping(
     weather_grid::WeatherGrid{T},
@@ -305,60 +307,20 @@ function create_grid_mapping(
 end
 
 
-"""
-    bilinear_interp(grid::Matrix{T}, fx::T, fy::T) -> T
-
-Bilinear interpolation on a 2D grid at fractional position (fx, fy).
-Positions are 1-based cell centers (1.0 = center of first cell).
-"""
-function bilinear_interp(grid::Matrix{T}, fx::T, fy::T) where {T<:AbstractFloat}
-    nc, nr = size(grid)
-    x0 = clamp(floor(Int, fx), 1, nc)
-    y0 = clamp(floor(Int, fy), 1, nr)
-    x1 = min(x0 + 1, nc)
-    y1 = min(y0 + 1, nr)
-    sx = clamp(fx - T(x0), zero(T), one(T))
-    sy = clamp(fy - T(y0), zero(T), one(T))
-    return (one(T) - sx) * (one(T) - sy) * grid[x0, y0] +
-           sx * (one(T) - sy) * grid[x1, y0] +
-           (one(T) - sx) * sy * grid[x0, y1] +
-           sx * sy * grid[x1, y1]
-end
-
-
-"""
-    bilinear_interp_wind_direction(grid::Matrix{T}, fx::T, fy::T) -> T
-
-Bilinear interpolation of wind direction (degrees), handling 0/360 wrap-around.
-Decomposes to (sin, cos) unit vectors, interpolates, and recombines.
-"""
-function bilinear_interp_wind_direction(grid::Matrix{T}, fx::T, fy::T) where {T<:AbstractFloat}
-    nc, nr = size(grid)
-    x0 = clamp(floor(Int, fx), 1, nc)
-    y0 = clamp(floor(Int, fy), 1, nr)
-    x1 = min(x0 + 1, nc)
-    y1 = min(y0 + 1, nr)
-    sx = clamp(fx - T(x0), zero(T), one(T))
-    sy = clamp(fy - T(y0), zero(T), one(T))
-
-    w00 = (one(T) - sx) * (one(T) - sy)
-    w10 = sx * (one(T) - sy)
-    w01 = (one(T) - sx) * sy
-    w11 = sx * sy
-
-    sin_val = zero(T)
-    cos_val = zero(T)
-    for (wi, xi, yi) in ((w00, x0, y0), (w10, x1, y0), (w01, x0, y1), (w11, x1, y1))
-        r = grid[xi, yi] * pio180(T)
-        sin_val += wi * sin(r)
-        cos_val += wi * cos(r)
+# Build an Interpolations.jl bilinear extrapolant (flat boundary) for a single field matrix.
+# Singleton dimensions are padded to 2 so BSpline(Linear()) can be used uniformly.
+function _make_field_itp(field::Matrix{T}) where {T<:AbstractFloat}
+    nc, nr = size(field)
+    padded = if nc == 1 && nr == 1
+        fill(field[1,1], 2, 2)
+    elseif nc == 1
+        vcat(field, field)
+    elseif nr == 1
+        hcat(field, field)
+    else
+        field
     end
-
-    wd = atan(sin_val, cos_val) / pio180(T)
-    if wd < zero(T)
-        wd += T(360)
-    end
-    return wd
+    extrapolate(interpolate(padded, BSpline(Linear())), Flat())
 end
 
 
@@ -367,17 +329,27 @@ end
 #-----------------------------------------------------------------------------#
 
 """
-    WeatherInterpolator{T<:AbstractFloat}
+    WeatherInterpolator{T<:AbstractFloat, ITP}
 
-Handles bilinear spatial and linear temporal interpolation of weather data
-to simulation grid and time.
+Handles spatial and temporal interpolation of weather data to the simulation
+grid and time. Spatial interpolation uses precomputed Interpolations.jl
+bilinear interpolants (one per field per time step). Wind direction is
+decomposed into sin/cos components to handle 0°/360° wrap-around.
 """
-struct WeatherInterpolator{T<:AbstractFloat}
+struct WeatherInterpolator{T<:AbstractFloat, ITP}
     weather_series::WeatherTimeSeries{T}
-    xcol_map::Vector{T}    # Fractional weather column for each sim column
-    yrow_map::Vector{T}    # Fractional weather row for each sim row
+    xcol_map::Vector{T}        # Fractional weather column for each sim column
+    yrow_map::Vector{T}        # Fractional weather row for each sim row
     sim_ncols::Int
     sim_nrows::Int
+    ws_itps::Vector{ITP}       # Wind speed interpolants (one per time step)
+    wd_sin_itps::Vector{ITP}   # sin(wind direction) interpolants
+    wd_cos_itps::Vector{ITP}   # cos(wind direction) interpolants
+    m1_itps::Vector{ITP}
+    m10_itps::Vector{ITP}
+    m100_itps::Vector{ITP}
+    mlh_itps::Vector{ITP}
+    mlw_itps::Vector{ITP}
 end
 
 Base.eltype(::WeatherInterpolator{T}) where {T} = T
@@ -401,67 +373,73 @@ function WeatherInterpolator(
     sim_xllcorner::T = zero(T),
     sim_yllcorner::T = zero(T)
 ) where {T<:AbstractFloat}
-    # Create mapping using first weather grid
     first_grid = weather_series.grids[1]
     xcol_map, yrow_map = create_grid_mapping(
-        first_grid,
-        sim_ncols, sim_nrows,
-        sim_cellsize,
-        sim_xllcorner, sim_yllcorner
+        first_grid, sim_ncols, sim_nrows,
+        sim_cellsize, sim_xllcorner, sim_yllcorner
     )
 
-    WeatherInterpolator{T}(weather_series, xcol_map, yrow_map, sim_ncols, sim_nrows)
+    ws_itps     = [_make_field_itp(g.ws)  for g in weather_series.grids]
+    wd_sin_itps = [_make_field_itp(sin.(g.wd .* pio180(T))) for g in weather_series.grids]
+    wd_cos_itps = [_make_field_itp(cos.(g.wd .* pio180(T))) for g in weather_series.grids]
+    m1_itps     = [_make_field_itp(g.m1)  for g in weather_series.grids]
+    m10_itps    = [_make_field_itp(g.m10) for g in weather_series.grids]
+    m100_itps   = [_make_field_itp(g.m100) for g in weather_series.grids]
+    mlh_itps    = [_make_field_itp(g.mlh) for g in weather_series.grids]
+    mlw_itps    = [_make_field_itp(g.mlw) for g in weather_series.grids]
+
+    ITP = typeof(ws_itps[1])
+    WeatherInterpolator{T, ITP}(
+        weather_series, xcol_map, yrow_map, sim_ncols, sim_nrows,
+        ws_itps, wd_sin_itps, wd_cos_itps,
+        m1_itps, m10_itps, m100_itps, mlh_itps, mlw_itps
+    )
 end
 
 
 """
     get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) -> NamedTuple
 
-Get bilinearly interpolated weather values at simulation grid cell (ix, iy) and time t.
+Get interpolated weather values at simulation grid cell (ix, iy) and time t.
 
 Returns named tuple with fields: ws, wd, m1, m10, m100, mlh, mlw
 """
 function get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) where {T<:AbstractFloat}
     wts = interp.weather_series
+    fx  = interp.xcol_map[ix]
+    fy  = interp.yrow_map[iy]
 
-    # Get fractional weather grid position
-    fx = interp.xcol_map[ix]
-    fy = interp.yrow_map[iy]
-
-    # Short-circuit for single time step (constant weather)
-    if length(wts.times) == 1
-        g = wts.grids[1]
-        return (
-            ws = bilinear_interp(g.ws, fx, fy),
-            wd = bilinear_interp_wind_direction(g.wd, fx, fy),
-            m1 = bilinear_interp(g.m1, fx, fy),
-            m10 = bilinear_interp(g.m10, fx, fy),
-            m100 = bilinear_interp(g.m100, fx, fy),
-            mlh = bilinear_interp(g.mlh, fx, fy),
-            mlw = bilinear_interp(g.mlw, fx, fy)
-        )
+    function _wd_from_sincos(s, c)
+        wd = atan(s, c) / pio180(T)
+        wd < zero(T) && (wd += T(360))
+        wd
     end
 
-    # Get time indices and interpolation weight
+    if length(wts.times) == 1
+        ws  = interp.ws_itps[1](fx, fy)
+        wd  = _wd_from_sincos(interp.wd_sin_itps[1](fx, fy), interp.wd_cos_itps[1](fx, fy))
+        m1  = interp.m1_itps[1](fx, fy)
+        m10 = interp.m10_itps[1](fx, fy)
+        m100 = interp.m100_itps[1](fx, fy)
+        mlh = interp.mlh_itps[1](fx, fy)
+        mlw = interp.mlw_itps[1](fx, fy)
+        return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)
+    end
+
     i_lo, i_hi, f = find_time_indices(wts, t)
+    lo, hi = one(T) - f, f
 
-    g_lo = wts.grids[i_lo]
-    g_hi = wts.grids[i_hi]
+    ws  = lo * interp.ws_itps[i_lo](fx, fy)  + hi * interp.ws_itps[i_hi](fx, fy)
 
-    # Spatially interpolate each grid, then temporally blend
-    ws_lo = bilinear_interp(g_lo.ws, fx, fy)
-    ws_hi = bilinear_interp(g_hi.ws, fx, fy)
-    ws = (one(T) - f) * ws_lo + f * ws_hi
-
-    wd_lo = bilinear_interp_wind_direction(g_lo.wd, fx, fy)
-    wd_hi = bilinear_interp_wind_direction(g_hi.wd, fx, fy)
+    wd_lo = _wd_from_sincos(interp.wd_sin_itps[i_lo](fx, fy), interp.wd_cos_itps[i_lo](fx, fy))
+    wd_hi = _wd_from_sincos(interp.wd_sin_itps[i_hi](fx, fy), interp.wd_cos_itps[i_hi](fx, fy))
     wd = interpolate_wind_direction(wd_lo, wd_hi, f)
 
-    m1 = (one(T) - f) * bilinear_interp(g_lo.m1, fx, fy) + f * bilinear_interp(g_hi.m1, fx, fy)
-    m10 = (one(T) - f) * bilinear_interp(g_lo.m10, fx, fy) + f * bilinear_interp(g_hi.m10, fx, fy)
-    m100 = (one(T) - f) * bilinear_interp(g_lo.m100, fx, fy) + f * bilinear_interp(g_hi.m100, fx, fy)
-    mlh = (one(T) - f) * bilinear_interp(g_lo.mlh, fx, fy) + f * bilinear_interp(g_hi.mlh, fx, fy)
-    mlw = (one(T) - f) * bilinear_interp(g_lo.mlw, fx, fy) + f * bilinear_interp(g_hi.mlw, fx, fy)
+    m1   = lo * interp.m1_itps[i_lo](fx, fy)   + hi * interp.m1_itps[i_hi](fx, fy)
+    m10  = lo * interp.m10_itps[i_lo](fx, fy)  + hi * interp.m10_itps[i_hi](fx, fy)
+    m100 = lo * interp.m100_itps[i_lo](fx, fy) + hi * interp.m100_itps[i_hi](fx, fy)
+    mlh  = lo * interp.mlh_itps[i_lo](fx, fy)  + hi * interp.mlh_itps[i_hi](fx, fy)
+    mlw  = lo * interp.mlw_itps[i_lo](fx, fy)  + hi * interp.mlw_itps[i_hi](fx, fy)
 
     return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)
 end
