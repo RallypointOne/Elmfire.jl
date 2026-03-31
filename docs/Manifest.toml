@@ -452,8 +452,8 @@ uuid = "5ae413db-bbd1-5e63-b57d-d24a61df00f5"
 version = "2.2.4+0"
 
 [[deps.Elmfire]]
-deps = ["ArchGDAL", "Distributions", "GeoInterface", "GeoJSON", "LocalCoverage", "Plots", "ProgressMeter", "Random", "Rasters"]
-path = "/Users/joshday/.julia/dev/Elmfire"
+deps = ["ArchGDAL", "Distributions", "GeoInterface", "GeoJSON", "Interpolations", "LocalCoverage", "Plots", "ProgressMeter", "Random", "Rasters"]
+path = ".."
 uuid = "d2b3179f-ea35-45b6-b9e1-83e946046b97"
 version = "1.0.0-DEV"
 
@@ -1096,10 +1096,12 @@ uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 version = "1.4.0"
 
 [[deps.Landfire]]
-deps = ["Dates", "Downloads", "Extents", "GeoInterface", "HTTP", "JSON3", "Scratch", "StyledStrings", "p7zip_jll"]
-git-tree-sha1 = "ee77b9c0b340283e84bf7ceb5777e140968779c0"
+deps = ["Dates", "Downloads", "Extents", "GeoInterface", "HTTP", "JSON3", "LocalCoverage", "Scratch", "StyledStrings", "p7zip_jll"]
+git-tree-sha1 = "80fc3fd88d97f80c55e2b6e503094befa93af215"
+repo-rev = "main"
+repo-url = "https://github.com/RallypointOne/Landfire.jl"
 uuid = "16f38fd6-0379-4569-89bb-2d3d56e50de8"
-version = "0.1.2"
+version = "0.1.3"
 
 [[deps.Latexify]]
 deps = ["Format", "Ghostscript_jll", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Requires"]
