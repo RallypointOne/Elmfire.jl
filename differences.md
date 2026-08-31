@@ -1,10 +1,18 @@
-# Elmfire.jl vs. Original ELMFIRE Fortran: Physics & Numerics Comparison
+# Elmfire.jl vs. ELMFIRE: Physics & Numerics Comparison
+
+Reference implementation: the ELMFIRE Fortran source vendored at `elmfire/`
+(`elmfire/build/source/*.f90`) and its technical reference
+(`elmfire/docs/tech_ref.rst`). There is no ELMFIRE Python package — the Python in
+that repository is cloudfire orchestration and input generation, not physics.
+
+Values called out below are pinned by `test/test_elmfire_reference.jl`.
 
 ## 1. Rothermel Surface Fire Spread Model
 
-**Verdict: Faithful reproduction**
+**Verdict: faithful**
 
-Both implementations use identical core equations:
+Verified term by term against `elmfire_init.f90:786-880` (coefficient
+pre-computation) and `elmfire_spread_rate.f90:13-132` (per-cell evaluation).
 
 | Component | Formula | Match? |
 |-----------|---------|--------|
@@ -14,173 +22,253 @@ Both implementations use identical core equations:
 | Reaction velocity | `Γ' = Γ'_peak·(β/β_op)^A·exp(A(1-β/β_op))` | Identical |
 | Wind factor | `φ_w = C·(β/β_op)^(-E)·w^B` | Identical |
 | Slope factor | `φ_s = 5.275·β^(-0.3)·tan²θ` | Identical |
-| Spread rate | `R = R₀·(1 + φ_s + φ_w)` | Identical |
+| Head-fire spread rate | `R = R₀·(1 + φ_s + φ_w)` | Identical |
 | Wind limit | `w_limited = min(w, 0.9·IR)` | Identical |
+| Max slope factor | `φ_s ≤ φ_w(0.9·IR)` | Identical |
 | Residence time | `τ = 384/σ` | Identical |
 | Heat of pre-ignition | `Q_ig = 250 + 1116·M` | Identical |
 | Optimal packing | `β_op = 3.348/σ^0.8189` | Identical |
-| All A/B/C/E coefficients | `A=133/σ^0.7913`, etc. | Identical |
+| Dynamic herbaceous transfer | linear 30–120%, 1-hr SAV re-weighted | Identical |
+| Live moisture of extinction | `Mex_live·(1 - Σ/(Σ_denom·Mex_dead)) - 0.226` | Identical |
 
-Constants also match: `ρ_p=32`, `st=0.055`, `SE=0.01`, `η_s=0.174/SE^0.19`, `σ_10hr=109`, `σ_100hr=30`.
+Constants match: `ρ_p=32`, `S_T=0.055`, `S_E=0.01`, `η_s=0.174/S_E^0.19`,
+`σ_10hr=109`, `σ_100hr=30`. Fuel model data for FBFM 1–13 and NB matches
+`fuel_models.csv` exactly; `load_fuel_models` reads that file directly.
 
-**One difference in fuel model processing:**
+Both implementations build a 2D fuel model table indexed by
+`[fuel_id, live_moisture_class]` over classes 30–120.
 
-- Fortran pre-computes a **2D fuel model table** indexed by `[fuel_id, live_moisture_class]` (304 models × 91 moisture classes from 30–120%), recalculating dynamic herbaceous partitioning for each class.
-- Julia computes fuel models on-the-fly for a single moisture class, or uses `FuelModelArray` (same 2D structure) for GPU.
+## 2. Direction of Maximum Spread
 
-## 2. Elliptical Fire Spread
+**Verdict: matching**
 
-**Verdict: Matching** (resolved)
-
-**Length-to-breadth ratio** — identical (Anderson 1982):
-
-```
-LB = 0.936·exp(0.2566·U) + 0.461·exp(-0.1548·U) - 0.397
-```
-
-- Fortran: caps at configurable `MAX_LOW`
-- Julia: caps at 8
-
-**Velocity at arbitrary angle** — both now use the Richards (1990) ellipse parametric equation:
+Wind and slope factors combine as vectors, not scalars
+(`elmfire_level_set.f90:1760-1800`, tech ref §"Elliptical dimensions"):
 
 ```
-A = 0.5·(V_head + V_back)
-B = A / LB
-denom = sqrt(A²·cos²θ + B²·sin²θ)
-DYDT = A²·cosθ/denom + 0.5·(V_head - V_back)
-DXDT = B²·sinθ/denom
+φ_x = α[φ_w·sin(θ_w - π) + φ_s·sin(θ_a - π)]
+φ_y = α[φ_w·cos(θ_w - π) + φ_s·cos(θ_a - π)]
+|V_DMS| = V_s0·(α + |φ|)
 ```
 
-Julia implements this via `velocity_components(es::EllipticalSpread, ...)` in `rothermel.jl`, used by both CPU and GPU code paths.
+`spread_direction` returns `|φ|` and the unit heading; `simulate!`,
+`simulate_full!`, `simulate_with_suppression!` and the GPU kernels all use it.
+Slope therefore steers the fire, and opposing wind and slope partially cancel.
 
-## 3. Level Set Numerics
+## 3. Elliptical Fire Spread
 
-**Verdict: Matching** (resolved)
+**Verdict: matching**
+
+**Effective mid-flame wind speed** — recovered by inverting Rothermel Eq. 47 from
+the *combined* factor, so it carries slope as well as wind
+(`elmfire_level_set.f90:1808`):
+
+```
+U_mf,e = (|φ| / (C(β/β_op)^-E))^(1/B)          [ft/min]
+```
+
+capped at `0.9·I_R` unless the cell is crowning. `effective_wind_speed`
+implements the inversion; `wsmfeff_coeff` and `B_inverse` are pre-computed per
+fuel model and read from the ILH=30 table entry, as ELMFIRE does.
+
+**Length-to-breadth** (Anderson 1982 as modified by Finney):
+
+```
+L/B = min(0.936·exp(0.2566·U) + 0.461·exp(-0.1548·U) - 0.397, MAX_LOW)
+U   = U_mf,e × 5.07955e-3          (ELMFIRE's WSMFEFF_LOW_MULT)
+```
+
+`elliptical_spread` takes `U_mf,e` in **ft/min** and applies the scaling
+internally. `lb_cap` defaults to 8, matching `MAX_LOW`.
+
+**Backing rate** (`elmfire_level_set.f90:1813-1817`):
+
+```
+V_back/V_head = (L/B - √((L/B)² - 1)) / (L/B + √((L/B)² - 1))
+```
+
+equivalently `(1-e)/(1+e)` with `e = √((L/B)² - 1)/(L/B)`.
+
+**Velocity at arbitrary angle** — Richards (1990), relative to the direction of
+maximum spread:
+
+```
+A = 0.5·(V_DMS + V_back);  B = A / (L/B);  ω = θ_n - θ_DMS
+DYDT = A²·cos(ω)/√(A²cos²ω + B²sin²ω) + 0.5·(V_DMS - V_back)
+DXDT = B²·sin(ω)/√(A²cos²ω + B²sin²ω)
+```
+
+then rotated into map coordinates.
+
+**Slope projection** — velocities above are parallel to the local slope and are
+projected onto the horizontal grid (`slope_projection_factors`):
+
+```
+U_x/U_x,∥ = 1 - |sin θ_a|(1 - cos γ)
+U_y/U_y,∥ = 1 - |cos θ_a|(1 - cos γ)
+```
+
+## 4. Fireline Intensity and Flame Length
+
+**Verdict: matching**
+
+`I = I_R·τ·√(U_x,∥² + U_y,∥²)·0.3048` uses the **local** perimeter spread rate
+before slope projection, so intensity is highest at the head and lowest at the
+back (tech ref §"Variation in fireline intensity along the fire perimeter").
+Byram flame length `L_f = (0.0775/0.3048)·I^0.46` matches
+`elmfire_level_set.f90:745`.
+
+## 5. Level Set Numerics
+
+**Verdict: matching**
 
 | Aspect | Fortran | Julia | Match? |
 |--------|---------|-------|--------|
 | PDE | `∂φ/∂t + (ux·∂φ/∂x + uy·∂φ/∂y) = 0` | Same | Identical |
 | Time integration | RK2 (Heun's method) | RK2 (Heun's method) | Identical |
-| Flux limiter | Half-superbee: `max(0, max(min(r/2,1), min(r,1/2)))` | Same formula | Identical |
+| Flux limiter | Half-superbee: `max(0, max(min(r/2,1), min(r,1/2)))` | Same | Identical |
 | Gradient stencil | 4-point upwind per direction | Same | Identical |
-| Reinitialization | None (clamp φ to [-100, 100]) | None (clamp to [-1000, 1000]) | Same approach |
-| Target CFL | 0.4 | 0.45 | Close match |
+| φ clamp (stage 1) | `[-100, 100]` | `[-100, 100]` | Identical |
+| Normal vectors | central differences | Same | Identical |
+| Reinitialization | None | None | Same |
+| Target CFL | 0.4 | 0.4 | Identical |
+| dt_max | 600 s | 10 min | Identical |
 | **Band thickness** | **2 cells** | **5 cells** | **Different** |
-| Padding | 3 cells from edges | 2-cell explicit padding | Similar |
-| dt_max | 600 seconds | 10 minutes | Same |
 
-**Band thickness difference:** Julia's default of 5 cells vs. Fortran's 2 means Julia tracks more cells around the fire front. This is less efficient but more robust against fast-moving fires outrunning the band.
+**Band thickness** is a tuning parameter, not physics. Julia tracks more cells
+around the front: less efficient, but more robust against a fast front outrunning
+the band.
 
-**Narrow band data structures differ:**
+The Fortran `LIMIT_GRADIENTS` declares `PHIEAST=1.0` (and friends) in a
+declaration statement, which makes them implicitly `SAVE`d, so a degenerate cell
+(`|Δ_loc| ≤ 1e-30`) reuses whatever the previous call left behind. Julia falls
+back to first-order upwind there instead. This is a deliberate deviation from a
+latent Fortran bug.
 
-- Fortran: doubly-linked list of NODE structs with 50+ fields per node
-- Julia: `BitMatrix` + `Vector{CartesianIndex}` with swap-and-compact removal
+Narrow band data structures differ: Fortran uses a doubly-linked list of `NODE`
+structs, Julia a `BitMatrix` plus a packed `Vector{CartesianIndex}`.
 
-## 4. Wind Adjustment Factor
+## 6. Wind Adjustment Factor
 
-**Verdict: Matching** (resolved)
+**Verdict: matching** (`elmfire_init.f90:614-651`)
 
-Both implementations now have:
+- **Unsheltered:** `WAF = 1.36·(ln(1.36/0.13) - 1) / ln((20 + 0.36·H)/(0.13·H))`
+  with the flame-height-to-fuel-bed ratio taken as 1, as in BEHAVE and FARSITE.
+  Returns 0 for a vanishing fuel bed. Unclamped, as in ELMFIRE.
+- **Canopy-sheltered:** `WAF = (1/ln((20+0.36H)/(0.13H))) × 0.555/√(f·H)` where
+  `f = 0.3333·CC·crown_ratio`. `crown_ratio` is a keyword argument defaulting to
+  1.0, matching ELMFIRE's `CROWN_RATIO` namelist default, and is exposed through
+  `SimulationConfig`.
 
-- **Open/unsheltered:** logarithmic profile based on fuel bed depth: `WAF = 1.83 / ln((20 + 0.36·H) / (0.13·H))`
-- **Canopy-sheltered:** `WAF = (1/ln((20+0.36H)/(0.13H))) × 0.555/√(f·H)` where `f = CC·crown_ratio/3`
+Fortran uses a pre-computed 2D lookup table for performance; Julia computes on
+the fly and caches per fuel id.
 
-Julia's `wind_adjustment_factor(fuel_bed_depth, canopy_cover, canopy_height)` is used in `simulate_full!` when canopy data is available, falling back to the unsheltered formula otherwise.
+## 7. Crown Fire Model
 
-Note: Fortran uses a pre-computed 2D lookup table for performance; Julia computes on-the-fly.
-
-## 5. Crown Fire Model
-
-**Verdict: Faithful reproduction**
+**Verdict: matching**
 
 | Component | Formula | Match? |
 |-----------|---------|--------|
 | Critical FLI (Van Wagner) | `I_crit = (0.01·CBH·(460+26·FMC))^1.5` | Identical |
-| Crown spread (Cruz 2005) | `CROSA = 11.02·WS₁₀^0.9·CBD^0.19·exp(-17·M1)` | Identical |
+| Crown spread (Cruz 2005) | `CROSA = 11.02·WS₁₀^0.9·CBD^0.19·exp(-0.17·100·M1)` | Identical |
 | Wind conversion | `WS₁₀(km/h) = WS₂₀ft(mph) × 1.609/0.87` | Identical |
 | Critical spread rate | `R₀ = 3/CBD` (m/min → ft/min) | Identical |
 | Crown activity coefficient | `CAC = CROSA/R₀` | Identical |
 | Active (CAC>1) | `CROS = CROSA` | Identical |
 | Passive (CAC≤1) | `CROS = CROSA·exp(-CAC)` | Identical |
-| Canopy HPUA | `CBD × depth × 12000 kJ/m²` | Identical |
-| Critical canopy cover | Required for active crown fire | Same logic |
+| Canopy HPUA | `CBD × (CH - CBH) × 12000 kJ/m²` | Identical |
+| Canopy FLI | `HPUA_canopy × V_local × 5.08e-3` | Identical |
+| Spread rate limit | 250 ft/min (`CROWN_FIRE_SPREAD_RATE_LIMIT`) | Identical |
+| Critical canopy cover | 0.39 (`CRITICAL_CANOPY_COVER`) | Identical |
 
-## 6. Spotting / Ember Transport
+Crown fire enters the level set through the wind factor,
+`φ_w ← max(φ_w,surface, φ_w,crown)` without the acceleration factor, so it changes
+the spread direction and the ellipse shape as well as the magnitude, and it lifts
+the `0.9·I_R` cap on the effective wind speed. As in ELMFIRE, the ellipse is
+evaluated at most twice per cell per step: once assuming surface fire, and again
+if the resulting local intensity crosses the crowning threshold.
 
-**Verdict: Same physics models, wind-aware transport** (improved)
+## 8. Fire Acceleration & Diurnal Adjustment
 
-**Lognormal distribution** — identical parameterization.
-
-**Sardoy (2008) model** — all constants match:
-
-- Physical: `ρ=1.1`, `C_p=1.0`, `T=300K`, `g=9.81`
-- `L_c = (I·1000/(ρ·C_p·T·√g))^0.67`
-- Froude transition at `Fr = 1`
-- Low-Fr: `μ=1.47·(I^0.54/u^0.55)+1.14`, `σ=0.86·(u^0.44/I^0.21)+0.19`
-- High-Fr: `μ=1.32·I^0.26·u^0.11-0.02`, `σ=4.95/(I^0.01·u^0.02)-3.48`
-- Spanwise: `σ_span = 0.92·L_c`
-
-**Transport comparison:**
+**Verdict: matching**
 
 | Aspect | Fortran | Julia |
 |--------|---------|-------|
-| Transport | Full trajectory advection through wind field | Step-by-step wind-field advection (when WeatherInterpolator provided) |
+| Acceleration factor | `1 - exp(-t/τ)`, disabled for `τ ≤ 30 s` | Identical (τ in minutes, disabled for `τ ≤ 0.5`) |
+| Application | scales both `φ_s` and `φ_w`, and the `α` term in `V_s0(α + \|φ\|)` | Identical |
+| Diurnal adjustment | multiplies `V_s0` | Identical |
+
+## 9. Spotting / Ember Transport
+
+**Verdict: same physics models; transport differs**
+
+**Lognormal distribution** — identical parameterization.
+
+**Sardoy (2008)** — all constants match `elmfire_spotting.f90:160-207`:
+
+- Physical: `ρ=1.1`, `C_p=1.0`, `T=300K`, `g=9.81`
+- `L_c = (I·1000/(ρ·C_p·T·√g))^0.67`, Froude transition at `Fr = 1`
+- Low-Fr: `μ=1.47·(I^0.54/u^0.55)+1.14`, `σ=0.86·(u^0.44/I^0.21)+0.19`
+- High-Fr: `μ=1.32·I^0.26·u^0.11-0.02`, `σ=4.95/(I^0.01·u^0.02)-3.48`
+- Spanwise: `σ_span = 0.92·L_c`; `μ` clipped at 5
+
+| Aspect | Fortran | Julia |
+|--------|---------|-------|
+| Transport | Full trajectory advection through wind field | Step-by-step wind-field advection (when a `WeatherInterpolator` is provided) |
 | Himoto model | Structure fire spotting for IFBFM=91 | Not implemented |
 | Eulerian CDF | CDF-based continuous distribution per grid cell | Not implemented |
 | Landing | DEM-aware, checks terrain intersection | Grid bounds + unburned check only |
 | Wind perturbation | Through trajectory integration | ±8° random offset at launch |
 
-Julia's `transport_ember` now supports wind-field advection: when a `WeatherInterpolator` is provided (automatic in `simulate_full!`), embers are stepped through the spatially varying wind field at ~1-cell resolution. Without an interpolator, falls back to direct placement using source-cell wind.
+## 10. Weather Interpolation
 
-**Remaining differences:** Julia does not implement DEM-aware landing (terrain intersection), the Himoto urban fire model, or the Eulerian CDF approach.
-
-## 7. Weather Interpolation
-
-**Verdict: Matching** (resolved)
+**Verdict: matching**
 
 | Aspect | Fortran | Julia |
 |--------|---------|-------|
-| Temporal | Linear interpolation between time steps | Identical |
-| Spatial | Bilinear interpolation | Bilinear interpolation |
-| Wind direction | Decompose to (u,v), interpolate, recombine | Decompose to (sin,cos), interpolate, recombine — identical approach |
+| Temporal | Linear between time steps | Identical |
+| Spatial | Bilinear | Bilinear |
+| Wind direction | Decompose to components, interpolate, recombine | Identical approach (sin/cos) |
 | Update intervals | Independent per variable | All variables updated together |
 
-Julia's `get_weather_at` now uses `bilinear_interp` for all scalar weather fields and `bilinear_interp_wind_direction` (sin/cos decomposition) for wind direction, producing smooth spatial gradients matching the Fortran approach.
+## 11. Non-Burnable Fuels
 
-## 8. Fire Acceleration & Diurnal Adjustment
+**Verdict: matching** (`elmfire_init.f90:156-166`)
 
-**Verdict: Matching** (resolved)
+Fuel codes 90–100, codes ≤ 0, and 256 are non-burnable, as is any model with no
+1-hour fuel load. `get_fuel_model_or_nonburnable` resolves absent non-burnable
+codes to model 256, matching ELMFIRE's startup fill, so raw LANDFIRE rasters
+carrying 91–99 load without remapping.
 
-| Aspect | Fortran | Julia |
-|--------|---------|-------|
-| Acceleration factor | `1 - exp(-t/τ)` buildup to steady-state | Identical (`acceleration_factor`) |
-| Diurnal adjustment | Multiplicative factor on spread rate by time of day | Implemented (`DiurnalConfig`, `diurnal_adjustment`) |
-
-Both features are applied as multiplicative factors on the spread rate after Rothermel + dampening calculation.
-
-## 9. Features in Fortran Not in Julia
+## 12. Features in ELMFIRE Not in Elmfire.jl
 
 | Feature | Description |
 |---------|-------------|
 | Himoto structure fire spotting | Urban firebrand model |
-| DEM-aware ember landing | Terrain intersection for spotting |
+| Eulerian CDF spotting | Continuous per-cell ember deposition |
+| DEM-aware ember landing | Terrain intersection for firebrands |
+| Hamada / UMD-UCB building spread | In-model WUI spread for IFBFM=91 |
 | Independent update intervals | Per-variable weather refresh rates |
 
-## 10. Features in Julia Not in Fortran
+## 13. Features in Elmfire.jl Not in ELMFIRE
 
 | Feature | Description |
 |---------|-------------|
 | Multi-precision (Float32/Float64) | Generic type parameter throughout |
 | GPU acceleration | KernelAbstractions.jl extension |
-| Spread rate dampening modes | WIND_SPEED_CAP, ABSOLUTE_CAP, LINEAR_DAMPENING |
-| Monte Carlo ensemble framework | Parallel ensemble simulations with perturbation configs |
+| Spread rate dampening modes | `WIND_SPEED_CAP`, `ABSOLUTE_CAP`, `LINEAR_DAMPENING` |
+| Monte Carlo ensemble framework | Parallel ensembles with perturbation configs |
 | WUI building ignition models | Radiative heat flux, Hamada urban spread |
 | Suppression/containment models | Resource allocation, containment lines |
 
-## 11. Summary of Remaining Differences
+## 14. Remaining Differences
 
-1. **Band thickness** — Julia uses 5 cells vs. Fortran's 2. More robust but less efficient. This is a tuning parameter, not a physics difference.
-
-2. **Ember landing** — Julia does not check terrain intersection for firebrand landing. Minor for flat terrain, potentially significant in mountainous areas.
-
-3. **Himoto urban fire model** — Fortran supports structure fire spotting for urban fuel models; Julia does not implement this.
+1. **Band thickness** — 5 cells vs. 2. Tuning, not physics.
+2. **Ember landing** — no terrain intersection check. Minor on flat terrain,
+   potentially significant in mountainous areas.
+3. **Urban fire models** — Himoto spotting and the in-model building spread paths
+   are not implemented; Elmfire.jl carries its own WUI models instead.
+4. **Weather refresh** — all variables are interpolated on one schedule rather
+   than per-variable intervals.
+5. **Degenerate flux limiter cells** — first-order upwind rather than reusing a
+   `SAVE`d value.

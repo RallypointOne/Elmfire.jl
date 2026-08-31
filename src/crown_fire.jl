@@ -100,8 +100,8 @@ end
         m1::T,
         vs0::T;
         crown_fire_adj::T = one(T),
-        spread_rate_limit::T = T(1000),
-        critical_canopy_cover::T = T(0.4)
+        spread_rate_limit::T = T(250),
+        critical_canopy_cover::T = T(0.39)
     ) -> CrownFireResult{T}
 
 Calculate crown fire spread rate using the Cruz (2005) model.
@@ -112,9 +112,11 @@ Calculate crown fire spread rate using the Cruz (2005) model.
 - `ws20`: 20-ft wind speed (mph)
 - `m1`: 1-hour dead fuel moisture (fraction)
 - `vs0`: Base surface spread rate (ft/min)
-- `crown_fire_adj`: Crown fire adjustment factor (default 1.0)
-- `spread_rate_limit`: Maximum crown fire spread rate (ft/min)
-- `critical_canopy_cover`: Minimum canopy cover for active crown fire
+- `crown_fire_adj`: Crown fire adjustment factor (ELMFIRE `CROWN_FIRE_ADJ`, default 1.0)
+- `spread_rate_limit`: Maximum crown fire spread rate (ft/min). Matches ELMFIRE's
+  `CROWN_FIRE_SPREAD_RATE_LIMIT`, default 250.
+- `critical_canopy_cover`: Minimum canopy cover for active crown fire (ELMFIRE
+  `CRITICAL_CANOPY_COVER`, default 0.39)
 
 # Returns
 - `CrownFireResult` with crown fire type, spread rate, and related values
@@ -128,8 +130,8 @@ function crown_spread_rate(
     m1::T,
     vs0::T;
     crown_fire_adj::T = one(T),
-    spread_rate_limit::T = T(1000),
-    critical_canopy_cover::T = T(0.4),
+    spread_rate_limit::T = T(250),
+    critical_canopy_cover::T = T(0.39),
     foliar_moisture::T = T(100)
 ) where {T<:AbstractFloat}
     # Constants
@@ -232,6 +234,21 @@ function combined_spread_rate(
         # Surface fire or passive crown fire
         return surface_result.velocity
     end
+end
+
+
+"""
+    canopy_fireline_intensity(hpua_canopy::T, velocity::T) -> T
+
+Fireline intensity contributed by the canopy (kW/m) for a local spread rate
+`velocity` in ft/min and canopy heat per unit area `hpua_canopy` in kJ/m².
+
+`I_canopy = HPUA_canopy · V · 0.3048/60`, i.e. ELMFIRE's `HPUA_CANOPY * VELOCITY * 5.08E-3`
+(`elmfire_level_set.f90:1911`). `velocity` must be the **local** spread rate at
+this point on the perimeter, not the head-fire rate.
+"""
+@inline function canopy_fireline_intensity(hpua_canopy::T, velocity::T) where {T<:AbstractFloat}
+    return hpua_canopy * velocity * ftpmin_to_mps(T)
 end
 
 

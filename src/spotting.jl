@@ -178,9 +178,8 @@ function sardoy_parameters(ws::T, flin::T) where {T<:AbstractFloat}
     mu_spanwise = zero(T)
     sigma_spanwise = T(0.92) * lc
 
-    # Clamp mu_dist to reasonable range
+    # Clamp mu_dist to reasonable range, as ELMFIRE does
     mu_dist = min(mu_dist, T(5))
-    sigma_dist = max(sigma_dist, T(0.1))
 
     return (mu_dist, sigma_dist, mu_spanwise, sigma_spanwise)
 end

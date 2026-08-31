@@ -497,7 +497,7 @@ end
         t_start::T,
         t_stop::T;
         dt_initial::T = one(T),
-        target_cfl::T = T(0.9),
+        target_cfl::T = T(0.4),
         dt_max::T = T(10),
         callback::Union{Nothing, Function} = nothing
     )
@@ -515,14 +515,32 @@ function simulate_with_suppression!(
     t_start::T,
     t_stop::T;
     dt_initial::T = one(T),
-    target_cfl::T = T(0.9),
+    target_cfl::T = T(0.4),
     dt_max::T = T(10),
+    lb_cap::T = T(8),
     dampening::SpreadRateDampeningConfig{T} = SpreadRateDampeningConfig{T}(),
     callback::CB = nothing
 ) where {T<:AbstractFloat, CB}
     t = t_start
     dt = dt_initial
     iteration = 0
+
+    # Pre-compute static slope grids
+    proj = slope_projection_factors.(slope, aspect)
+    uxousx_grid = first.(proj)
+    uyousy_grid = last.(proj)
+
+    # Wind-factor inversion terms, cached per fuel id (ELMFIRE reads the ILH=30 entry)
+    unique_fids = unique(fuel_ids)
+    max_fid = max(1, maximum(unique_fids))
+    wsmfeff_coeff_cache = Vector{T}(undef, max_fid)
+    B_inverse_cache = Vector{T}(undef, max_fid)
+    for fid in unique_fids
+        fid < 1 && continue
+        fm30 = get_fuel_model_or_nonburnable(fuel_table, fid, 30)
+        wsmfeff_coeff_cache[fid] = fm30.wsmfeff_coeff
+        B_inverse_cache[fid] = fm30.B_inverse
+    end
 
     # Pre-allocate cells_to_tag buffer
     cells_to_tag = CartesianIndex{2}[]
@@ -564,9 +582,14 @@ function simulate_with_suppression!(
             end
 
             w = get_weather_at(weather_interp, ix, iy, t)
-            live_moisture_class = clamp(round(Int, T(100) * w.mlh), 30, 120)
+            live_moisture_class = clamp(round(Int, T(100) * w.mlh, RoundNearestTiesAway), 30, 120)
             fuel_id = fuel_ids[ix, iy]
-            fm = get_fuel_model(fuel_table, fuel_id, live_moisture_class)
+            if fuel_id < 1
+                state.ux[px, py] = zero(T)
+                state.uy[px, py] = zero(T)
+                continue
+            end
+            fm = get_fuel_model_or_nonburnable(fuel_table, fuel_id, live_moisture_class)
 
             if isnonburnable(fm)
                 state.ux[px, py] = zero(T)
@@ -586,23 +609,24 @@ function simulate_with_suppression!(
                 wsmf, tanslp2
             )
 
-            # Apply spread rate dampening
-            dampened_velocity = apply_spread_rate_dampening(
-                result.velocity, wsmf, result.vs0, result.phis, result.phiw,
-                fm.phiwterm, fm.B, dampening
+            # Wind and slope factors combine as vectors
+            phiw_eff = dampened_wind_factor(wsmf, result.phiw, fm.phiwterm, fm.B, dampening)
+            phimag, dms_x, dms_y = spread_direction(result.phis, phiw_eff, aspect[ix, iy], w.wd)
+            v_dms = apply_velocity_cap(result.vs0 * (one(T) + phimag), wsmf, dampening)
+
+            wsmfeff = min(
+                effective_wind_speed(phimag, wsmfeff_coeff_cache[fuel_id], B_inverse_cache[fuel_id]),
+                T(0.9) * result.ir * kwpm2_to_btupft2min(T)
             )
+            es = elliptical_spread(v_dms, wsmfeff; lb_cap)
 
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)
-            effective_ws_mph = w.ws * waf / T(1.47)
-            es = elliptical_spread(dampened_velocity, effective_ws_mph)
-            wind_dir_rad = w.wd * pio180(T)
+            ux, uy = velocity_components(es, dms_x, dms_y, normal_x, normal_y)
 
-            ux, uy = velocity_components(es, wind_dir_rad, normal_x, normal_y)
-
-            # Apply containment reduction
+            # Project onto the horizontal map plane, then apply containment reduction
             eff = suppression.containment_effectiveness[ix, iy]
-            state.ux[px, py] = ux * eff
-            state.uy[px, py] = uy * eff
+            state.ux[px, py] = ux * uxousx_grid[ix, iy] * eff
+            state.uy[px, py] = uy * uyousy_grid[ix, iy] * eff
         end
 
         # CFL timestep

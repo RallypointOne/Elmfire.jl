@@ -43,23 +43,42 @@ Random.seed!(2021)
 
 ### Landscape: LANDFIRE Fuel Models and Elevation
 
-We use [Landfire.jl](https://github.com/RallypointOne/Landfire.jl) to download 30 m FBFM13 fuel models and elevation for the fire area.
+30 m FBFM13 fuel models and elevation for the fire area come from
+[LANDFIRE](https://landfire.gov) via [Landfire.jl](https://github.com/RallypointOne/Landfire.jl).
+
+The clipped rasters are cached on this repository's `tutorial-data` branch so the
+page renders reproducibly — the LANDFIRE Product Service is a live job queue and a
+failure there would otherwise abort the whole docs build. Set `USE_LIVE_LANDFIRE=true`
+to pull fresh data from the service instead.
 
 ```{julia}
-#| code-summary: "Download LANDFIRE FBFM13 and elevation"
+#| code-summary: "Fetch LANDFIRE FBFM13 and elevation"
 
 # Bounding box covering the Marshall Fire (with buffer west of ignition)
 aoi = "-105.260 39.924 -105.126 39.992"
 
-# Download FBFM13 (Anderson 13 fuel models)
-fbfm13_prods = Landfire.products(layer="FBFM13", conus=true)
-fbfm13_ds = Landfire.Dataset(fbfm13_prods, aoi)
-fbfm13_tif = get(fbfm13_ds)
+const TUTORIAL_DATA = "https://raw.githubusercontent.com/RallypointOne/Elmfire.jl/tutorial-data"
 
-# Download elevation
-elev_prods = Landfire.products(layer="ELEV", conus=true)
-elev_ds = Landfire.Dataset(elev_prods, aoi)
-elev_tif = get(elev_ds)
+"""
+Fetch a cached tutorial input, or download it live from LANDFIRE.
+
+`LF2025_FBFM13` covers only the SW and NW geoAreas, so the *latest* FBFM13 product
+does not include Colorado — the version is pinned rather than taken as latest.
+Elevation is published as `LF2020_Elev`.
+"""
+function landscape_layer(cached_name, layer)
+    if get(ENV, "USE_LIVE_LANDFIRE", "false") == "true"
+        products = Landfire.products(false; layer = layer)
+        isempty(products) && error("No LANDFIRE product matching \"$layer\"")
+        return get(Landfire.Dataset(products, aoi))
+    end
+    dest = joinpath(mktempdir(), cached_name)
+    Downloads.download("$TUTORIAL_DATA/$cached_name", dest)
+    return dest
+end
+
+fbfm13_tif = landscape_layer("marshall_fbfm13.tif", "LF2024_FBFM13")
+elev_tif = landscape_layer("marshall_elev.tif", "LF2020_Elev")
 
 println("Fuel models: $fbfm13_tif")
 println("Elevation:   $elev_tif")
@@ -145,15 +164,19 @@ We fetch the official Marshall Fire perimeter from the [WFIGS Interagency Fire P
 ```{julia}
 #| code-summary: "Fetch NIFC fire perimeter and reproject to grid coordinates"
 
-# Fetch perimeter GeoJSON from NIFC ArcGIS Feature Service
+# Perimeter GeoJSON, cached alongside the rasters. Set USE_LIVE_LANDFIRE=true to
+# query the NIFC ArcGIS Feature Service directly.
 nifc_url = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/" *
     "WFIGS_Interagency_Perimeters/FeatureServer/0/query?" *
     "where=poly_IncidentName%3D%27Marshall%27+AND+attr_POOState%3D%27US-CO%27" *
     "&outFields=poly_GISAcres,attr_InitialLatitude,attr_InitialLongitude" *
     "&f=geojson"
 
+perimeter_url = get(ENV, "USE_LIVE_LANDFIRE", "false") == "true" ?
+    nifc_url : "$TUTORIAL_DATA/marshall_perimeter.geojson"
+
 buf = IOBuffer()
-Downloads.download(nifc_url, buf)
+Downloads.download(perimeter_url, buf)
 geojson = JSON3.read(String(take!(buf)))
 feat = geojson.features[1]
 
@@ -719,7 +742,9 @@ fig
 
 ## Data Sources
 
-- **LANDFIRE FBFM13 & Elevation**: [LANDFIRE Product Service](https://lfps.usgs.gov) v2.5.0, downloaded via [Landfire.jl](https://github.com/RallypointOne/Landfire.jl)
+- **LANDFIRE FBFM13 & Elevation**: [LANDFIRE Product Service](https://lfps.usgs.gov) products `LF2024_FBFM13`
+  and `LF2020_Elev`, retrieved via [Landfire.jl](https://github.com/RallypointOne/Landfire.jl) and cached on the
+  [`tutorial-data`](https://github.com/RallypointOne/Elmfire.jl/tree/tutorial-data) branch
 - **Fire Perimeter**: [WFIGS Interagency Fire Perimeters](https://data-nifc.opendata.arcgis.com/datasets/nifc::wfigs-interagency-fire-perimeters/about), ArcGIS Feature Service
 - **Wind Observations**: [KBDU ASOS](https://mesonet.agron.iastate.edu/request/download.phtml), Boulder Municipal Airport, Dec 30, 2021
 - **Fire Summary**: [NWS Boulder - Marshall Fire](https://www.weather.gov/bou/MarshallFire20211230)

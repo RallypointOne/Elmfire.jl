@@ -16,6 +16,7 @@ export load_fuel_models, create_standard_fuel_table, parse_fuel_model_line
 # Rothermel Model
 export SpreadResult, surface_spread_rate, surface_spread_rate_flat, moisture_damping
 export EllipticalSpread, elliptical_spread, velocity_at_angle, velocity_components
+export length_to_breadth, spread_direction, effective_wind_speed, slope_projection_factors
 
 # Level Set Solver
 export half_superbee, limit_gradients
@@ -30,6 +31,7 @@ export NO_DAMPENING, WIND_SPEED_CAP, ABSOLUTE_CAP, LINEAR_DAMPENING
 
 # Simulation
 export wind_adjustment_factor, calculate_tanslp2, acceleration_factor
+export dampened_wind_factor, apply_velocity_cap
 export DiurnalConfig, diurnal_adjustment
 export FireState, CPUFireState, grid_to_padded, padded_to_grid
 export ignite!, ignite_point!, ignite_circle!

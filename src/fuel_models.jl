@@ -127,6 +127,8 @@ struct FuelModel{T<:AbstractFloat}
 
     # Pre-computed optimization terms
     R_MPRIMEDENOME14SUM_MEX_DEAD::T  # 1/(Σmprimedenom * mex_dead)
+    B_inverse::T      # 1/B
+    wsmfeff_coeff::T  # (1/phiwterm)^(1/B)
 
     # Residence time (min)
     tr::T             # 384/σ_overall
@@ -282,6 +284,11 @@ function compute_fuel_model(raw::RawFuelModel{T}, live_moisture_class::Int=30) w
     phisterm = T(5.275) * beta^T(-0.3)
     phiwterm = C_coeff * beta_ratio^(-E_coeff)
 
+    # Inversion terms for recovering effective mid-flame wind speed from phi
+    # (elmfire_init.f90:863-864)
+    B_inverse = one(T) / B_coeff
+    wsmfeff_coeff = (one(T) / phiwterm)^B_inverse
+
     # Optimization term
     WPRIMEDENOM56SUM = sum(WPRIMEDENOM56)
     WPRIMENUMER14SUM = sum(WPRIMENUMER)
@@ -306,7 +313,7 @@ function compute_fuel_model(raw::RawFuelModel{T}, live_moisture_class::Int=30) w
         F, F_dead, F_live, EPS, FEPS, FMEX, WPRIMENUMER, MPRIMEDENOM, WPRIMEDENOM56,
         GP_WND_ETAS_HOC, GP_WNL_ETAS_HOC,
         phisterm, phiwterm,
-        R_MPRIMEDENOME14SUM_MEX_DEAD,
+        R_MPRIMEDENOME14SUM_MEX_DEAD, B_inverse, wsmfeff_coeff,
         tr
     )
 end
@@ -362,7 +369,7 @@ Get the fuel model for the given fuel ID and live moisture content.
 Live moisture is clamped to [30, 120] and rounded to nearest integer.
 """
 function get_fuel_model(table::FuelModelTable, fuel_id::Int, live_moisture::AbstractFloat)
-    ilh = clamp(round(Int, 100 * live_moisture), 30, 120)
+    ilh = clamp(round(Int, 100 * live_moisture, RoundNearestTiesAway), 30, 120)
     return table.models[(fuel_id, ilh)]
 end
 
@@ -377,15 +384,44 @@ function get_fuel_model(table::FuelModelTable, fuel_id::Int, live_moisture_class
 end
 
 
+"""
+    get_fuel_model_or_nonburnable(table::FuelModelTable, fuel_id::Int,
+                                  live_moisture_class::Int) -> FuelModel
+
+Like [`get_fuel_model`](@ref), but falls back to the non-burnable model for fuel
+codes that ELMFIRE treats as non-burnable (90-100, <= 0, 256) and that are absent
+from the table. ELMFIRE fills these entries with fuel model 256 at startup
+(`elmfire_init.f90:886-890`); raw LANDFIRE rasters routinely carry codes 91-99.
+"""
+function get_fuel_model_or_nonburnable(table::FuelModelTable, fuel_id::Int, live_moisture_class::Int)
+    ilh = clamp(live_moisture_class, 30, 120)
+    key = (fuel_id, ilh)
+    haskey(table.models, key) && return table.models[key]
+    if isnonburnable(fuel_id)
+        nbkey = (FUEL_MODEL_NONBURNABLE, ilh)
+        haskey(table.models, nbkey) && return table.models[nbkey]
+    end
+    throw(KeyError(key))
+end
+
+
 #-----------------------------------------------------------------------------#
 #                           Utility Functions
 #-----------------------------------------------------------------------------#
 """
     isnonburnable(fm::FuelModel) -> Bool
+    isnonburnable(fuel_id::Integer) -> Bool
 
-Check if a fuel model is non-burnable (fuel model 256 or similar).
+Check if a fuel model is non-burnable.
+
+Follows ELMFIRE's mask (`elmfire_init.f90:156-166`): fuel model codes 90-100
+(urban, water, snow, agriculture, barren), code 256, and any code <= 0 are
+non-burnable, as is any model carrying no 1-hour fuel load.
 """
-isnonburnable(fm::FuelModel{T}) where {T} = fm.id == FUEL_MODEL_NONBURNABLE || fm.W0[1] < T(1e-6)
+isnonburnable(fuel_id::Integer) =
+    fuel_id <= 0 || fuel_id == FUEL_MODEL_NONBURNABLE || (90 <= fuel_id <= 100)
+
+isnonburnable(fm::FuelModel{T}) where {T} = isnonburnable(fm.id) || fm.W0[1] < T(1e-6)
 
 
 #-----------------------------------------------------------------------------#
@@ -416,6 +452,8 @@ struct FuelModelArray{T<:AbstractFloat}
     phisterm::Matrix{T}
     phiwterm::Matrix{T}
     R_MPRIMEDENOME14SUM_MEX_DEAD::Matrix{T}
+    B_inverse::Matrix{T}
+    wsmfeff_coeff::Matrix{T}
     F_dead::Matrix{T}
     F_live::Matrix{T}
     tr::Matrix{T}
@@ -468,6 +506,8 @@ function FuelModelArray(table::FuelModelTable{T}) where {T<:AbstractFloat}
     phisterm = zeros(T, n_fuels, n_mc)
     phiwterm = zeros(T, n_fuels, n_mc)
     R_MPRIMEDENOME14SUM_MEX_DEAD = zeros(T, n_fuels, n_mc)
+    B_inverse = zeros(T, n_fuels, n_mc)
+    wsmfeff_coeff = zeros(T, n_fuels, n_mc)
     F_dead = zeros(T, n_fuels, n_mc)
     F_live = zeros(T, n_fuels, n_mc)
     tr = zeros(T, n_fuels, n_mc)
@@ -498,6 +538,8 @@ function FuelModelArray(table::FuelModelTable{T}) where {T<:AbstractFloat}
             phisterm[fi, mi] = fm.phisterm
             phiwterm[fi, mi] = fm.phiwterm
             R_MPRIMEDENOME14SUM_MEX_DEAD[fi, mi] = fm.R_MPRIMEDENOME14SUM_MEX_DEAD
+            B_inverse[fi, mi] = fm.B_inverse
+            wsmfeff_coeff[fi, mi] = fm.wsmfeff_coeff
             F_dead[fi, mi] = fm.F_dead
             F_live[fi, mi] = fm.F_live
             tr[fi, mi] = fm.tr
@@ -518,6 +560,7 @@ function FuelModelArray(table::FuelModelTable{T}) where {T<:AbstractFloat}
         delta, mex_dead, mex_live, rhob, xi, B,
         GP_WND_ETAS_HOC, GP_WNL_ETAS_HOC,
         phisterm, phiwterm, R_MPRIMEDENOME14SUM_MEX_DEAD,
+        B_inverse, wsmfeff_coeff,
         F_dead, F_live, tr,
         F, FEPS, WPRIMENUMER,
         nonburnable, fuel_id_to_index

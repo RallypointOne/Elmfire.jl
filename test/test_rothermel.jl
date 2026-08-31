@@ -125,24 +125,31 @@
     end
 
     @testset "Elliptical Spread" begin
+        # Effective mid-flame wind speed is in ft/min (1 mph = 88 ft/min)
+
         # No wind - should be nearly circular
         es_nowind = Elmfire.elliptical_spread(10.0, 0.0)
         @test es_nowind.length_to_breadth ≈ 1.0 atol=0.1
         @test es_nowind.head ≈ es_nowind.back atol=0.5
 
-        # With wind - should be elongated
-        es_wind = Elmfire.elliptical_spread(10.0, 5.0)
+        # With wind (5 mph mid-flame) - should be elongated
+        es_wind = Elmfire.elliptical_spread(10.0, 440.0)
         @test es_wind.length_to_breadth > 1.0
         @test es_wind.head > es_wind.back
         @test es_wind.head > es_wind.flank
 
-        # Higher wind - more elongated (use values below L/B cap of 8.0)
-        es_highwind = Elmfire.elliptical_spread(10.0, 8.0)
+        # Higher wind (10 mph) - more elongated, still below the L/B cap of 8
+        es_highwind = Elmfire.elliptical_spread(10.0, 880.0)
         @test es_highwind.length_to_breadth > es_wind.length_to_breadth
+        @test es_highwind.length_to_breadth < 8.0
+
+        # The cap binds well above the Anderson range
+        es_extreme = Elmfire.elliptical_spread(10.0, 3520.0)
+        @test es_extreme.length_to_breadth == 8.0
     end
 
     @testset "Velocity at Angle" begin
-        es = Elmfire.elliptical_spread(100.0, 10.0)
+        es = Elmfire.elliptical_spread(100.0, 880.0)
 
         # Head fire (θ = 0)
         v_head = Elmfire.velocity_at_angle(es, 0.0)

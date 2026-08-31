@@ -12,21 +12,32 @@
 
 Calculate unsheltered wind adjustment factor (WAF) from 20-ft wind to mid-flame wind.
 
-Uses: WAF = 1.83 / ln((20 + 0.36*H) / (0.13*H)) where H is the fuel bed depth in feet.
+Uses the Albini & Baughman (1979) log profile as written in BEHAVE and FARSITE,
+with the flame-height-to-fuel-bed-depth ratio taken as 1:
+
+`WAF = (1 + 0.36/H_f)/ln((20 + 0.36·H)/(0.13·H)) × (ln((H_f + 0.36)/0.13) - 1)`
+
+with `H_f = 1`, which reduces to `1.8333 / ln((20 + 0.36·H)/(0.13·H))`.
+`H` is the fuel bed depth in feet. Returns 0 for a vanishing fuel bed.
+
+Implementation follows `elmfire_init.f90:614-651`.
 """
 function wind_adjustment_factor(fuel_bed_depth::T) where {T<:AbstractFloat}
-    if fuel_bed_depth < T(0.1)
-        return T(0.1)
+    if fuel_bed_depth <= T(1e-4)
+        return zero(T)
     end
 
     H = fuel_bed_depth
-    waf = T(1.83) / log((T(20) + T(0.36)*H) / (T(0.13)*H))
-    return clamp(waf, T(0.1), one(T))
+    hfoh = one(T)   # flame height over fuel bed height, as in BEHAVE and FARSITE
+    term1 = (one(T) + T(0.36) / hfoh) / log((T(20) + T(0.36) * H) / (T(0.13) * H))
+    term2 = log((hfoh + T(0.36)) / T(0.13)) - one(T)
+    return term1 * term2
 end
 
 
 """
-    wind_adjustment_factor(fuel_bed_depth::T, canopy_cover::T, canopy_height::T) -> T
+    wind_adjustment_factor(fuel_bed_depth::T, canopy_cover::T, canopy_height::T;
+                           crown_ratio::T = one(T)) -> T
 
 Calculate sheltered wind adjustment factor (WAF) under forest canopy.
 
@@ -37,8 +48,17 @@ are non-trivial, otherwise falls back to the unsheltered formula.
 - `fuel_bed_depth`: Fuel bed depth (ft)
 - `canopy_cover`: Canopy cover fraction (0-1)
 - `canopy_height`: Canopy height (m)
+- `crown_ratio`: Fraction of canopy height occupied by live crown. Matches
+  ELMFIRE's `CROWN_RATIO` namelist parameter, whose default is 1.0.
+
+The crown fill fraction is `f = 0.3333 · CC · crown_ratio`, as in BEHAVE.
+
+Implementation follows `elmfire_init.f90:624-631`.
 """
-function wind_adjustment_factor(fuel_bed_depth::T, canopy_cover::T, canopy_height::T) where {T<:AbstractFloat}
+function wind_adjustment_factor(
+    fuel_bed_depth::T, canopy_cover::T, canopy_height::T;
+    crown_ratio::T = one(T)
+) where {T<:AbstractFloat}
     # Fall back to unsheltered if no meaningful canopy
     if canopy_cover < T(1e-4) || canopy_height < T(1e-4)
         return wind_adjustment_factor(fuel_bed_depth)
@@ -55,13 +75,10 @@ function wind_adjustment_factor(fuel_bed_depth::T, canopy_cover::T, canopy_heigh
     end
     uhou20ph = one(T) / log(numer / denom)
 
-    # Crown ratio assumed 1/3 (fraction of canopy occupied by crown)
-    crown_ratio = one(T) / T(3)
     f = T(0.3333) * canopy_cover * crown_ratio
     ucouh = T(0.555) / sqrt(f * hft)
 
-    waf = uhou20ph * ucouh
-    return clamp(waf, T(0.1), one(T))
+    return uhou20ph * ucouh
 end
 
 
@@ -593,6 +610,48 @@ Called after `surface_spread_rate()` and before `elliptical_spread()`.
 end
 
 
+"""
+    dampened_wind_factor(wsmf::T, phiw::T, phiwterm::T, B::T,
+                         config::SpreadRateDampeningConfig{T}) -> T
+
+Wind factor after dampening. Only `LINEAR_DAMPENING` alters it: above
+`config.linear_threshold` the power-law `phiw` is replaced by its tangent line at
+the threshold. All other modes return `phiw` unchanged and act on the velocity
+instead (see [`apply_velocity_cap`](@ref)).
+"""
+@inline function dampened_wind_factor(
+    wsmf::T, phiw::T, phiwterm::T, B::T, config::SpreadRateDampeningConfig{T}
+) where {T<:AbstractFloat}
+    config.mode == LINEAR_DAMPENING || return phiw
+    threshold = config.linear_threshold
+    wsmf <= threshold && return phiw
+    phiw_at_threshold = phiwterm * threshold^B
+    dphiw_dw = phiwterm * B * threshold^(B - one(T))
+    return phiw_at_threshold + dphiw_dw * (wsmf - threshold)
+end
+
+
+"""
+    apply_velocity_cap(velocity::T, wsmf::T, config::SpreadRateDampeningConfig{T}) -> T
+
+Apply the velocity-capping dampening modes (`WIND_SPEED_CAP`, `ABSOLUTE_CAP`) to a
+spread rate. `NO_DAMPENING` and `LINEAR_DAMPENING` return `velocity` unchanged;
+the latter acts through [`dampened_wind_factor`](@ref).
+"""
+@inline function apply_velocity_cap(
+    velocity::T, wsmf::T, config::SpreadRateDampeningConfig{T}
+) where {T<:AbstractFloat}
+    mode = config.mode
+    if mode == WIND_SPEED_CAP
+        return min(velocity, wsmf)
+    elseif mode == ABSOLUTE_CAP
+        return min(velocity, config.max_spread_rate)
+    else
+        return velocity
+    end
+end
+
+
 #-----------------------------------------------------------------------------#
 #                     Main Simulation Loop
 #-----------------------------------------------------------------------------#
@@ -608,7 +667,7 @@ end
         t_start::T,
         t_stop::T;
         dt_initial::T = one(T),
-        target_cfl::T = T(0.45),
+        target_cfl::T = T(0.4),
         dt_max::T = T(10),
         spread_rate_adj::T = one(T),
         accel_time_constant::T = zero(T),
@@ -628,7 +687,7 @@ Run the fire simulation from t_start to t_stop.
 - `t_start`: Start time (minutes)
 - `t_stop`: Stop time (minutes)
 - `dt_initial`: Initial timestep (minutes, default 1.0)
-- `target_cfl`: Target CFL number (default 0.45)
+- `target_cfl`: Target CFL number (ELMFIRE `TARGET_CFL`, default 0.4)
 - `dt_max`: Maximum timestep (minutes, default 10.0)
 - `spread_rate_adj`: Spread rate adjustment factor (default 1.0, multiplies base spread rate)
 - `accel_time_constant`: Fire acceleration time constant (minutes, default 0 = disabled).
@@ -647,7 +706,7 @@ function simulate!(
     t_start::T,
     t_stop::T;
     dt_initial::T = one(T),
-    target_cfl::T = T(0.45),
+    target_cfl::T = T(0.4),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
     lb_cap::T = T(8),
@@ -660,30 +719,37 @@ function simulate!(
     dt = dt_initial
     iteration = 0
 
-    # Pre-compute wind direction in radians and trig
-    wind_dir_rad = weather.wind_direction * pio180(T)
-    wind_to_x = -sin(wind_dir_rad)
-    wind_to_y = -cos(wind_dir_rad)
-
     # Wind speed conversion: 20-ft to ft/min
     # 1 mph = 88 ft/min
     ws20_ftpmin = weather.wind_speed_20ft * T(88)
+    wind_direction = weather.wind_direction
 
     # Live moisture class (30-120)
-    live_moisture_class = clamp(round(Int, T(100) * weather.MLH), 30, 120)
+    live_moisture_class = clamp(round(Int, T(100) * weather.MLH, RoundNearestTiesAway), 30, 120)
 
-    # Pre-compute static slope grid
+    # Pre-compute static slope grids: tan^2(slope) and the projection of
+    # slope-parallel velocities onto the horizontal map plane
     tanslp2_grid = calculate_tanslp2.(slope)
+    proj = slope_projection_factors.(slope, aspect)
+    uxousx_grid = first.(proj)
+    uyousy_grid = last.(proj)
 
     # Pre-build fast fuel lookup vector (O(1) by fuel_id)
     unique_fids = unique(fuel_ids)
-    max_fid = maximum(unique_fids)
+    max_fid = max(1, maximum(unique_fids))
     fuel_vec = Vector{FuelModel{T}}(undef, max_fid)
     waf_cache = Vector{T}(undef, max_fid)
+    wsmfeff_coeff_cache = Vector{T}(undef, max_fid)
+    B_inverse_cache = Vector{T}(undef, max_fid)
     for fid in unique_fids
-        fm = get_fuel_model(fuel_table, fid, live_moisture_class)
+        fid < 1 && continue
+        fm = get_fuel_model_or_nonburnable(fuel_table, fid, live_moisture_class)
         fuel_vec[fid] = fm
         waf_cache[fid] = wind_adjustment_factor(fm.delta)
+        # ELMFIRE reads the wind-factor inversion terms from the ILH=30 table entry
+        fm30 = get_fuel_model_or_nonburnable(fuel_table, fid, 30)
+        wsmfeff_coeff_cache[fid] = fm30.wsmfeff_coeff
+        B_inverse_cache[fid] = fm30.B_inverse
     end
 
     # Pre-allocate buffers
@@ -722,6 +788,11 @@ function simulate!(
 
             # Get fuel model (O(1) vector lookup)
             fuel_id = fuel_ids[ix, iy]
+            if fuel_id < 1
+                state.ux[px, py] = zero(T)
+                state.uy[px, py] = zero(T)
+                continue
+            end
             fm = fuel_vec[fuel_id]
 
             # Skip non-burnable
@@ -747,34 +818,45 @@ function simulate!(
                 adj = spread_rate_adj
             )
 
-            # Apply spread rate dampening
-            dampened_velocity = apply_spread_rate_dampening(
-                result.velocity, wsmf, result.vs0, result.phis, result.phiw,
-                fm.phiwterm, fm.B, dampening
-            )
-
-            # Apply acceleration and diurnal factors
-            dampened_velocity *= acceleration_factor(t, accel_time_constant)
+            # Diurnal adjustment scales the base spread rate, as in ELMFIRE
+            vs0 = result.vs0
             if diurnal !== nothing
-                dampened_velocity *= diurnal_adjustment(diurnal, t)
+                vs0 *= diurnal_adjustment(diurnal, t)
             end
 
-            # Cache for burn recording
-            cached_velocity[ix, iy] = dampened_velocity
-            cached_flin[ix, iy] = result.flin
+            # Wind and slope factors combine as vectors; the acceleration factor
+            # scales both, so V_DMS = vs0 * (alpha + |phi|)
+            accel = acceleration_factor(t, accel_time_constant)
+            phiw_eff = dampened_wind_factor(wsmf, result.phiw, fm.phiwterm, fm.B, dampening)
+            phimag, dms_x, dms_y = spread_direction(
+                accel * result.phis, accel * phiw_eff, aspect[ix, iy], wind_direction
+            )
+            v_dms = apply_velocity_cap(vs0 * (accel + phimag), wsmf, dampening)
+
+            # Effective mid-flame wind speed drives the ellipse shape and carries
+            # the slope contribution; capped at the Rothermel wind limit
+            ws_limit = T(0.9) * result.ir * kwpm2_to_btupft2min(T)
+            wsmfeff = min(
+                effective_wind_speed(phimag, wsmfeff_coeff_cache[fuel_id], B_inverse_cache[fuel_id]),
+                ws_limit
+            )
+            es = elliptical_spread(v_dms, wsmfeff; lb_cap)
 
             # Compute normal vector to fire front
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)
 
-            # Calculate velocity components using elliptical spread
-            # Midflame wind speed in mph = 20-ft wind speed × WAF (dimensionless)
-            effective_ws_mph = weather.wind_speed_20ft * waf
-            es = elliptical_spread(dampened_velocity, effective_ws_mph; lb_cap)
+            # Richards (1990) ellipse velocity decomposition (parallel to slope)
+            ux, uy = velocity_components(es, dms_x, dms_y, normal_x, normal_y)
 
-            # Richards (1990) ellipse velocity decomposition
-            ux, uy = velocity_components(es, wind_dir_rad, normal_x, normal_y)
-            state.ux[px, py] = ux
-            state.uy[px, py] = uy
+            # Fireline intensity uses the LOCAL perimeter spread rate, so it is
+            # highest at the head and lowest at the back
+            v_local = sqrt(ux * ux + uy * uy)
+            cached_velocity[ix, iy] = v_local
+            cached_flin[ix, iy] = fm.tr * result.ir * v_local * ft_to_m(T)
+
+            # Project slope-parallel velocities onto the horizontal map plane
+            state.ux[px, py] = ux * uxousx_grid[ix, iy]
+            state.uy[px, py] = uy * uyousy_grid[ix, iy]
         end
 
         # Compute CFL timestep (only after a few iterations)
@@ -962,6 +1044,8 @@ struct SimulationConfig{T<:AbstractFloat}
     crown_fire_adj::T              # Crown fire adjustment factor
     critical_canopy_cover::T       # Minimum CC for active crown fire
     foliar_moisture::T             # Foliar moisture content (%)
+    crown_fire_spread_rate_limit::T # Maximum crown fire spread rate (ft/min)
+    crown_ratio::T                 # Live crown fraction of canopy height, for sheltered WAF
     spotting_params::Union{Nothing, SpottingParameters{T}}
     use_sardoy::Bool               # Use Sardoy model for spotting
 end
@@ -972,14 +1056,17 @@ function SimulationConfig{T}(;
     enable_crown_fire::Bool = false,
     enable_spotting::Bool = false,
     crown_fire_adj::T = one(T),
-    critical_canopy_cover::T = T(0.4),
+    critical_canopy_cover::T = T(0.39),
     foliar_moisture::T = T(100),
+    crown_fire_spread_rate_limit::T = T(250),
+    crown_ratio::T = one(T),
     spotting_params::Union{Nothing, SpottingParameters{T}} = nothing,
     use_sardoy::Bool = false
 ) where {T<:AbstractFloat}
     SimulationConfig{T}(
         enable_crown_fire, enable_spotting,
         crown_fire_adj, critical_canopy_cover, foliar_moisture,
+        crown_fire_spread_rate_limit, crown_ratio,
         spotting_params, use_sardoy
     )
 end
@@ -1061,7 +1148,7 @@ end
         canopy::Union{Nothing, CanopyGrid{T}} = nothing,
         config::SimulationConfig{T} = SimulationConfig{T}(),
         dt_initial::T = one(T),
-        target_cfl::T = T(0.45),
+        target_cfl::T = T(0.4),
         dt_max::T = T(10),
         spread_rate_adj::T = one(T),
         accel_time_constant::T = zero(T),
@@ -1084,7 +1171,7 @@ Run full fire simulation with crown fire, spotting, and weather interpolation.
 - `canopy`: Optional canopy properties grid (required if crown fire enabled)
 - `config`: Simulation configuration (crown fire, spotting settings)
 - `dt_initial`: Initial timestep (minutes, default 1.0)
-- `target_cfl`: Target CFL number (default 0.45)
+- `target_cfl`: Target CFL number (ELMFIRE `TARGET_CFL`, default 0.4)
 - `dt_max`: Maximum timestep (minutes, default 10.0)
 - `spread_rate_adj`: Spread rate adjustment factor (default 1.0, multiplies base spread rate)
 - `accel_time_constant`: Fire acceleration time constant (minutes, default 0 = disabled).
@@ -1109,7 +1196,7 @@ function simulate_full!(
     canopy::Union{Nothing, CanopyGrid{T}} = nothing,
     config::SimulationConfig{T} = SimulationConfig{T}(),
     dt_initial::T = one(T),
-    target_cfl::T = T(0.45),
+    target_cfl::T = T(0.4),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
     lb_cap::T = T(8),
@@ -1132,8 +1219,29 @@ function simulate_full!(
     dt = dt_initial
     iteration = 0
 
-    # Pre-compute static slope grid
+    # Pre-compute static slope grids
     tanslp2_grid = calculate_tanslp2.(slope)
+    proj = slope_projection_factors.(slope, aspect)
+    uxousx_grid = first.(proj)
+    uyousy_grid = last.(proj)
+
+    # Wind-factor inversion terms are moisture-independent in ELMFIRE (it reads the
+    # ILH=30 table entry), so they can be cached per fuel id
+    unique_fids = unique(fuel_ids)
+    max_fid = max(1, maximum(unique_fids))
+    wsmfeff_coeff_cache = Vector{T}(undef, max_fid)
+    B_inverse_cache = Vector{T}(undef, max_fid)
+    for fid in unique_fids
+        fid < 1 && continue
+        fm30 = get_fuel_model_or_nonburnable(fuel_table, fid, 30)
+        wsmfeff_coeff_cache[fid] = fm30.wsmfeff_coeff
+        B_inverse_cache[fid] = fm30.B_inverse
+    end
+
+    # Per-cell results of the current step, consumed by the burn-recording pass
+    cached_velocity = zeros(T, state.ncols, state.nrows)
+    cached_flin = zeros(T, state.ncols, state.nrows)
+    cached_crown_type = zeros(Int, state.ncols, state.nrows)
 
     # Pre-allocate cells_to_tag buffer
     cells_to_tag = CartesianIndex{2}[]
@@ -1191,9 +1299,14 @@ function simulate_full!(
             w = get_weather_at(weather_interp, ix, iy, t)
 
             # Get fuel model
-            live_moisture_class = clamp(round(Int, T(100) * w.mlh), 30, 120)
+            live_moisture_class = clamp(round(Int, T(100) * w.mlh, RoundNearestTiesAway), 30, 120)
             fuel_id = fuel_ids[ix, iy]
-            fm = get_fuel_model(fuel_table, fuel_id, live_moisture_class)
+            if fuel_id < 1
+                state.ux[px, py] = zero(T)
+                state.uy[px, py] = zero(T)
+                continue
+            end
+            fm = get_fuel_model_or_nonburnable(fuel_table, fuel_id, live_moisture_class)
 
             # Skip non-burnable
             if isnonburnable(fm)
@@ -1204,7 +1317,8 @@ function simulate_full!(
 
             # Calculate wind adjustment factor and mid-flame wind speed
             waf = if canopy !== nothing
-                wind_adjustment_factor(fm.delta, canopy.cc[ix, iy], canopy.ch[ix, iy])
+                wind_adjustment_factor(fm.delta, canopy.cc[ix, iy], canopy.ch[ix, iy];
+                                       crown_ratio = config.crown_ratio)
             else
                 wind_adjustment_factor(fm.delta)
             end
@@ -1223,59 +1337,80 @@ function simulate_full!(
                 adj = spread_rate_adj
             )
 
-            # Crown fire calculation
-            local velocity::T
-            local flin_total::T
-            local cft::Int = 0
-
-            if config.enable_crown_fire && canopy !== nothing
-                canopy_props = get_canopy_properties(canopy, ix, iy)
-                crown_result = crown_spread_rate(
-                    canopy_props,
+            # Crown fire coefficients are evaluated from the head-fire intensity,
+            # matching ELMFIRE's CROWN_SPREAD_RATE pass
+            crown_result = if config.enable_crown_fire && canopy !== nothing
+                crown_spread_rate(
+                    get_canopy_properties(canopy, ix, iy),
                     surface_result.flin,
                     w.ws,
                     w.m1,
                     surface_result.vs0;
                     crown_fire_adj = config.crown_fire_adj,
+                    spread_rate_limit = config.crown_fire_spread_rate_limit,
                     critical_canopy_cover = config.critical_canopy_cover,
                     foliar_moisture = config.foliar_moisture
                 )
-                velocity = combined_spread_rate(surface_result, crown_result)
-                flin_total = combined_fireline_intensity(surface_result, crown_result, fm)
-                cft = crown_result.crown_fire_type
             else
-                velocity = surface_result.velocity
-                flin_total = surface_result.flin
+                nothing
             end
 
-            # Apply spread rate dampening
-            velocity = apply_spread_rate_dampening(
-                velocity, wsmf, surface_result.vs0, surface_result.phis, surface_result.phiw,
-                fm.phiwterm, fm.B, dampening
-            )
-
-            # Apply acceleration and diurnal factors
-            velocity *= acceleration_factor(t, accel_time_constant)
+            # Diurnal adjustment scales the base spread rate, as in ELMFIRE
+            vs0 = surface_result.vs0
             if diurnal !== nothing
-                velocity *= diurnal_adjustment(diurnal, t)
+                vs0 *= diurnal_adjustment(diurnal, t)
             end
+
+            accel = acceleration_factor(t, accel_time_constant)
+            phiw_eff = dampened_wind_factor(wsmf, surface_result.phiw, fm.phiwterm, fm.B, dampening)
+            aphis = accel * surface_result.phis
+            ws_limit = T(0.9) * surface_result.ir * kwpm2_to_btupft2min(T)
 
             # Compute normal vector to fire front
             normal_x, normal_y = compute_normal(state.phi, px, py, state.cellsize)
 
-            # Calculate velocity components using elliptical spread
-            # Midflame wind speed in mph = 20-ft wind speed × WAF (dimensionless)
-            effective_ws_mph = w.ws * waf
-            es = elliptical_spread(velocity, effective_ws_mph; lb_cap)
+            # Crown fire enters through the wind factor, so it changes the spread
+            # direction and the ellipse shape as well as the magnitude. ELMFIRE
+            # iterates at most twice: once assuming surface fire, and again if the
+            # resulting local intensity turns out to cross the crowning threshold.
+            crowning = false
+            local ux::T, uy::T, v_local::T, flin_surface::T
+            for _ in 1:2
+                aphiw = crowning && crown_result !== nothing ?
+                    max(accel * phiw_eff, crown_result.phiw_crown) : accel * phiw_eff
+                phimag, dms_x, dms_y = spread_direction(aphis, aphiw, aspect[ix, iy], w.wd)
+                v_dms = apply_velocity_cap(vs0 * (accel + phimag), wsmf, dampening)
 
-            # Wind direction in radians
-            wind_dir_rad = w.wd * pio180(T)
+                wsmfeff = effective_wind_speed(
+                    phimag, wsmfeff_coeff_cache[fuel_id], B_inverse_cache[fuel_id]
+                )
+                crowning || (wsmfeff = min(wsmfeff, ws_limit))
 
-            # Richards (1990) ellipse velocity decomposition
-            ux, uy = velocity_components(es, wind_dir_rad, normal_x, normal_y)
+                es = elliptical_spread(v_dms, wsmfeff; lb_cap)
+                ux, uy = velocity_components(es, dms_x, dms_y, normal_x, normal_y)
 
-            state.ux[px, py] = ux
-            state.uy[px, py] = uy
+                v_local = sqrt(ux * ux + uy * uy)
+                flin_surface = fm.tr * surface_result.ir * v_local * ft_to_m(T)
+
+                crowning_now = crown_result !== nothing && flin_surface >= crown_result.critical_flin
+                (crowning_now && !crowning) || break
+                crowning = true
+            end
+
+            # Record the local spread rate and fireline intensity for this cell.
+            # Crown fire adds its heat at the same local spread rate.
+            cached_velocity[ix, iy] = v_local
+            cached_crown_type[ix, iy] = crown_result === nothing ? 0 :
+                (crowning ? crown_result.crown_fire_type : 0)
+            cached_flin[ix, iy] = if crowning && crown_result !== nothing
+                flin_surface + canopy_fireline_intensity(crown_result.hpua_canopy, v_local)
+            else
+                flin_surface
+            end
+
+            # Project slope-parallel velocities onto the horizontal map plane
+            state.ux[px, py] = ux * uxousx_grid[ix, iy]
+            state.uy[px, py] = uy * uyousy_grid[ix, iy]
         end
 
         # Compute CFL timestep (only after a few iterations)
@@ -1320,82 +1455,40 @@ function simulate_full!(
                 state.burned[ix, iy] = true
                 state.time_of_arrival[ix, iy] = t + dt
 
-                # Get weather and fuel for this cell
-                w = get_weather_at(weather_interp, ix, iy, t + dt)
-                live_moisture_class = clamp(round(Int, T(100) * w.mlh), 30, 120)
-                fuel_id = fuel_ids[ix, iy]
-                fm = get_fuel_model(fuel_table, fuel_id, live_moisture_class)
+                # Values computed for this cell during the velocity pass above,
+                # which are the ones that actually drove the front to this cell
+                flin_total = cached_flin[ix, iy]
+                cft = cached_crown_type[ix, iy]
+                crown_fire_type[ix, iy] = cft
+                state.spread_rate[ix, iy] = cached_velocity[ix, iy]
+                state.fireline_intensity[ix, iy] = flin_total
 
-                if !isnonburnable(fm)
-                    waf = if canopy !== nothing
-                        wind_adjustment_factor(fm.delta, canopy.cc[ix, iy], canopy.ch[ix, iy])
-                    else
-                        wind_adjustment_factor(fm.delta)
-                    end
-                    ws20_ftpmin = w.ws * T(88)
-                    wsmf = ws20_ftpmin * waf
-                    tanslp2 = tanslp2_grid[ix, iy]
+                # Flame length (Byram): Lf = 0.0775 * I^0.46 (ft)
+                if flin_total > zero(T)
+                    state.flame_length[ix, iy] = (T(0.0775) / ft_to_m(T)) * flin_total^T(0.46)
+                end
 
-                    surface_result = surface_spread_rate(
-                        fm,
-                        w.m1, w.m10, w.m100,
-                        w.mlh, w.mlw,
-                        wsmf, tanslp2;
-                        adj = spread_rate_adj
+                # Generate spot fires if enabled
+                if flin_total > zero(T) && config.enable_spotting &&
+                        spot_tracker !== nothing && config.spotting_params !== nothing
+                    w = get_weather_at(weather_interp, ix, iy, t + dt)
+                    spot_fires = generate_spot_fires(
+                        ix, iy,
+                        flin_total,
+                        w.ws,
+                        w.wd,
+                        cft,
+                        config.spotting_params,
+                        state.cellsize,
+                        state.ncols, state.nrows,
+                        t + dt,
+                        state.burned;
+                        weather_interp = weather_interp,
+                        use_sardoy = config.use_sardoy,
+                        rng = rng
                     )
-
-                    # Crown fire calculation for recording
-                    local flin_total::T
-                    local cft::Int = 0
-
-                    if config.enable_crown_fire && canopy !== nothing
-                        canopy_props = get_canopy_properties(canopy, ix, iy)
-                        crown_result = crown_spread_rate(
-                            canopy_props,
-                            surface_result.flin,
-                            w.ws,
-                            w.m1,
-                            surface_result.vs0;
-                            crown_fire_adj = config.crown_fire_adj,
-                            critical_canopy_cover = config.critical_canopy_cover,
-                            foliar_moisture = config.foliar_moisture
-                        )
-                        flin_total = combined_fireline_intensity(surface_result, crown_result, fm)
-                        cft = crown_result.crown_fire_type
-                        crown_fire_type[ix, iy] = cft
-                        state.spread_rate[ix, iy] = combined_spread_rate(surface_result, crown_result)
-                    else
-                        flin_total = surface_result.flin
-                        state.spread_rate[ix, iy] = surface_result.velocity
-                    end
-
-                    state.fireline_intensity[ix, iy] = flin_total
-
-                    # Flame length (Byram): Lf = 0.0775 * I^0.46 (ft)
-                    if flin_total > zero(T)
-                        state.flame_length[ix, iy] = (T(0.0775) / ft_to_m(T)) * flin_total^T(0.46)
-                    end
-
-                    # Generate spot fires if enabled
-                    if config.enable_spotting && spot_tracker !== nothing && config.spotting_params !== nothing
-                        spot_fires = generate_spot_fires(
-                            ix, iy,
-                            flin_total,
-                            w.ws,
-                            w.wd,
-                            cft,
-                            config.spotting_params,
-                            state.cellsize,
-                            state.ncols, state.nrows,
-                            t + dt,
-                            state.burned;
-                            weather_interp = weather_interp,
-                            use_sardoy = config.use_sardoy,
-                            rng = rng
-                        )
-                        if !isempty(spot_fires)
-                            add_spot_fires!(spot_tracker, spot_fires)
-                        end
+                    if !isempty(spot_fires)
+                        add_spot_fires!(spot_tracker, spot_fires)
                     end
                 end
 

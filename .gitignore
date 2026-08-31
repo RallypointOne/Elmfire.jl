@@ -2,6 +2,8 @@
 *.jl.*.cov
 *.jl.mem
 coverage/
+docs/pages/lcov.info
+docs/pages/coverage/
 Manifest.toml
 docs/Manifest.toml
 docs/build/
@@ -12,19 +14,21 @@ docs/_site
 docs/site_libs
 docs/.quarto/
 docs/*_files/
-docs/coverage/
 **/*.quarto_ipynb
+
+# Elmfire-specific
 *.html
+docs/_freeze
 benchmark/results.json
 benchmark/results/
 benchmark/Manifest.toml
 .benchmark-worktree/
-*.jpg
-
-# Elmfire-specific
-docs/_freeze
 examples/marshall_fire/results/
 examples/marshall_fire/data/
 examples/output/
 *.png
+*.jpg
 *.gif
+
+# Tracked docs asset (referenced by docs/index.qmd)
+!docs/images/nsf-logo.png

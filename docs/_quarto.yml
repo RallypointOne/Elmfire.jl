@@ -2,7 +2,7 @@ project:
   type: book
   output-dir: _site
 
-engine: julia
+engines: ['julia']
 julia:
   project: "."
   env:
@@ -15,7 +15,7 @@ book:
     keyboard-shortcut:
       - "/"
   navbar:
-    logo: https://github.com/user-attachments/assets/f7216152-0d6e-4459-8e65-b9ed59421638
+    logo: assets/logo.svg
     logo-href: https://rallypoint1.com
     right:
       - icon: star
@@ -54,12 +54,12 @@ book:
         - reference/wui-suppression.qmd
     - part: "API"
       chapters:
-        - api.qmd
+        - pages/api.qmd
     - part: "Resources"
       chapters:
-        - resources/benchmarks.qmd
-        - resources/changelog.qmd
-        - resources/coverage.qmd
+        - pages/benchmarks.qmd
+        - pages/changelog.qmd
+        - pages/coverage.qmd
 
   page-footer:
     center: "Built on __BUILD_DATE__"
@@ -69,10 +69,10 @@ language:
 
 format:
   html:
-    css: styles.css
+    css: assets/styles.css
     number-sections: false
     theme:
       - flatly
-      - theme.scss
+      - assets/theme.scss
     include-after-body:
-      - file: _version-selector.html
+      - file: assets/_version-selector.html

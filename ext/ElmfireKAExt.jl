@@ -71,13 +71,14 @@ end
 #   fuel_components[fi, mi, 1:16] = F[1:6], FEPS[1:6], WPRIMENUMER[1:4]
 
 @kernel function spread_rate_kernel!(
-    vel_out, ecc_out, lb_out, @Const(active_px), @Const(active_py),
+    vel_out, ecc_out, lb_out, dmsx_out, dmsy_out, ir_out,
+    @Const(active_px), @Const(active_py),
     @Const(burned),
     @Const(fuel_ids), @Const(fuel_id_to_index),
     @Const(fuel_scalars), @Const(fa_nonburnable), @Const(fuel_components),
-    @Const(slope),
-    ws20_ftpmin, M1, M10, M100, MLH, MLW,
-    live_moisture_class, spread_rate_adj, accel_factor,
+    @Const(slope), @Const(aspect),
+    ws20_ftpmin, wind_direction, M1, M10, M100, MLH, MLW,
+    live_moisture_class, spread_rate_adj, accel_factor, lb_cap,
     padding, ncols, nrows
 )
     T = eltype(vel_out)
@@ -93,6 +94,9 @@ end
             vel_out[i] = zero(T)
             ecc_out[i] = zero(T)
             lb_out[i] = one(T)
+            dmsx_out[i] = one(T)
+            dmsy_out[i] = zero(T)
+            ir_out[i] = zero(T)
         else
             fuel_id = fuel_ids[ix, iy]
             fi = fuel_id_to_index[fuel_id]
@@ -102,6 +106,9 @@ end
                 vel_out[i] = zero(T)
                 ecc_out[i] = zero(T)
                 lb_out[i] = one(T)
+                dmsx_out[i] = one(T)
+                dmsy_out[i] = zero(T)
+                ir_out[i] = zero(T)
             else
                 # Unpack fuel scalars
                 delta           = fuel_scalars[fi, mi, 1]
@@ -117,12 +124,15 @@ end
                 mex_live_base   = fuel_scalars[fi, mi, 11]
                 F_dead          = fuel_scalars[fi, mi, 12]
                 F_live          = fuel_scalars[fi, mi, 13]
+                wsmfeff_coeff   = fuel_scalars[fi, mi, 15]
+                B_inverse       = fuel_scalars[fi, mi, 16]
 
-                # --- Wind adjustment factor ---
-                waf = if delta < T(0.1)
-                    T(0.1)
+                # --- Wind adjustment factor (elmfire_init.f90:632-641) ---
+                waf = if delta <= T(1e-4)
+                    zero(T)
                 else
-                    clamp(T(1.83) / log((T(20) + T(0.36) * delta) / (T(0.13) * delta)), T(0.1), one(T))
+                    T(1.36) * (log((one(T) + T(0.36)) / T(0.13)) - one(T)) /
+                        log((T(20) + T(0.36) * delta) / (T(0.13) * delta))
                 end
                 wsmf = ws20_ftpmin * waf
 
@@ -184,21 +194,36 @@ end
                 else
                     zero(T)
                 end
-                velocity = vs0 * (one(T) + phis + phiw) * accel_factor
+                # --- Wind and slope factors combine as vectors ---
+                pio180 = Elmfire.pi_val(T) / T(180)
+                asp = (aspect[ix, iy] - T(180)) * pio180
+                wnd = (wind_direction - T(180)) * pio180
+                phix = accel_factor * (phiw * sin(wnd) + phis * sin(asp))
+                phiy = accel_factor * (phiw * cos(wnd) + phis * cos(asp))
+                phimag = max(sqrt(phix * phix + phiy * phiy), T(1e-10))
 
-                # --- Elliptical eccentricity ---
-                effective_ws_mph = (ws20_ftpmin / T(88)) * waf / T(1.47)
-                U = max(effective_ws_mph, zero(T))
-
-                LB = if U < T(0.5)
-                    one(T)
-                else
-                    clamp(T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397), one(T), T(8))
+                dms_x = one(T)
+                dms_y = zero(T)
+                if phimag >= T(1.1e-10)
+                    rphimag = one(T) / phimag
+                    dms_x = phix * rphimag
+                    dms_y = phiy * rphimag
                 end
 
+                velocity = vs0 * (accel_factor + phimag)
+
+                # --- Effective mid-flame wind speed and ellipse shape ---
+                # Inverts Rothermel Eq. 47 from the combined wind+slope factor, so
+                # the ellipse responds to terrain as well as wind.
+                wsmfeff = min(wsmfeff_coeff * phimag^B_inverse, WS_LIMIT)
+                U = max(wsmfeff, zero(T)) * T(5.07955e-3)
+                LB = clamp(
+                    T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397),
+                    one(T), lb_cap
+                )
+
                 eccentricity = if LB > T(1.001)
-                    LB2 = LB * LB
-                    sqrt((LB2 - one(T)) / (LB2 + one(T)))
+                    sqrt(LB * LB - one(T)) / LB
                 else
                     zero(T)
                 end
@@ -206,12 +231,18 @@ end
                 vel_out[i] = velocity
                 ecc_out[i] = eccentricity
                 lb_out[i] = LB
+                dmsx_out[i] = dms_x
+                dmsy_out[i] = dms_y
+                ir_out[i] = IR_btupft2min * T(1.055) / (T(60) * T(0.3048) * T(0.3048))
             end
         end
     else
         vel_out[i] = zero(T)
         ecc_out[i] = zero(T)
         lb_out[i] = one(T)
+        dmsx_out[i] = one(T)
+        dmsy_out[i] = zero(T)
+        ir_out[i] = zero(T)
     end
 end
 
@@ -223,9 +254,11 @@ end
 # Uses Richards (1990) ellipse equation for velocity decomposition.
 
 @kernel function direction_kernel!(
-    ux, uy, @Const(phi), @Const(active_px), @Const(active_py),
+    ux, uy, speed_out, @Const(phi), @Const(active_px), @Const(active_py),
     @Const(vel_in), @Const(ecc_in), @Const(lb_in),
-    wind_dir_rad, cellsize
+    @Const(dmsx_in), @Const(dmsy_in),
+    @Const(uxousx), @Const(uyousy),
+    padding, ncols, nrows, cellsize
 )
     T = eltype(ux)
     i = @index(Global, Linear)
@@ -239,6 +272,7 @@ end
     if velocity <= zero(T)
         ux[px, py] = zero(T)
         uy[px, py] = zero(T)
+        speed_out[i] = zero(T)
     else
         # --- Normal to fire front ---
         rdx2 = T(0.5) / cellsize
@@ -257,11 +291,11 @@ end
         back = head * (one(T) - eccentricity) / (one(T) + eccentricity)
 
         # --- Richards (1990) ellipse velocity decomposition ---
-        wind_to_x = -sin(wind_dir_rad)
-        wind_to_y = -cos(wind_dir_rad)
+        dms_x = dmsx_in[i]
+        dms_y = dmsy_in[i]
 
-        cosang = normal_x * wind_to_x + normal_y * wind_to_y
-        sinang = normal_x * wind_to_y - normal_y * wind_to_x
+        cosang = normal_x * dms_x + normal_y * dms_y
+        sinang = normal_x * dms_y - normal_y * dms_x
 
         a = max(T(0.5) * (head + back), T(1e-10))
         lb_clamped = max(lb, one(T))
@@ -274,8 +308,23 @@ end
         dydt = aa_cosang / denom + T(0.5) * (head - back)
         dxdt = bb_sinang / denom
 
-        ux[px, py] = dxdt * wind_to_y + dydt * wind_to_x
-        uy[px, py] = -dxdt * wind_to_x + dydt * wind_to_y
+        ux_par = dxdt * dms_y + dydt * dms_x
+        uy_par = -dxdt * dms_x + dydt * dms_y
+
+        # Local spread rate along the perimeter, parallel to slope. Fireline
+        # intensity is built from this, not from the head-fire rate.
+        speed_out[i] = sqrt(ux_par * ux_par + uy_par * uy_par)
+
+        # Project slope-parallel velocities onto the horizontal map plane
+        ix = px - padding
+        iy = py - padding
+        if ix >= 1 && ix <= ncols && iy >= 1 && iy <= nrows
+            ux[px, py] = ux_par * uxousx[ix, iy]
+            uy[px, py] = uy_par * uyousy[ix, iy]
+        else
+            ux[px, py] = ux_par
+            uy[px, py] = uy_par
+        end
     end
 end
 
@@ -498,9 +547,10 @@ function Elmfire.simulate_gpu!(
     t_start::T,
     t_stop::T;
     dt_initial::T = one(T),
-    target_cfl::T = T(0.45),
+    target_cfl::T = T(0.4),
     dt_max::T = T(10),
     spread_rate_adj::T = one(T),
+    lb_cap::T = T(8),
     accel_time_constant::T = zero(T),
     callback::CB = nothing,
     backend::KernelAbstractions.Backend = KernelAbstractions.CPU()
@@ -510,9 +560,14 @@ function Elmfire.simulate_gpu!(
     iteration = 0
 
     # Pre-compute weather scalars
-    wind_dir_rad = weather.wind_direction * Elmfire.pio180(T)
     ws20_ftpmin = weather.wind_speed_20ft * T(88)
-    live_moisture_class = Int32(clamp(round(Int, T(100) * weather.MLH), 30, 120))
+    wind_direction = weather.wind_direction
+    live_moisture_class = Int32(clamp(round(Int, T(100) * weather.MLH, RoundNearestTiesAway), 30, 120))
+
+    # Slope-parallel to horizontal projection factors
+    proj = Elmfire.slope_projection_factors.(slope, aspect)
+    h_uxousx = first.(proj)
+    h_uyousy = last.(proj)
 
     # Grid dimensions
     nx_pad = state.ncols + 2 * state.padding
@@ -530,16 +585,19 @@ function Elmfire.simulate_gpu!(
     d_fuel_ids = Adapt.adapt(backend, Int32.(fuel_ids))
     d_slope = Adapt.adapt(backend, slope)
     d_aspect = Adapt.adapt(backend, aspect)
+    d_uxousx = Adapt.adapt(backend, h_uxousx)
+    d_uyousy = Adapt.adapt(backend, h_uyousy)
 
     d_fuel_id_to_index = Adapt.adapt(backend, Int32.(fuel_array.fuel_id_to_index))
 
     # Pack fuel model data into two 3D arrays for reduced kernel argument count
-    # fuel_scalars[fi, mi, 1:14]: delta, rhob, xi, B, GP_WND, GP_WNL,
-    #     phisterm, phiwterm, R_val, mex_dead, mex_live, F_dead, F_live, tr
+    # fuel_scalars[fi, mi, 1:16]: delta, rhob, xi, B, GP_WND, GP_WNL,
+    #     phisterm, phiwterm, R_val, mex_dead, mex_live, F_dead, F_live, tr,
+    #     wsmfeff_coeff, B_inverse
     fa = fuel_array
     nf = size(fa.delta, 1)
     nm = size(fa.delta, 2)
-    h_fuel_scalars = Array{T, 3}(undef, nf, nm, 14)
+    h_fuel_scalars = Array{T, 3}(undef, nf, nm, 16)
     h_fuel_scalars[:, :, 1]  .= fa.delta
     h_fuel_scalars[:, :, 2]  .= fa.rhob
     h_fuel_scalars[:, :, 3]  .= fa.xi
@@ -554,6 +612,9 @@ function Elmfire.simulate_gpu!(
     h_fuel_scalars[:, :, 12] .= fa.F_dead
     h_fuel_scalars[:, :, 13] .= fa.F_live
     h_fuel_scalars[:, :, 14] .= fa.tr
+    # ELMFIRE reads the wind-factor inversion terms from the ILH=30 table entry
+    h_fuel_scalars[:, :, 15] .= fa.wsmfeff_coeff[:, 1:1]
+    h_fuel_scalars[:, :, 16] .= fa.B_inverse[:, 1:1]
     d_fuel_scalars = Adapt.adapt(backend, h_fuel_scalars)
 
     # fuel_components[fi, mi, 1:16]: F[1:6], FEPS[1:6], WPRIMENUMER[1:4]
@@ -592,6 +653,12 @@ function Elmfire.simulate_gpu!(
     d_vel = KernelAbstractions.allocate(backend, T, max_active)
     d_ecc = KernelAbstractions.allocate(backend, T, max_active)
     d_lb  = KernelAbstractions.allocate(backend, T, max_active)
+    d_dmsx = KernelAbstractions.allocate(backend, T, max_active)
+    d_dmsy = KernelAbstractions.allocate(backend, T, max_active)
+    d_ir = KernelAbstractions.allocate(backend, T, max_active)
+    d_speed = KernelAbstractions.allocate(backend, T, max_active)
+    h_ir = Vector{T}(undef, max_active)
+    h_speed = Vector{T}(undef, max_active)
     h_phi_active = Vector{T}(undef, max_active)
     h_active = Vector{CartesianIndex{2}}(undef, max_active)
     h_cells_to_tag = Vector{CartesianIndex{2}}(undef, max_active)
@@ -627,27 +694,31 @@ function Elmfire.simulate_gpu!(
 
         # Spread rate kernel — Rothermel physics → velocity + eccentricity
         spread_rate_kernel!(backend)(
-            d_vel, d_ecc, d_lb, d_px, d_py, d_burned,
+            d_vel, d_ecc, d_lb, d_dmsx, d_dmsy, d_ir, d_px, d_py, d_burned,
             d_fuel_ids, d_fuel_id_to_index,
             d_fuel_scalars, d_fa_nonburnable, d_fuel_components,
-            d_slope,
-            ws20_ftpmin,
+            d_slope, d_aspect,
+            ws20_ftpmin, wind_direction,
             weather.M1, weather.M10, weather.M100,
             weather.MLH, weather.MLW,
-            live_moisture_class, spread_rate_adj, accel,
+            live_moisture_class, spread_rate_adj, accel, lb_cap,
             Int32(state.padding), Int32(state.ncols), Int32(state.nrows);
             ndrange = n_active
         )
         KernelAbstractions.synchronize(backend)
 
-        # Direction kernel — phi gradient + wind → ux, uy
+        # Direction kernel — phi gradient + spread direction → ux, uy
         direction_kernel!(backend)(
-            d_ux, d_uy, d_phi, d_px, d_py,
-            d_vel, d_ecc, d_lb,
-            wind_dir_rad, state.cellsize;
+            d_ux, d_uy, d_speed, d_phi, d_px, d_py,
+            d_vel, d_ecc, d_lb, d_dmsx, d_dmsy,
+            d_uxousx, d_uyousy,
+            Int32(state.padding), Int32(state.ncols), Int32(state.nrows), state.cellsize;
             ndrange = n_active
         )
         KernelAbstractions.synchronize(backend)
+
+        copyto!(h_ir, 1, d_ir, 1, n_active)
+        copyto!(h_speed, 1, d_speed, 1, n_active)
 
         # CFL timestep — launched over n_active cells only
         if iteration > 5
@@ -721,16 +792,11 @@ function Elmfire.simulate_gpu!(
                 fuel_id = fuel_ids[ix, iy]
                 fi = fuel_array.fuel_id_to_index[fuel_id]
                 mi = live_moisture_class - 29
-                waf = Elmfire.wind_adjustment_factor(fuel_array.delta[fi, mi])
-                wsmf = ws20_ftpmin * waf
-                tanslp2 = Elmfire.calculate_tanslp2(slope[ix, iy])
 
-                velocity, vs0, flin = Elmfire.surface_spread_rate_flat(
-                    fuel_array, fi, mi,
-                    weather.M1, weather.M10, weather.M100,
-                    weather.MLH, weather.MLW,
-                    wsmf, tanslp2, spread_rate_adj
-                )
+                # Local perimeter spread rate and reaction intensity from this
+                # step's kernels, so fireline intensity varies around the front
+                velocity = h_speed[i]
+                flin = fuel_array.tr[fi, mi] * h_ir[i] * velocity * Elmfire.ft_to_m(T)
 
                 state.spread_rate[ix, iy] = velocity
                 state.fireline_intensity[ix, iy] = flin

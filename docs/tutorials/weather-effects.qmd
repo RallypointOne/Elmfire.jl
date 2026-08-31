@@ -92,7 +92,8 @@ p = plot(aspect_ratio = 1, legend = :topright,
 for ws in wind_speeds
     # Use a base spread rate that increases with wind (simplified)
     base_ros = 10.0 + ws * 2  # Faster spread with more wind
-    es = elliptical_spread(base_ros, ws)
+    # elliptical_spread takes the effective mid-flame wind in ft/min (1 mi/h = 88 ft/min)
+    es = elliptical_spread(base_ros, ws * 88)
 
     # Ellipse with ignition at upwind focus (origin)
     a = (es.head + es.back) / 2      # Semi-major axis

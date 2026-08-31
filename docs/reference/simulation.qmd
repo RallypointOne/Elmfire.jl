@@ -77,6 +77,8 @@ struct SimulationConfig{T<:AbstractFloat}
     enable_spotting::Bool          # Enable ember transport
     crown_fire_adj::T              # Crown fire adjustment factor
     critical_canopy_cover::T       # Minimum CC for active crown fire
+    crown_fire_spread_rate_limit::T # Maximum crown fire spread rate (ft/min)
+    crown_ratio::T                 # Live crown fraction of canopy height (sheltered WAF)
     foliar_moisture::T             # Foliar moisture content (%)
     spotting_params::Union{Nothing, SpottingParameters{T}}
     use_sardoy::Bool               # Use Sardoy model for spotting
@@ -90,7 +92,9 @@ SimulationConfig{T}(;
     enable_crown_fire = false,
     enable_spotting = false,
     crown_fire_adj = 1.0,
-    critical_canopy_cover = 0.4,
+    critical_canopy_cover = 0.39,
+    crown_fire_spread_rate_limit = 250.0,
+    crown_ratio = 1.0,
     foliar_moisture = 100.0,
     spotting_params = nothing,
     use_sardoy = false

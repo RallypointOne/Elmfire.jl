@@ -38,6 +38,15 @@ const M_TO_FT = m_to_ft(DefaultFloat)
 # Miles per hour to feet per minute (1 mph = 88 ft/min)
 @inline mph_to_ftpmin(::Type{T}) where {T<:AbstractFloat} = T(88)
 
+# kW/m² to BTU/(ft²·min)
+@inline kwpm2_to_btupft2min(::Type{T}) where {T<:AbstractFloat} = T(60) * T(0.3048) * T(0.3048) / T(1.055)
+const KWPM2_TO_BTUPFT2MIN = kwpm2_to_btupft2min(DefaultFloat)
+
+# Effective mid-flame wind speed (ft/min) to the units of the Anderson (1982)
+# length-to-breadth correlation. ELMFIRE's `WSMFEFF_LOW_MULT` namelist default.
+@inline wsmfeff_low_mult(::Type{T}) where {T<:AbstractFloat} = T(5.07955e-3)
+const WSMFEFF_LOW_MULT = wsmfeff_low_mult(DefaultFloat)
+
 #-----------------------------------------------------------------------------#
 #                               Fuel Model Constants
 #-----------------------------------------------------------------------------#

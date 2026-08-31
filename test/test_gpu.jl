@@ -205,4 +205,35 @@
         # Should end at or very close to t_stop
         @test gpu_times[end] ≈ 3.0 atol=0.01
     end
+    @testset "GPU matches CPU spread pattern" begin
+        # The GPU kernels duplicate the CPU velocity path, so they must agree on
+        # the same inputs — including terrain, where slope steers the fire and
+        # the velocity is projected onto the map plane.
+        fuel_table = create_standard_fuel_table()
+        fuel_array = FuelModelArray(fuel_table)
+        weather = ConstantWeather(
+            wind_speed_mph = 12.0, wind_direction = 225.0,
+            M1 = 0.05, M10 = 0.06, M100 = 0.08, MLH = 0.60, MLW = 0.90
+        )
+
+        for (slp, asp) in ((0.0, 0.0), (20.0, 90.0), (30.0, 180.0))
+            cpu = FireState(50, 50, 30.0)
+            ignite!(cpu, 25, 25, 0.0)
+            simulate_uniform!(cpu, 1, fuel_table, weather, slp, asp, 0.0, 15.0)
+
+            gpu = FireState(50, 50, 30.0)
+            ignite!(gpu, 25, 25, 0.0)
+            simulate_gpu_uniform!(
+                gpu, 1, fuel_array, weather, slp, asp, 0.0, 15.0;
+                backend = KernelAbstractions.CPU()
+            )
+
+            @test count(cpu.burned) > 10
+            union_burned = count(cpu.burned .| gpu.burned)
+            overlap = count(cpu.burned .& gpu.burned)
+            # CPU updates phi serially and the GPU in parallel, so the fronts are
+            # close but not bit-identical
+            @test overlap / union_burned > 0.9
+        end
+    end
 end

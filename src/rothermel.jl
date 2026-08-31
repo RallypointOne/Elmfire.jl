@@ -317,39 +317,52 @@ Base.eltype(::EllipticalSpread{T}) where {T} = T
 
 
 """
-    elliptical_spread(velocity::T, effective_windspeed::T; lb_cap::T=T(8)) -> EllipticalSpread{T}
+    length_to_breadth(wsmfeff::T; lb_cap::T=T(8)) -> T
 
-Calculate elliptical fire spread dimensions from the head fire rate and effective windspeed.
+Length-to-breadth ratio of the elliptical wavelet from the effective mid-flame
+wind speed `wsmfeff` (ft/min).
 
-Uses Anderson (1982) length-to-breadth ratio:
-LB = 0.936 * exp(0.2566 * U) + 0.461 * exp(-0.1548 * U) - 0.397
+Anderson (1982) as modified by Finney in FARSITE:
+`L/B = 0.936·exp(0.2566·U) + 0.461·exp(-0.1548·U) - 0.397`
 
-Where U is effective windspeed in mi/h.
+`U` is `wsmfeff` scaled by `wsmfeff_low_mult` (ELMFIRE's `WSMFEFF_LOW_MULT`,
+which converts ft/min to the units the correlation was fit in). `lb_cap`
+corresponds to ELMFIRE's `MAX_LOW` (default 8).
 
-`lb_cap` limits the maximum length-to-breadth ratio. The default of 8 follows the
-Anderson (1982) empirical range; lower values (e.g. 4–5) produce a wider ellipse with
-faster flank spread relative to head fire.
+Implementation follows `elmfire_level_set.f90:1810`.
 """
-function elliptical_spread(velocity::T, effective_windspeed_mph::T; lb_cap::T=T(8)) where {T<:AbstractFloat}
-    U = max(effective_windspeed_mph, zero(T))
+@inline function length_to_breadth(wsmfeff::T; lb_cap::T=T(8)) where {T<:AbstractFloat}
+    U = max(wsmfeff, zero(T)) * wsmfeff_low_mult(T)
+    LB = T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397)
+    return clamp(LB, one(T), lb_cap)
+end
 
-    # Length to breadth ratio (Anderson 1982)
-    # Note: The Anderson formula gives unrealistic values at high wind speeds
-    # (e.g., L/B > 10^11 at 100 mph). Real fires rarely exceed L/B of 8-10.
-    if U < T(0.5)
-        LB = one(T)  # Nearly circular at low wind speeds
-    else
-        LB = T(0.936) * exp(T(0.2566) * U) + T(0.461) * exp(T(-0.1548) * U) - T(0.397)
-        LB = clamp(LB, one(T), lb_cap)
-    end
 
-    # Eccentricity from L/B ratio
-    # LB = (1 + e) / sqrt(1 - e²)
-    # Solving: e² * (LB² + 1) = LB² - 1
-    # Therefore: e = sqrt((LB² - 1) / (LB² + 1))
+"""
+    elliptical_spread(velocity::T, wsmfeff::T; lb_cap::T=T(8)) -> EllipticalSpread{T}
+
+Calculate elliptical fire spread dimensions from the head fire rate and the
+effective mid-flame wind speed.
+
+# Arguments
+- `velocity`: Spread rate in the direction of maximum spread (ft/min)
+- `wsmfeff`: Effective mid-flame wind speed (**ft/min**), which in ELMFIRE is
+  recovered from the combined wind + slope factor by [`effective_wind_speed`](@ref)
+  and therefore includes the slope contribution
+- `lb_cap`: Maximum length-to-breadth ratio (ELMFIRE `MAX_LOW`, default 8)
+
+The backing rate follows the classical ellipse relation used by ELMFIRE
+(`elmfire_level_set.f90:1812-1818`):
+`V_back/V_head = (LB - √(LB²-1)) / (LB + √(LB²-1))`, equivalently
+`(1-e)/(1+e)` with `e = √(LB²-1)/LB`.
+"""
+function elliptical_spread(velocity::T, wsmfeff::T; lb_cap::T=T(8)) where {T<:AbstractFloat}
+    LB = length_to_breadth(wsmfeff; lb_cap = lb_cap)
+
+    # Ellipse eccentricity for a length-to-breadth (semi-major/semi-minor) ratio
+    # of LB: e = c/a = sqrt(1 - b²/a²) = sqrt(LB² - 1) / LB
     eccentricity = if LB > T(1.001)
-        LB2 = LB * LB
-        sqrt((LB2 - one(T)) / (LB2 + one(T)))
+        sqrt(LB * LB - one(T)) / LB
     else
         zero(T)
     end
@@ -357,13 +370,96 @@ function elliptical_spread(velocity::T, effective_windspeed_mph::T; lb_cap::T=T(
     # Head fire rate is the input velocity
     head = velocity
 
-    # Backing fire rate from eccentricity
+    # Backing fire rate: ELMFIRE's BOH = (LB - sqrt(LB²-1)) / (LB + sqrt(LB²-1))
     back = head * (one(T) - eccentricity) / (one(T) + eccentricity)
 
-    # Flanking fire rate (at the widest point)
+    # Flanking fire rate (semi-minor axis rate), equal to a/LB
     flank = head * sqrt(one(T) - eccentricity * eccentricity) / (one(T) + eccentricity)
 
     return EllipticalSpread{T}(head, back, flank, eccentricity, LB)
+end
+
+
+#-----------------------------------------------------------------------------#
+#                     Direction of Maximum Spread
+#-----------------------------------------------------------------------------#
+
+"""
+    spread_direction(phis::T, phiw::T, aspect_deg::T, wind_direction_deg::T) -> Tuple{T,T,T}
+
+Combine the slope and wind factors as **vectors** and return
+`(phimag, dms_x, dms_y)`: the magnitude of the combined factor and the unit
+vector pointing in the direction of maximum spread.
+
+Both factors act along the direction the fire is pushed, i.e. 180° from the
+aspect (downslope-facing direction) and 180° from the wind's "from" direction:
+
+```
+φ_x = φ_w·sin(θ_w - π) + φ_s·sin(θ_a - π)
+φ_y = φ_w·cos(θ_w - π) + φ_s·cos(θ_a - π)
+```
+
+Implementation follows `elmfire_level_set.f90:1760-1800` and the ELMFIRE technical
+reference. Callers must scale `phis`/`phiw` by the acceleration factor beforehand
+where ELMFIRE does so.
+"""
+@inline function spread_direction(
+    phis::T, phiw::T, aspect_deg::T, wind_direction_deg::T
+) where {T<:AbstractFloat}
+    asp = (aspect_deg - T(180)) * pio180(T)
+    wnd = (wind_direction_deg - T(180)) * pio180(T)
+
+    phix = phiw * sin(wnd) + phis * sin(asp)
+    phiy = phiw * cos(wnd) + phis * cos(asp)
+
+    phimag = max(sqrt(phix * phix + phiy * phiy), T(1e-10))
+    if phimag < T(1.1e-10)
+        return (phimag, one(T), zero(T))
+    end
+    rphimag = one(T) / phimag
+    return (phimag, phix * rphimag, phiy * rphimag)
+end
+
+
+"""
+    effective_wind_speed(phimag::T, wsmfeff_coeff::T, B_inverse::T) -> T
+
+Recover the effective mid-flame wind speed (ft/min) that alone would produce the
+combined wind + slope factor `phimag`, by inverting Rothermel (1972) Eq. 47:
+
+`U_mf,e = (|φ| / (C(β/β_op)^-E))^(1/B)`
+
+`wsmfeff_coeff` and `B_inverse` are the pre-computed fuel model terms
+`(1/phiwterm)^(1/B)` and `1/B`. Because `|φ|` carries both wind and slope, the
+result drives a length-to-breadth ratio that responds to terrain as well as wind.
+
+Implementation follows `elmfire_level_set.f90:1808`.
+"""
+@inline function effective_wind_speed(phimag::T, wsmfeff_coeff::T, B_inverse::T) where {T<:AbstractFloat}
+    return wsmfeff_coeff * phimag^B_inverse
+end
+
+
+"""
+    slope_projection_factors(slope_deg::T, aspect_deg::T) -> Tuple{T,T}
+
+Factors that project velocities computed parallel to the local slope onto the
+horizontal map plane:
+
+```
+U_x / U_x,∥ = 1 - |sin(θ_a)|(1 - cos(γ))
+U_y / U_y,∥ = 1 - |cos(θ_a)|(1 - cos(γ))
+```
+
+where `γ` is the slope and `θ_a` the aspect. Both factors are 1 on flat ground.
+
+Implementation follows `elmfire_level_set.f90:1770-1771`.
+"""
+@inline function slope_projection_factors(slope_deg::T, aspect_deg::T) where {T<:AbstractFloat}
+    gamma = clamp(slope_deg, zero(T), T(90)) * pio180(T)
+    omcos = one(T) - cos(gamma)
+    asp = aspect_deg * pio180(T)
+    return (one(T) - abs(sin(asp)) * omcos, one(T) - abs(cos(asp)) * omcos)
 end
 
 
@@ -403,19 +499,21 @@ end
 """
     velocity_components(
         es::EllipticalSpread{T},
-        wind_direction_rad::T,
-        normal_x::T,
-        normal_y::T
+        dms_x::T, dms_y::T,
+        normal_x::T, normal_y::T
     ) -> Tuple{T, T}
 
 Calculate velocity components (ux, uy) using the Richards (1990) ellipse equation.
 
-Uses semi-major and semi-minor axes derived from head/back velocities and L/B ratio
-to compute the exact elliptical velocity at any angle relative to the wind direction.
+Uses semi-major and semi-minor axes derived from head/back velocities and the L/B
+ratio to compute the elliptical velocity at any angle relative to the direction of
+maximum spread. The returned components are **parallel to the local slope**; apply
+[`slope_projection_factors`](@ref) to map them onto the horizontal grid.
 
 # Arguments
 - `es`: Elliptical spread parameters (head, back, eccentricity, length_to_breadth)
-- `wind_direction_rad`: Wind direction in radians (meteorological convention)
+- `dms_x, dms_y`: Unit vector in the direction of maximum spread, from
+  [`spread_direction`](@ref)
 - `normal_x, normal_y`: Unit normal vector to the fire front
 
 # Returns
@@ -423,17 +521,12 @@ to compute the exact elliptical velocity at any angle relative to the wind direc
 """
 function velocity_components(
     es::EllipticalSpread{T},
-    wind_direction_rad::T,
-    normal_x::T,
-    normal_y::T
+    dms_x::T, dms_y::T,
+    normal_x::T, normal_y::T
 ) where {T<:AbstractFloat}
-    # Wind direction: convert FROM (meteorological) to TO (mathematical)
-    wind_to_x = -sin(wind_direction_rad)
-    wind_to_y = -cos(wind_direction_rad)
-
-    # Dot and cross products of normal against wind direction
-    cosang = normal_x * wind_to_x + normal_y * wind_to_y
-    sinang = normal_x * wind_to_y - normal_y * wind_to_x
+    # Dot and cross products of the front normal against the direction of maximum spread
+    cosang = normal_x * dms_x + normal_y * dms_y
+    sinang = normal_x * dms_y - normal_y * dms_x
 
     # Semi-major axis (along wind) and semi-minor axis (across wind)
     a = max(T(0.5) * (es.head + es.back), T(1e-10))
@@ -449,9 +542,33 @@ function velocity_components(
     dydt = aa_cosang / denom + T(0.5) * (es.head - es.back)
     dxdt = bb_sinang / denom
 
-    # Rotate from wind-relative to grid coordinates
-    ux = dxdt * wind_to_y + dydt * wind_to_x
-    uy = -dxdt * wind_to_x + dydt * wind_to_y
+    # Rotate from DMS-relative to grid coordinates
+    ux = dxdt * dms_y + dydt * dms_x
+    uy = -dxdt * dms_x + dydt * dms_y
 
     return (ux, uy)
+end
+
+
+"""
+    velocity_components(
+        es::EllipticalSpread{T},
+        wind_direction_rad::T,
+        normal_x::T,
+        normal_y::T
+    ) -> Tuple{T, T}
+
+Convenience method that takes the direction of maximum spread to be the wind
+direction, ignoring slope. Prefer the four-vector method with a direction from
+[`spread_direction`](@ref), which accounts for terrain.
+"""
+function velocity_components(
+    es::EllipticalSpread{T},
+    wind_direction_rad::T,
+    normal_x::T,
+    normal_y::T
+) where {T<:AbstractFloat}
+    # Wind direction: convert FROM (meteorological) to TO (mathematical)
+    return velocity_components(es, -sin(wind_direction_rad), -cos(wind_direction_rad),
+                               normal_x, normal_y)
 end

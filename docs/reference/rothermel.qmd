@@ -228,21 +228,72 @@ Real fires don't spread uniformly in all directions. Under the influence of wind
 
 ### Length-to-Breadth Ratio
 
+### Direction of Maximum Spread
+
+Rothermel gives the spread rate along a single direction. ELMFIRE resolves that
+direction by treating the wind and slope factors as **vectors**, so a fire under
+a crosswind on a slope heads somewhere between the two:
+
+$$
+\begin{aligned}
+\phi_x &= \alpha\left[\phi_w \sin(\theta_w - \pi) + \phi_s \sin(\theta_a - \pi)\right] \\
+\phi_y &= \alpha\left[\phi_w \cos(\theta_w - \pi) + \phi_s \cos(\theta_a - \pi)\right] \\
+|V_{DMS}| &= V_{s0}\left(\alpha + |\phi|\right)
+\end{aligned}
+$$
+
+$\theta_w$ is the direction the wind blows *from*, $\theta_a$ the topographic
+aspect, and $\alpha$ the acceleration factor. Wind and slope that oppose each
+other partially cancel; a scalar $1 + \phi_s + \phi_w$ would let them add.
+
+```{julia}
+# Wind from the west, east-facing slope: the two factors oppose
+phimag, dms_x, dms_y = Elmfire.spread_direction(2.0, 3.0, 90.0, 270.0)
+println("opposed:  |phi| = ", round(phimag, digits = 3))
+
+# West-facing slope: they reinforce
+phimag, dms_x, dms_y = Elmfire.spread_direction(2.0, 3.0, 270.0, 270.0)
+println("aligned:  |phi| = ", round(phimag, digits = 3),
+        "  heading = (", round(dms_x, digits = 2), ", ", round(dms_y, digits = 2), ")")
+```
+
+Because $|\phi|$ carries both effects, inverting Rothermel's Eq. 47 recovers an
+*effective* mid-flame wind speed that includes slope. That is what drives the
+ellipse shape below.
+
+$$
+U_{mf,e} = \left(\frac{|\phi|}{C(\beta/\beta_{op})^{-E}}\right)^{1/B}
+$$
+
+Velocities from this construction are parallel to the local slope.
+`slope_projection_factors` maps them onto the horizontal map grid:
+
+$$
+\frac{U_x}{U_{x,\parallel}} = 1 - |\sin\theta_a|(1 - \cos\gamma), \qquad
+\frac{U_y}{U_{y,\parallel}} = 1 - |\cos\theta_a|(1 - \cos\gamma)
+$$
+
 The ellipse shape is characterized by the length-to-breadth ratio:
 
 $$
 \frac{L}{B} = 0.936 e^{0.2566U} + 0.461 e^{-0.1548U} - 0.397
 $$
 
-Where $U$ is the effective wind speed in mi/h.
+Where $U$ is the effective mid-flame wind speed, scaled from ft/min by ELMFIRE's
+`WSMFEFF_LOW_MULT` (5.07955e-3). `elliptical_spread` takes that wind speed in
+**ft/min**; multiply mi/h by 88 to convert.
+
+The effective wind speed is not the raw wind: it is recovered from the combined
+wind *and slope* factor by inverting Rothermel's Eq. 47 (see
+`effective_wind_speed`), so terrain elongates the ellipse too.
 
 ```{julia}
 # Length-to-breadth ratio vs wind speed
 wind_mph = 0:0.5:20
-lb_ratios = [Elmfire.elliptical_spread(100.0, w).length_to_breadth for w in wind_mph]
+lb_ratios = [Elmfire.elliptical_spread(100.0, w * 88).length_to_breadth for w in wind_mph]
 
 plot(wind_mph, lb_ratios,
-    xlabel = "Effective Wind Speed (mi/h)",
+    xlabel = "Effective Mid-Flame Wind Speed (mi/h)",
     ylabel = "Length-to-Breadth Ratio",
     title = "Fire Shape vs Wind Speed",
     linewidth = 2,
@@ -268,9 +319,9 @@ end
 ```{julia}
 # Head fire velocity from Rothermel
 head_velocity = 50.0  # ft/min
-wind_mph = 10.0
+wsmfeff = 10.0 * 88   # 10 mi/h effective mid-flame wind, in ft/min
 
-es = Elmfire.elliptical_spread(head_velocity, wind_mph)
+es = Elmfire.elliptical_spread(head_velocity, wsmfeff)
 
 println("Elliptical Fire Spread:")
 println("  Head fire rate: $(round(es.head, digits=1)) ft/min")
@@ -289,7 +340,7 @@ p = plot(aspect_ratio=:equal, xlabel="Distance (ft)", ylabel="Distance (ft)",
          title="Fire Spread Ellipses (1 hour)", legend=:topright)
 
 for wind in wind_speeds
-    es = Elmfire.elliptical_spread(50.0, wind)
+    es = Elmfire.elliptical_spread(50.0, wind * 88)
 
     # Generate ellipse points (60 minutes of spread)
     t = 60.0  # minutes
