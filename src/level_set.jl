@@ -255,16 +255,33 @@ function rk2_step!(
     active_cells::AbstractVector{CartesianIndex{2}},
     dt::T,
     dx::T,
-    stage::Int
+    stage::Int,
+    gradx::Vector{T} = Vector{T}(undef, length(active_cells)),
+    grady::Vector{T} = Vector{T}(undef, length(active_cells))
 ) where {T<:AbstractFloat}
     rcellsize = one(T) / dx
+    n = length(active_cells)
+    length(gradx) >= n && length(grady) >= n ||
+        throw(ArgumentError("gradient buffers must hold at least $n elements"))
 
+    # Pass 1: limited gradients for every active cell, read from the level set as
+    # it stands at the start of the stage. This must complete before any cell is
+    # written: `limit_gradients` reads a 5-point stencil, so updating phi in the
+    # same loop would feed already-advanced neighbours back into later cells and
+    # make the result depend on iteration order. ELMFIRE separates the passes the
+    # same way (CFL_AND_FLUX_LIMITER stores DPHIDX_LIMITED, then RK2_INTEGRATE
+    # applies it).
+    @inbounds for k in 1:n
+        idx = active_cells[k]
+        gradx[k], grady[k] = limit_gradients(phi, ux[idx], uy[idx], idx[1], idx[2], rcellsize)
+    end
+
+    # Pass 2: advance the level set
     if stage == 1
         # Stage 1: Forward Euler step
-        for idx in active_cells
-            ix, iy = idx[1], idx[2]
-            dphidx, dphidy = limit_gradients(phi, ux[idx], uy[idx], ix, iy, rcellsize)
-            phi_new = phi_old[idx] - dt * (ux[idx] * dphidx + uy[idx] * dphidy)
+        @inbounds for k in 1:n
+            idx = active_cells[k]
+            phi_new = phi_old[idx] - dt * (ux[idx] * gradx[k] + uy[idx] * grady[k])
 
             # Clamp and handle NaN
             if isnan(phi_new)
@@ -274,10 +291,9 @@ function rk2_step!(
         end
     else
         # Stage 2: Average with original
-        for idx in active_cells
-            ix, iy = idx[1], idx[2]
-            dphidx, dphidy = limit_gradients(phi, ux[idx], uy[idx], ix, iy, rcellsize)
-            phi_rhs = phi[idx] - dt * (ux[idx] * dphidx + uy[idx] * dphidy)
+        @inbounds for k in 1:n
+            idx = active_cells[k]
+            phi_rhs = phi[idx] - dt * (ux[idx] * gradx[k] + uy[idx] * grady[k])
             phi[idx] = T(0.5) * (phi_old[idx] + phi_rhs)
         end
     end

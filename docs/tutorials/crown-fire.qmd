@@ -131,33 +131,89 @@ Higher canopy base heights require greater fireline intensity to initiate crown 
 
 ## Canopy Bulk Density Effect
 
+Canopy bulk density (CBD) enters the Cruz (2005) model twice, and the two effects
+pull in opposite directions.
+
+It raises the potential crown spread rate only weakly, as `CBD^0.19`:
+
+$$
+\text{CROSA} = 11.02 \, U_{10}^{0.9} \, \text{CBD}^{0.19} e^{-17 M_1}
+$$
+
+But it sets the critical rate for a *self-sustaining* active crown fire much more
+strongly, as `3/CBD`. The crown activity coefficient is the ratio of the two, and
+the fire goes active once it exceeds 1:
+
+$$
+R_0 = \frac{3}{\text{CBD}}, \qquad \text{CAC} = \frac{\text{CROSA}}{R_0}
+$$
+
+So CBD's real influence is on **whether** the fire crowns actively, not on how
+fast it then runs. The left panel below shows where the two curves cross.
+
 ```{julia}
-cbd_values = [0.05, 0.10, 0.15, 0.20]
-plots = []
+#| code-summary: "Crown spread rate and the active-crowning threshold vs CBD"
+cbds = 10 .^ range(log10(0.01), log10(0.35), length = 120)
+winds = [15.0, 25.0, 40.0]
+M1 = 0.04
 
-for cbd in cbd_values
-    canopy_var = CanopyGrid{Float64}(
-        fill(cbd, ncols, nrows),
-        fill(2.0, ncols, nrows),
-        fill(0.6, ncols, nrows),
-        fill(20.0, ncols, nrows)
-    )
+# Cruz (2005) potential active crown spread rate, ft/min
+crosa(cbd, ws) = 11.02 * (ws * 1.609 / 0.87)^0.9 * cbd^0.19 * exp(-0.17 * 100 * M1) / 0.3048
 
-    state = FireState{Float64}(ncols, nrows, cellsize)
-    ignite!(state, 50, 50, 0.0)
+# Critical spread rate for active crowning (3/CBD m/min), ft/min
+r0(cbd) = (3.0 / cbd) / 0.3048
 
-    simulate_full!(state, fuel_ids, fuel_table, weather_interp, slope, aspect,
-        0.0, 25.0; canopy = canopy_var, config = config_crown)
+p1 = plot(xscale = :log10, xlabel = "Canopy Bulk Density (kg/m³)",
+    ylabel = "Spread Rate (ft/min)", title = "Potential rate vs. active-crowning threshold",
+    ylims = (0, 800), legend = :topright, left_margin = 5Plots.mm, bottom_margin = 6Plots.mm)
+for ws in winds
+    plot!(p1, cbds, crosa.(cbds, ws), label = "CROSA @ $(Int(ws)) mph", linewidth = 2)
+end
+plot!(p1, cbds, r0.(cbds), label = "R₀ = 3/CBD", color = :black,
+      linestyle = :dot, linewidth = 2)
 
-    push!(plots, heatmap(state.burned',
-        title = "CBD = $cbd kg/m³",
-        color = :YlOrRd, aspect_ratio = 1, colorbar = false
-    ))
+# Mark where each wind speed crosses into active crown fire
+for ws in winds
+    lo, hi = 0.005, 0.5
+    for _ in 1:60
+        mid = (lo + hi) / 2
+        crosa(mid, ws) < r0(mid) ? (lo = mid) : (hi = mid)
+    end
+    scatter!(p1, [(lo + hi) / 2], [r0((lo + hi) / 2)], label = "", color = :black, markersize = 4)
 end
 
-plot(plots..., layout = (2, 2), size = (700, 700),
-    plot_title = "Crown Fire vs Canopy Bulk Density")
+# What the model actually spreads at, once the ELMFIRE cap is applied
+p2 = plot(xscale = :log10, xlabel = "Canopy Bulk Density (kg/m³)",
+    ylabel = "Crown Spread Rate (ft/min)", title = "Rate used by the model",
+    ylims = (0, 400), legend = :bottomright, left_margin = 5Plots.mm, bottom_margin = 6Plots.mm)
+# The 25 and 40 mph curves sit on top of each other once capped, so offset the
+# line widths to keep both visible
+for (ws, lw, ls) in zip(winds, [4, 2.5, 1.5], [:solid, :solid, :dash])
+    rates = map(cbds) do cbd
+        canopy_pt = CanopyProperties{Float64}(cbd = cbd, cbh = 2.0, cc = 0.6, ch = 20.0)
+        crown_spread_rate(canopy_pt, 1e9, ws, M1, 20.0).spread_rate
+    end
+    plot!(p2, cbds, rates, label = "$(Int(ws)) mph", linewidth = lw, linestyle = ls)
+end
+hline!(p2, [250.0], label = "CROWN_FIRE_SPREAD_RATE_LIMIT",
+       color = :red, linestyle = :dash, linewidth = 2)
+
+plot(p1, p2, layout = (1, 2), size = (980, 430))
 ```
+
+The right panel is the practical consequence. Below the threshold the fire is
+passive and its rate is damped by `exp(-CAC)` — which *falls* as CBD rises, since
+the damping tightens faster than the weak `CBD^0.19` term grows, so a denser canopy
+briefly torches more slowly right up until it goes active. Above the threshold the
+fire is active but
+immediately runs into ELMFIRE's `CROWN_FIRE_SPREAD_RATE_LIMIT` of 250 ft/min. For
+the CBD range of real conifer stands (roughly 0.05--0.30 kg/m³) every curve is
+already flat against that cap.
+
+This is why mapping burned area for several CBD values produces four identical
+pictures: once the fire is actively crowning, the cap has removed CBD from the
+spread rate entirely. The threshold crossing in the left panel is the effect worth
+showing.
 
 ## Foliar Moisture Effect
 

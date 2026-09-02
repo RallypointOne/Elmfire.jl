@@ -27,7 +27,9 @@
 Parameters controlling ember generation and transport.
 """
 struct SpottingParameters{T<:AbstractFloat}
-    mean_distance::T              # Mean spotting distance (m)
+    mean_distance::T              # Coefficient for the empirical distance scaling,
+                                  # NOT a distance: the mean throw is
+                                  # mean_distance * flin^flin_exponent * ws20^ws_exponent (m)
     normalized_variance::T        # Normalized variance of distance distribution
     ws_exponent::T                # Wind speed exponent for distance scaling
     flin_exponent::T              # Fireline intensity exponent for distance scaling
@@ -242,6 +244,23 @@ end
 #-----------------------------------------------------------------------------#
 
 """
+    _landing_cell(x, y, ncols, nrows) -> Tuple{Int,Int}
+
+Grid cell an ember lands in, or `(0, 0)` when it leaves the domain.
+
+Clamping an out-of-domain ember to the nearest edge cell would deposit every
+long-range firebrand on the boundary, painting a line of spurious ignitions along
+it. An ember that flies past the edge is simply lost to the simulation.
+"""
+@inline function _landing_cell(x::T, y::T, ncols::Int, nrows::Int) where {T<:AbstractFloat}
+    ix = round(Int, x)
+    iy = round(Int, y)
+    (ix < 1 || ix > ncols || iy < 1 || iy > nrows) && return (0, 0)
+    return (ix, iy)
+end
+
+
+"""
     transport_ember(
         x0::T, y0::T,
         ws20::T,
@@ -271,7 +290,8 @@ the spatially varying wind field. Otherwise, uses source-cell wind only.
 - `rng`: Random number generator
 
 # Returns
-- `(ix, iy, dist)`: Landing grid indices and actual distance traveled
+- `(ix, iy, dist)`: Landing grid indices and distance traveled. `ix == iy == 0`
+  means the ember left the domain and is lost.
 """
 function transport_ember(
     x0::T, y0::T,
@@ -298,10 +318,7 @@ function transport_ember(
         dx = dist_cells * sin(wd_to_rad)
         dy = dist_cells * cos(wd_to_rad)
 
-        ix = clamp(round(Int, x0 + dx), 1, ncols)
-        iy = clamp(round(Int, y0 + dy), 1, nrows)
-
-        return (ix, iy, spotting_distance)
+        return (_landing_cell(x0 + dx, y0 + dy, ncols, nrows)..., spotting_distance)
     end
 
     # Wind-field advection: step along the wind field
@@ -334,10 +351,7 @@ function transport_ember(
         end
     end
 
-    ix = clamp(round(Int, cx), 1, ncols)
-    iy = clamp(round(Int, cy), 1, nrows)
-
-    return (ix, iy, spotting_distance)
+    return (_landing_cell(cx, cy, ncols, nrows)..., spotting_distance)
 end
 
 
@@ -433,6 +447,9 @@ function generate_spot_fires(
             time_now=time_now,
             rng=rng
         )
+
+        # Embers that left the domain are lost
+        ix == 0 && continue
 
         # Check if landing location is valid for ignition
         # Must be unburned and far enough from source

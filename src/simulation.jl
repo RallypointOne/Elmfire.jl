@@ -265,7 +265,7 @@ end
 
 
 """
-    FireState{T}(ncols, nrows, cellsize; xllcorner=zero(T), yllcorner=zero(T), padding=2, band_thickness=5)
+    FireState{T}(ncols, nrows, cellsize; xllcorner=zero(T), yllcorner=zero(T), padding=2, band_thickness=2)
 
 Create a new fire simulation state with specified precision.
 
@@ -276,14 +276,18 @@ Create a new fire simulation state with specified precision.
 - `xllcorner`: X coordinate of lower-left corner (default 0.0)
 - `yllcorner`: Y coordinate of lower-left corner (default 0.0)
 - `padding`: Boundary padding for stencil operations (default 2)
-- `band_thickness`: Narrow band half-width (default 5)
+- `band_thickness`: Narrow band half-width (ELMFIRE `BANDTHICKNESS`, default 2).
+  A wider band tags cells well ahead of the front while their `phi` is still the
+  uninitialized far-field value, and advection across that discontinuity can flip
+  them negative — which shows up as detached islands of "burned" cells ahead of a
+  diagonally-driven fire.
 """
 function FireState{T}(
     ncols::Int, nrows::Int, cellsize::T;
     xllcorner::T = zero(T),
     yllcorner::T = zero(T),
     padding::Int = 2,
-    band_thickness::Int = 5
+    band_thickness::Int = 2
 ) where {T<:AbstractFloat}
     # Padded dimensions
     nx_pad = ncols + 2*padding
@@ -322,7 +326,7 @@ function FireState(
     xllcorner::Float64 = 0.0,
     yllcorner::Float64 = 0.0,
     padding::Int = 2,
-    band_thickness::Int = 5
+    band_thickness::Int = 2
 )
     FireState{Float64}(ncols, nrows, cellsize;
         xllcorner=xllcorner, yllcorner=yllcorner,

@@ -133,11 +133,16 @@ Byram flame length `L_f = (0.0775/0.3048)·I^0.46` matches
 | Reinitialization | None | None | Same |
 | Target CFL | 0.4 | 0.4 | Identical |
 | dt_max | 600 s | 10 min | Identical |
-| **Band thickness** | **2 cells** | **5 cells** | **Different** |
+| Band thickness | 2 cells | 2 cells | Identical |
 
-**Band thickness** is a tuning parameter, not physics. Julia tracks more cells
-around the front: less efficient, but more robust against a fast front outrunning
-the band.
+**Band thickness** was previously 5 in Julia, on the theory that a wider band is
+more robust. It is not: a band wider than 2 tags cells while their `phi` is still
+the uninitialized far-field value, and advecting across that discontinuity flips
+isolated cells negative. The result is detached islands of "burned" cells ahead of
+a diagonally-driven fire — 96-103 spurious cells out of ~1200 at a thickness of 5,
+and none at 2. Matching ELMFIRE's `BANDTHICKNESS` default also makes spread exactly
+symmetric across wind direction (all four cardinals identical, all four diagonals
+identical) rather than merely within 1%.
 
 The Fortran `LIMIT_GRADIENTS` declares `PHIEAST=1.0` (and friends) in a
 declaration statement, which makes them implicitly `SAVE`d, so a degenerate cell
@@ -263,12 +268,11 @@ carrying 91–99 load without remapping.
 
 ## 14. Remaining Differences
 
-1. **Band thickness** — 5 cells vs. 2. Tuning, not physics.
-2. **Ember landing** — no terrain intersection check. Minor on flat terrain,
+1. **Ember landing** — no terrain intersection check. Minor on flat terrain,
    potentially significant in mountainous areas.
-3. **Urban fire models** — Himoto spotting and the in-model building spread paths
+2. **Urban fire models** — Himoto spotting and the in-model building spread paths
    are not implemented; Elmfire.jl carries its own WUI models instead.
-4. **Weather refresh** — all variables are interpolated on one schedule rather
+3. **Weather refresh** — all variables are interpolated on one schedule rather
    than per-variable intervals.
-5. **Degenerate flux limiter cells** — first-order upwind rather than reusing a
+4. **Degenerate flux limiter cells** — first-order upwind rather than reusing a
    `SAVE`d value.

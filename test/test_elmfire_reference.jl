@@ -148,6 +148,80 @@ using Elmfire
         @test_throws KeyError Elmfire.get_fuel_model_or_nonburnable(table, 165, 60)
     end
 
+    @testset "Level set is isotropic" begin
+        # The RK2 update reads phi through a 5-point stencil, so gradients must be
+        # computed for every active cell before any of them is written. Fusing the
+        # two passes makes the result depend on iteration order and biases spread
+        # toward -x and -y. Opposite winds must mirror.
+        table = create_standard_fuel_table()
+        function burn(wd)
+            state = FireState(80, 80, 30.0)
+            weather = ConstantWeather(
+                wind_speed_mph = 15.0, wind_direction = wd,
+                M1 = 0.06, M10 = 0.08, M100 = 0.10, MLH = 0.60, MLW = 0.90
+            )
+            ignite!(state, 40, 40, 0.0)
+            simulate_uniform!(state, 1, table, weather, 0.0, 0.0, 0.0, 25.0)
+            count(state.burned)
+        end
+
+        cardinal = [burn(wd) for wd in (0.0, 90.0, 180.0, 270.0)]
+        diagonal = [burn(wd) for wd in (45.0, 135.0, 225.0, 315.0)]
+
+        # Every cardinal run is the same fire in a different orientation
+        @test maximum(cardinal) / minimum(cardinal) < 1.05
+        @test maximum(diagonal) / minimum(diagonal) < 1.05
+        @test minimum(cardinal) > 100   # guard against all four collapsing to nothing
+    end
+
+    @testset "Burn stays connected" begin
+        # With uniform fuel and no spotting the burn must be simply connected.
+        # A band wider than ELMFIRE's BANDTHICKNESS=2 tags cells while their phi is
+        # still the far-field value, and advection across that jump flips isolated
+        # cells negative — detached islands ahead of a diagonally-driven fire.
+        table = create_standard_fuel_table()
+
+        function n_detached(wd)
+            state = FireState(80, 80, 30.0)
+            weather = ConstantWeather(
+                wind_speed_mph = 15.0, wind_direction = wd,
+                M1 = 0.06, M10 = 0.08, M100 = 0.10, MLH = 0.60, MLW = 0.90
+            )
+            ignite!(state, 40, 40, 0.0)
+            simulate_uniform!(state, 1, table, weather, 0.0, 0.0, 0.0, 25.0)
+
+            B = state.burned
+            seen = falses(size(B))
+            sizes = Int[]
+            for I in CartesianIndices(B)
+                (B[I] && !seen[I]) || continue
+                c = 0
+                stack = [I]
+                seen[I] = true
+                while !isempty(stack)
+                    J = pop!(stack)
+                    c += 1
+                    for d in (CartesianIndex(1, 0), CartesianIndex(-1, 0),
+                              CartesianIndex(0, 1), CartesianIndex(0, -1))
+                        K = J + d
+                        if checkbounds(Bool, B, K) && B[K] && !seen[K]
+                            seen[K] = true
+                            push!(stack, K)
+                        end
+                    end
+                end
+                push!(sizes, c)
+            end
+            sort!(sizes, rev = true)
+            sum(sizes[2:end]; init = 0)
+        end
+
+        # Diagonals are where the artifact showed up
+        for wd in (0.0, 45.0, 135.0, 225.0, 315.0)
+            @test n_detached(wd) == 0
+        end
+    end
+
     @testset "Fireline intensity varies around the perimeter" begin
         # Head fire intensity must exceed backing intensity for a wind-driven fire
         state = FireState(60, 60, 30.0)

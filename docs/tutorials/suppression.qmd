@@ -115,13 +115,15 @@ weather = ConstantWeather{Float64}(
 )
 
 # Add a dozer
-dozer = SuppressionResource{Float64}(1, :dozer; location_x = 70.0, location_y = 30.0)
+dozer = SuppressionResource{Float64}(1, :dozer; location_x = 58.0, location_y = 30.0)
 add_resource!(supp_state, dozer)
 
-# Pre-build containment line ahead of fire
-for y in 30:70
-    supp_state.contained_cells[70, y] = true
-    supp_state.containment_effectiveness[70, y] = 0.1  # 90% reduction
+# Pre-build a containment line ahead of the fire. It has to sit within reach of
+# the front for the run length, otherwise the fire never touches it and the
+# comparison below shows no difference.
+for y in 20:80
+    supp_state.contained_cells[58, y] = true
+    supp_state.containment_effectiveness[58, y] = 0.1  # 90% reduction
 end
 
 # Ignite fire
@@ -136,7 +138,7 @@ simulate_with_suppression!(
     weather,
     slope,
     aspect,
-    0.0, 45.0
+    0.0, 120.0
 )
 
 # Visualize
@@ -155,10 +157,10 @@ p1
 ## Comparing With and Without Suppression
 
 ```{julia}
-# Without suppression
+# Without suppression, same duration as the suppressed run above
 state_no_supp = FireState{Float64}(ncols, nrows, cellsize)
 ignite!(state_no_supp, 40, 50, 0.0)
-simulate_uniform!(state_no_supp, 1, fuel_table, weather, 0.0, 0.0, 0.0, 45.0)
+simulate_uniform!(state_no_supp, 1, fuel_table, weather, 0.0, 0.0, 0.0, 120.0)
 
 # With suppression (already run above as fire_state)
 
@@ -172,6 +174,10 @@ p2 = heatmap(fire_state.burned',
 
 plot(p1, p2, layout = (1, 2), size = (800, 400))
 ```
+
+The line holds the head fire at x = 58 and cuts the burned area by roughly 40%.
+The containment is not a hard barrier — `containment_effectiveness` of 0.1 scales
+the spread rate to 10%, so the fire creeps rather than stops.
 
 ## Suppression Statistics
 

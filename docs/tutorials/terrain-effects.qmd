@@ -79,35 +79,49 @@ plot(plots..., layout = (2, 2), size = (700, 700),
 
 ## Aspect Effects
 
-Aspect determines which direction the slope faces:
+Aspect is the direction the slope *faces*, so fire runs upslope — toward
+`aspect - 180`. That means aspect decides whether terrain reinforces the wind or
+fights it. With wind from the west (blowing east):
+
+- **West-facing** (upslope points east): slope and wind agree, largest fire
+- **East-facing** (upslope points west): slope opposes the wind and the two partly
+  cancel, smallest fire
+- **North-** and **south-facing**: upslope is perpendicular to the wind, so both
+  give the same area, differing only in which way the fire is pushed off-axis
 
 ```{julia}
+#| code-summary: "Fire spread on a 15° slope at four aspects"
 aspects = [0, 90, 180, 270]
 aspect_labels = ["North-facing", "East-facing", "South-facing", "West-facing"]
 plots = []
 
 for (asp, lbl) in zip(aspects, aspect_labels)
-    state = FireState{Float64}(100, 100, 30.0)
+    state = FireState{Float64}(70, 70, 30.0)
     weather = ConstantWeather{Float64}(
         wind_speed_mph = 5.0,
         wind_direction = 270.0,  # Wind from west
         M1 = 0.06, M10 = 0.08, M100 = 0.10,
         MLH = 0.60, MLW = 0.90
     )
-    ignite!(state, 50, 50, 0.0)
-    simulate_uniform!(state, 1, fuel_table, weather, 15.0, Float64(asp), 0.0, 25.0)
+    ignite!(state, 35, 35, 0.0)
+    simulate_uniform!(state, 1, fuel_table, weather, 15.0, Float64(asp), 0.0, 60.0)
 
+    acres = round(get_burned_area_acres(state), digits = 1)
     push!(plots, heatmap(state.burned',
-        title = lbl,
+        title = "$lbl\n$acres acres",
         color = :YlOrRd,
         aspect_ratio = 1,
         colorbar = false
     ))
 end
 
-plot(plots..., layout = (2, 2), size = (700, 700),
+plot(plots..., layout = (2, 2), size = (700, 720),
     plot_title = "15° Slope with Different Aspects (Wind from West)")
 ```
+
+The west-facing slope burns roughly seven times the area of the east-facing one
+under identical wind and fuel — terrain aiding the wind versus opposing it. North-
+and south-facing come out identical, as the symmetry requires.
 
 ## Slope Factor Calculation
 
@@ -208,7 +222,9 @@ plot(p1, p2, p3, p4, layout = (2, 2), size = (800, 800))
 
 ## Ridge and Valley Effects
 
-Fire behavior changes dramatically at terrain features:
+Fire behavior changes dramatically at terrain features. Igniting west of a N-S
+ridge, with wind from the west, puts slope and wind in agreement on the windward
+flank and in opposition on the lee side:
 
 ```{julia}
 # Create terrain with ridge
@@ -222,7 +238,10 @@ for ix in 1:ncols
         dist = abs(ix - 60)
         if dist < 30
             slope[ix, iy] = 20.0 * (1 - dist/30)
-            aspect[ix, iy] = ix < 60 ? 90.0 : 270.0  # E or W facing
+            # Aspect is the downhill direction. West of the crest the ground rises
+            # toward the east, so it faces west (270°); east of the crest it faces
+            # east (90°).
+            aspect[ix, iy] = ix < 60 ? 270.0 : 90.0
         end
     end
 end
@@ -230,20 +249,26 @@ end
 state = FireState{Float64}(ncols, nrows, 30.0)
 fuel_ids = fill(1, ncols, nrows)
 weather = ConstantWeather{Float64}(
-    wind_speed_mph = 10.0,
+    wind_speed_mph = 15.0,
     wind_direction = 270.0,  # From west
     M1 = 0.05, M10 = 0.07, M100 = 0.09,
     MLH = 0.55, MLW = 0.85
 )
 
 ignite!(state, 30, 60, 0.0)  # Ignite west of ridge
-simulate!(state, fuel_ids, fuel_table, weather, slope, aspect, 0.0, 45.0)
+simulate!(state, fuel_ids, fuel_table, weather, slope, aspect, 0.0, 90.0)
 
 p1 = heatmap(slope', title = "Ridge Terrain (Slope)", color = :terrain, aspect_ratio = 1)
 p2 = heatmap(state.burned', title = "Fire Spread Over Ridge", color = :YlOrRd, aspect_ratio = 1)
+vline!(p2, [60], color = :black, linestyle = :dash, linewidth = 2, label = "")
 
 plot(p1, p2, layout = (1, 2), size = (800, 400))
 ```
+
+The fire runs quickly up the windward flank, where the upslope direction and the
+wind reinforce each other, then slows sharply once it crosses the crest (dashed
+line) and the slope begins to oppose the wind. At 10 mph it does not cross at all —
+it stalls at the crest.
 
 Fire accelerates up the windward slope and may slow on the lee side.
 

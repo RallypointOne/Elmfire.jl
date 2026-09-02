@@ -356,12 +356,11 @@ for wind in wind_speeds
         b = a
     end
 
-    # Ellipse centered at origin with focus at (c, 0)
-    x = a .* cos.(theta)
+    # Ellipse centered at origin, then shifted so the ignition point sits on the
+    # REAR focus: the head runs a + c = head * t ahead, the back -a + c = -back * t
+    # behind. Shifting the other way mirrors the fire and puts the long axis upwind.
+    x = a .* cos.(theta) .+ c
     y = b .* sin.(theta)
-
-    # Shift so ignition point (focus) is at origin
-    x = x .- c
 
     plot!(p, x, y, label="$(Int(wind)) mph", linewidth=2)
 end

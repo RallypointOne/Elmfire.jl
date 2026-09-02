@@ -154,19 +154,34 @@ using Random
         )
         @test ix_e > 50  # Should move east
 
-        # Check bounds clamping
+        # An ember carried past the domain edge is lost, not deposited on the
+        # boundary — clamping it there would paint a line of spurious ignitions
+        # along the edge.
         rng = MersenneTwister(12345)
-        ix_clamp, iy_clamp, _ = transport_ember(
+        ix_out, iy_out, _ = transport_ember(
             5.0, 5.0,
             20.0,
-            180.0,  # From south (goes north)
-            5000.0,  # Very long distance
+            180.0,   # From south (goes north)
+            5000.0,  # Far beyond the 100 x 30 ft = 914 m domain
             30.0,
             100, 100;
             rng=rng
         )
-        @test ix_clamp >= 1
-        @test iy_clamp <= 100
+        @test (ix_out, iy_out) == (0, 0)
+
+        # An ember that stays inside is reported in-bounds as usual
+        rng = MersenneTwister(12345)
+        ix_in, iy_in, _ = transport_ember(
+            50.0, 50.0,
+            20.0,
+            180.0,
+            200.0,   # ~22 cells north, well inside
+            30.0,
+            100, 100;
+            rng=rng
+        )
+        @test 1 <= ix_in <= 100
+        @test 1 <= iy_in <= 100
     end
 
     @testset "Generate Spot Fires" begin

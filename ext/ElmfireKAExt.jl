@@ -350,11 +350,20 @@ end
 #                     GPU RK2 Kernels (index-list)
 #-----------------------------------------------------------------------------#
 
-@kernel function rk2_stage1_kernel!(
-    phi, @Const(phi_old), @Const(ux), @Const(uy),
+# Gradients are computed in their own pass and stored, because `phi` is read
+# through a 5-point stencil: updating it in the same kernel lets a thread read a
+# neighbour another thread has already advanced. ELMFIRE separates the passes the
+# same way (CFL_AND_FLUX_LIMITER stores DPHIDX_LIMITED, RK2_INTEGRATE applies it).
+@kernel function rk2_grad_kernel!(
+    gradx, grady, @Const(phi), @Const(ux), @Const(uy),
     @Const(active_px), @Const(active_py),
-    dt, rcellsize
+    rcellsize
 )
+    T = eltype(phi)
+    i = @index(Global, Linear)
+    px = active_px[i]
+    py = active_py[i]
+
     T = eltype(phi)
     i = @index(Global, Linear)
     px = active_px[i]
@@ -435,7 +444,24 @@ end
     if isnan(dphidx); dphidx = zero(T); end
     if isnan(dphidy); dphidy = zero(T); end
 
-    phi_new = phi_old[px, py] - dt * (ux_val * dphidx + uy_val * dphidy)
+
+    gradx[i] = dphidx
+    grady[i] = dphidy
+end
+
+
+@kernel function rk2_stage1_kernel!(
+    phi, @Const(phi_old), @Const(ux), @Const(uy),
+    @Const(gradx), @Const(grady),
+    @Const(active_px), @Const(active_py),
+    dt
+)
+    T = eltype(phi)
+    i = @index(Global, Linear)
+    px = active_px[i]
+    py = active_py[i]
+
+    phi_new = phi_old[px, py] - dt * (ux[px, py] * gradx[i] + uy[px, py] * grady[i])
     if isnan(phi_new)
         phi_new = one(T)
     end
@@ -445,93 +471,18 @@ end
 
 @kernel function rk2_stage2_kernel!(
     phi, @Const(phi_old), @Const(ux), @Const(uy),
+    @Const(gradx), @Const(grady),
     @Const(active_px), @Const(active_py),
-    dt, rcellsize
+    dt
 )
     T = eltype(phi)
     i = @index(Global, Linear)
     px = active_px[i]
     py = active_py[i]
 
-    ux_val = ux[px, py]
-    uy_val = uy[px, py]
-
-    EPSILON = T(1e-30)
-    CEILING = T(1e3)
-
-    # X-direction gradient
-    dphidx = zero(T)
-    if ux_val >= zero(T)
-        deltaup = phi[px, py] - phi[px - 1, py]
-        deltaloc = phi[px + 1, py] - phi[px, py]
-        phieast = phi[px, py]
-        if abs(deltaloc) > EPSILON
-            phieast = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
-        end
-        deltaloc_west = -deltaup
-        phiwest = phi[px - 1, py]
-        if abs(deltaloc_west) > EPSILON
-            deltaup_west = phi[px - 2, py] - phi[px - 1, py]
-            phiwest = phi[px - 1, py] - _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
-        end
-        dphidx = (phieast - phiwest) * rcellsize
-    else
-        deltaloc = phi[px + 1, py] - phi[px, py]
-        phieast = phi[px + 1, py]
-        if abs(deltaloc) > EPSILON
-            deltaup = phi[px + 2, py] - phi[px + 1, py]
-            phieast = phi[px + 1, py] - _half_superbee(deltaup / deltaloc) * deltaloc
-        end
-        deltaup_west = -deltaloc
-        deltaloc_west = phi[px - 1, py] - phi[px, py]
-        phiwest = phi[px, py]
-        if abs(deltaloc_west) > EPSILON
-            phiwest = phi[px, py] + _half_superbee(deltaup_west / deltaloc_west) * deltaloc_west
-        end
-        dphidx = (phieast - phiwest) * rcellsize
-    end
-
-    # Y-direction gradient
-    dphidy = zero(T)
-    if uy_val > zero(T)
-        deltaup = phi[px, py] - phi[px, py - 1]
-        deltaloc = phi[px, py + 1] - phi[px, py]
-        phinorth = phi[px, py]
-        if abs(deltaloc) > EPSILON
-            phinorth = phi[px, py] + _half_superbee(deltaup / deltaloc) * deltaloc
-        end
-        deltaloc_south = -deltaup
-        phisouth = phi[px, py - 1]
-        if abs(deltaloc_south) > EPSILON
-            deltaup_south = phi[px, py - 2] - phi[px, py - 1]
-            phisouth = phi[px, py - 1] - _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
-        end
-        dphidy = (phinorth - phisouth) * rcellsize
-    else
-        deltaloc = phi[px, py + 1] - phi[px, py]
-        phinorth = phi[px, py + 1]
-        if abs(deltaloc) > EPSILON
-            deltaup = phi[px, py + 2] - phi[px, py + 1]
-            phinorth = phi[px, py + 1] - _half_superbee(deltaup / deltaloc) * deltaloc
-        end
-        deltaup_south = -deltaloc
-        deltaloc_south = phi[px, py - 1] - phi[px, py]
-        phisouth = phi[px, py]
-        if abs(deltaloc_south) > EPSILON
-            phisouth = phi[px, py] + _half_superbee(deltaup_south / deltaloc_south) * deltaloc_south
-        end
-        dphidy = (phinorth - phisouth) * rcellsize
-    end
-
-    dphidx = clamp(dphidx, -CEILING, CEILING)
-    dphidy = clamp(dphidy, -CEILING, CEILING)
-    if isnan(dphidx); dphidx = zero(T); end
-    if isnan(dphidy); dphidy = zero(T); end
-
-    phi_rhs = phi[px, py] - dt * (ux_val * dphidx + uy_val * dphidy)
+    phi_rhs = phi[px, py] - dt * (ux[px, py] * gradx[i] + uy[px, py] * grady[i])
     phi[px, py] = T(0.5) * (phi_old[px, py] + phi_rhs)
 end
-
 
 #-----------------------------------------------------------------------------#
 #                     simulate_gpu! Implementation
@@ -656,6 +607,8 @@ function Elmfire.simulate_gpu!(
     d_dmsx = KernelAbstractions.allocate(backend, T, max_active)
     d_dmsy = KernelAbstractions.allocate(backend, T, max_active)
     d_ir = KernelAbstractions.allocate(backend, T, max_active)
+    d_gradx = KernelAbstractions.allocate(backend, T, max_active)
+    d_grady = KernelAbstractions.allocate(backend, T, max_active)
     d_speed = KernelAbstractions.allocate(backend, T, max_active)
     h_ir = Vector{T}(undef, max_active)
     h_speed = Vector{T}(undef, max_active)
@@ -754,14 +707,26 @@ function Elmfire.simulate_gpu!(
         )
         KernelAbstractions.synchronize(backend)
 
+        rk2_grad_kernel!(backend)(
+            d_gradx, d_grady, d_phi, d_ux, d_uy, d_px, d_py, rcellsize;
+            ndrange = n_active
+        )
+        KernelAbstractions.synchronize(backend)
+
         rk2_stage1_kernel!(backend)(
-            d_phi, d_phi_old, d_ux, d_uy, d_px, d_py, dt, rcellsize;
+            d_phi, d_phi_old, d_ux, d_uy, d_gradx, d_grady, d_px, d_py, dt;
+            ndrange = n_active
+        )
+        KernelAbstractions.synchronize(backend)
+
+        rk2_grad_kernel!(backend)(
+            d_gradx, d_grady, d_phi, d_ux, d_uy, d_px, d_py, rcellsize;
             ndrange = n_active
         )
         KernelAbstractions.synchronize(backend)
 
         rk2_stage2_kernel!(backend)(
-            d_phi, d_phi_old, d_ux, d_uy, d_px, d_py, dt, rcellsize;
+            d_phi, d_phi_old, d_ux, d_uy, d_gradx, d_grady, d_px, d_py, dt;
             ndrange = n_active
         )
         KernelAbstractions.synchronize(backend)

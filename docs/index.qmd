@@ -39,7 +39,7 @@ Elmfire.jl supports both `Float64` (default) and `Float32` precision throughout 
 
 ## Quick Start
 
-```julia
+```{julia}
 using Elmfire
 
 # Create a fire simulation state (100x100 grid, 30ft cells)
@@ -62,11 +62,39 @@ weather = ConstantWeather{Float64}(
 # Ignite at center
 ignite!(state, 50, 50, 0.0)
 
-# Run for 60 minutes
+# Run for 60 minutes on fuel model 1 (short grass), flat ground
 simulate_uniform!(state, 1, fuel_table, weather, 0.0, 0.0, 0.0, 60.0)
 
 # Get results
-println("Burned area: ", get_burned_area_acres(state), " acres")
+println("Burned area: ", round(get_burned_area_acres(state), digits = 1), " acres")
+```
+
+`state` carries the outcome on the grid. Mapping the time of arrival shows the
+fire front's progress: the wind blows from the west, so the fire runs east in the
+elongated ellipse the Rothermel and Richards models predict, with slow backing
+spread upwind.
+
+```{julia}
+#| code-summary: "Plot time of arrival"
+using Plots
+
+# Unburned cells are flagged with -1; mask them so they render as background
+toa = [t < 0 ? NaN : t for t in state.time_of_arrival]
+
+# Grid is indexed [x, y], so transpose to put east on the horizontal axis
+xs = (1:state.ncols) .* state.cellsize
+ys = (1:state.nrows) .* state.cellsize
+
+heatmap(
+    xs, ys, toa';
+    aspect_ratio = 1,
+    color = :inferno,
+    xlabel = "Distance east (ft)",
+    ylabel = "Distance north (ft)",
+    title = "Time of arrival after 60 minutes",
+    colorbar_title = "minutes",
+    background_color_inside = :gray95,
+)
 ```
 
 ## Installation

@@ -40,7 +40,21 @@ spotting_params = SpottingParameters{Float64}(
 
 ## Ember Transport
 
-Embers are transported downwind with distances that scale with wind speed and fireline intensity.
+Embers are transported downwind with distances that scale with wind speed and
+fireline intensity.
+
+These simulations set `use_sardoy = true`, which draws the distance from the
+Sardoy (2008) correlation — a lognormal whose parameters come from the fireline
+intensity and 10 m wind directly. For the chaparral fire below that gives a median
+throw of about 124 m.
+
+The alternative is the empirical scaling below, where the mean distance is
+`mean_distance × I^flin_exponent × U^ws_exponent`. Note that `mean_distance` is a
+*coefficient*, not a distance: with `flin_exponent = 0.5` and a chaparral fireline
+intensity near 59,000 kW/m, a `mean_distance` of 100 implies a mean throw of
+hundreds of kilometres, which `max_distance` then truncates. Prefer the Sardoy
+model unless you have calibrated the coefficient for your own fuels.
+
 The `SpottingParameters` control:
 
 - **mean_distance**: Base spotting distance (m)
@@ -72,7 +86,8 @@ weather = ConstantWeather{Float64}(
 config = SimulationConfig{Float64}(
     enable_crown_fire = false,
     enable_spotting = true,
-    spotting_params = spotting_params
+    spotting_params = spotting_params,
+    use_sardoy = true
 )
 
 ignite!(state, 40, 75, 0.0)
@@ -168,7 +183,8 @@ extreme_spotting = SpottingParameters{Float64}(
 
 config_extreme = SimulationConfig{Float64}(
     enable_spotting = true,
-    spotting_params = extreme_spotting
+    spotting_params = extreme_spotting,
+    use_sardoy = true
 )
 
 ignite!(state_big, 50, 100, 0.0)
