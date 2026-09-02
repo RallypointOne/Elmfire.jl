@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-09-01 11:34:44</td>
+            <td class="headerValue">2026-09-02 17:31:23</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -84,7 +84,7 @@
 <span id="L22"><span class="lineNum">      22</span>              : Canopy fuel properties for a cell.</span>
 <span id="L23"><span class="lineNum">      23</span>              : &quot;&quot;&quot;</span>
 <span id="L24"><span class="lineNum">      24</span>              : struct CanopyProperties{T&lt;:AbstractFloat}</span>
-<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC tlaBgGNC">        8633 :     cbd::T      # Canopy bulk density (kg/m³)</span></span>
+<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC tlaBgGNC">        1948 :     cbd::T      # Canopy bulk density (kg/m³)</span></span>
 <span id="L26"><span class="lineNum">      26</span>              :     cbh::T      # Canopy base height (m)</span>
 <span id="L27"><span class="lineNum">      27</span>              :     cc::T       # Canopy cover (fraction, 0-1)</span>
 <span id="L28"><span class="lineNum">      28</span>              :     ch::T       # Canopy height (m)</span>
@@ -109,7 +109,7 @@
 <span id="L47"><span class="lineNum">      47</span>              : Results from crown fire calculation.</span>
 <span id="L48"><span class="lineNum">      48</span>              : &quot;&quot;&quot;</span>
 <span id="L49"><span class="lineNum">      49</span>              : struct CrownFireResult{T&lt;:AbstractFloat}</span>
-<span id="L50"><span class="lineNum">      50</span> <span class="tlaGNC">       17267 :     crown_fire_type::Int   # 0 = no crown fire, 1 = passive, 2 = active</span></span>
+<span id="L50"><span class="lineNum">      50</span> <span class="tlaGNC">        3897 :     crown_fire_type::Int   # 0 = no crown fire, 1 = passive, 2 = active</span></span>
 <span id="L51"><span class="lineNum">      51</span>              :     spread_rate::T         # Crown fire spread rate (ft/min)</span>
 <span id="L52"><span class="lineNum">      52</span>              :     hpua_canopy::T         # Heat per unit area from canopy (kJ/m²)</span>
 <span id="L53"><span class="lineNum">      53</span>              :     critical_flin::T       # Critical fireline intensity for crown fire initiation (kW/m)</span>
@@ -139,14 +139,14 @@
 <span id="L77"><span class="lineNum">      77</span>              : - Critical fireline intensity (kW/m)</span>
 <span id="L78"><span class="lineNum">      78</span>              : &quot;&quot;&quot;</span>
 <span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">           7 : function critical_fireline_intensity(cbh::T, foliar_moisture::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L80"><span class="lineNum">      80</span> <span class="tlaGNC">        8636 :     if cbh &lt; zero(T)</span></span>
+<span id="L80"><span class="lineNum">      80</span> <span class="tlaGNC">        1951 :     if cbh &lt; zero(T)</span></span>
 <span id="L81"><span class="lineNum">      81</span> <span class="tlaGNC">           1 :         return T(9e9)  # Effectively no crown fire possible</span></span>
 <span id="L82"><span class="lineNum">      82</span>              :     end</span>
 <span id="L83"><span class="lineNum">      83</span>              : </span>
-<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">        8635 :     cbh_eff = max(cbh, T(0.1))</span></span>
-<span id="L85"><span class="lineNum">      85</span> <span class="tlaGNC">        8635 :     fmc_term = T(460) + T(26) * foliar_moisture</span></span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">        1950 :     cbh_eff = max(cbh, T(0.1))</span></span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaGNC">        1950 :     fmc_term = T(460) + T(26) * foliar_moisture</span></span>
 <span id="L86"><span class="lineNum">      86</span>              : </span>
-<span id="L87"><span class="lineNum">      87</span> <span class="tlaGNC">        8635 :     return (T(0.01) * cbh_eff * fmc_term)^T(1.5)</span></span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaGNC">        1950 :     return (T(0.01) * cbh_eff * fmc_term)^T(1.5)</span></span>
 <span id="L88"><span class="lineNum">      88</span>              : end</span>
 <span id="L89"><span class="lineNum">      89</span>              : </span>
 <span id="L90"><span class="lineNum">      90</span>              : </span>
@@ -185,7 +185,7 @@
 <span id="L123"><span class="lineNum">     123</span>              : </span>
 <span id="L124"><span class="lineNum">     124</span>              : Implementation follows `elmfire_spread_rate.f90:136-211`.</span>
 <span id="L125"><span class="lineNum">     125</span>              : &quot;&quot;&quot;</span>
-<span id="L126"><span class="lineNum">     126</span> <span class="tlaGNC">       17266 : function crown_spread_rate(</span></span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaGNC">        3896 : function crown_spread_rate(</span></span>
 <span id="L127"><span class="lineNum">     127</span>              :     canopy::CanopyProperties{T},</span>
 <span id="L128"><span class="lineNum">     128</span>              :     flin_surface::T,</span>
 <span id="L129"><span class="lineNum">     129</span>              :     ws20::T,</span>
@@ -197,29 +197,29 @@
 <span id="L135"><span class="lineNum">     135</span>              :     foliar_moisture::T = T(100)</span>
 <span id="L136"><span class="lineNum">     136</span>              : ) where {T&lt;:AbstractFloat}</span>
 <span id="L137"><span class="lineNum">     137</span>              :     # Constants</span>
-<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC">        8633 :     MPH_20FT_TO_KMPH_10M = T(1.609) / T(0.87)  # Convert 20-ft mph to 10-m km/h</span></span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC">        1948 :     MPH_20FT_TO_KMPH_10M = T(1.609) / T(0.87)  # Convert 20-ft mph to 10-m km/h</span></span>
 <span id="L139"><span class="lineNum">     139</span>              : </span>
 <span id="L140"><span class="lineNum">     140</span>              :     # Default return for non-crown conditions</span>
-<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">        8633 :     no_crown = CrownFireResult{T}(0, zero(T), zero(T), T(9e9), zero(T))</span></span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">        1948 :     no_crown = CrownFireResult{T}(0, zero(T), zero(T), T(9e9), zero(T))</span></span>
 <span id="L142"><span class="lineNum">     142</span>              : </span>
 <span id="L143"><span class="lineNum">     143</span>              :     # Check if crown fire is possible</span>
-<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">       17265 :     if vs0 &lt;= zero(T) || flin_surface &lt;= zero(T)</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">        3895 :     if vs0 &lt;= zero(T) || flin_surface &lt;= zero(T)</span></span>
 <span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">           2 :         return no_crown</span></span>
 <span id="L146"><span class="lineNum">     146</span>              :     end</span>
-<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">       17261 :     if canopy.cbd &lt; T(1e-3) || canopy.cc &lt; T(1e-3)</span></span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">        3891 :     if canopy.cbd &lt; T(1e-3) || canopy.cc &lt; T(1e-3)</span></span>
 <span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">           2 :         return no_crown</span></span>
 <span id="L149"><span class="lineNum">     149</span>              :     end</span>
 <span id="L150"><span class="lineNum">     150</span>              : </span>
 <span id="L151"><span class="lineNum">     151</span>              :     # Calculate heat per unit area from canopy fuel</span>
-<span id="L152"><span class="lineNum">     152</span> <span class="tlaGNC">        8629 :     canopy_depth = max(canopy.ch - canopy.cbh, zero(T))</span></span>
-<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">        8629 :     hpua_canopy = canopy.cbd * canopy_depth * T(12000)  # kJ/m²</span></span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaGNC">        1944 :     canopy_depth = max(canopy.ch - canopy.cbh, zero(T))</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">        1944 :     hpua_canopy = canopy.cbd * canopy_depth * T(12000)  # kJ/m²</span></span>
 <span id="L154"><span class="lineNum">     154</span>              : </span>
 <span id="L155"><span class="lineNum">     155</span>              :     # Calculate critical fireline intensity</span>
-<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">       17258 :     critical_flin = critical_fireline_intensity(canopy.cbh, foliar_moisture)</span></span>
+<span id="L156"><span class="lineNum">     156</span> <span class="tlaGNC">        3888 :     critical_flin = critical_fireline_intensity(canopy.cbh, foliar_moisture)</span></span>
 <span id="L157"><span class="lineNum">     157</span>              : </span>
 <span id="L158"><span class="lineNum">     158</span>              :     # Check if surface fire intensity exceeds threshold</span>
-<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">        8629 :     if flin_surface &lt;= critical_flin</span></span>
-<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">        8620 :         return CrownFireResult{T}(0, zero(T), hpua_canopy, critical_flin, zero(T))</span></span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">        1944 :     if flin_surface &lt;= critical_flin</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">        1935 :         return CrownFireResult{T}(0, zero(T), hpua_canopy, critical_flin, zero(T))</span></span>
 <span id="L161"><span class="lineNum">     161</span>              :     end</span>
 <span id="L162"><span class="lineNum">     162</span>              : </span>
 <span id="L163"><span class="lineNum">     163</span>              :     # Crown fire initiated - calculate spread rate</span>

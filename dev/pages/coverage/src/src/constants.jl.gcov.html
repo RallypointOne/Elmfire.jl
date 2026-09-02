@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-09-01 11:34:44</td>
+            <td class="headerValue">2026-09-02 17:31:23</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -68,8 +68,8 @@
 <span id="L6"><span class="lineNum">       6</span>              : const DefaultFloat = Float64</span>
 <span id="L7"><span class="lineNum">       7</span>              : </span>
 <span id="L8"><span class="lineNum">       8</span>              : # Pi constant - use the appropriate precision</span>
-<span id="L9"><span class="lineNum">       9</span> <span class="tlaGNC tlaBgGNC">     2505350 : @inline pi_val(::Type{T}) where {T&lt;:AbstractFloat} = T(3.141592653589793)</span></span>
-<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC">     2184256 : @inline pio180(::Type{T}) where {T&lt;:AbstractFloat} = pi_val(T) / T(180)</span></span>
+<span id="L9"><span class="lineNum">       9</span> <span class="tlaGNC tlaBgGNC">     2681158 : @inline pi_val(::Type{T}) where {T&lt;:AbstractFloat} = T(3.141592653589793)</span></span>
+<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC">     2517592 : @inline pio180(::Type{T}) where {T&lt;:AbstractFloat} = pi_val(T) / T(180)</span></span>
 <span id="L11"><span class="lineNum">      11</span>              : </span>
 <span id="L12"><span class="lineNum">      12</span>              : # Convenience for default precision</span>
 <span id="L13"><span class="lineNum">      13</span>              : const PI = pi_val(DefaultFloat)</span>
@@ -80,11 +80,11 @@
 <span id="L18"><span class="lineNum">      18</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L19"><span class="lineNum">      19</span>              : </span>
 <span id="L20"><span class="lineNum">      20</span>              : # BTU/(ft²·min) to kW/m²</span>
-<span id="L21"><span class="lineNum">      21</span> <span class="tlaGNC">      766090 : @inline btupft2min_to_kwpm2(::Type{T}) where {T&lt;:AbstractFloat} = T(1.055) / (T(60) * T(0.3048) * T(0.3048))</span></span>
+<span id="L21"><span class="lineNum">      21</span> <span class="tlaGNC">      925451 : @inline btupft2min_to_kwpm2(::Type{T}) where {T&lt;:AbstractFloat} = T(1.055) / (T(60) * T(0.3048) * T(0.3048))</span></span>
 <span id="L22"><span class="lineNum">      22</span>              : const BTUPFT2MIN_TO_KWPM2 = btupft2min_to_kwpm2(DefaultFloat)</span>
 <span id="L23"><span class="lineNum">      23</span>              : </span>
 <span id="L24"><span class="lineNum">      24</span>              : # Feet to meters</span>
-<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC">     1554105 : @inline ft_to_m(::Type{T}) where {T&lt;:AbstractFloat} = T(0.3048)</span></span>
+<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC">     1883343 : @inline ft_to_m(::Type{T}) where {T&lt;:AbstractFloat} = T(0.3048)</span></span>
 <span id="L26"><span class="lineNum">      26</span>              : const FT_TO_M = ft_to_m(DefaultFloat)</span>
 <span id="L27"><span class="lineNum">      27</span>              : </span>
 <span id="L28"><span class="lineNum">      28</span>              : # Meters to feet</span>
@@ -101,12 +101,12 @@
 <span id="L39"><span class="lineNum">      39</span> <span class="tlaUNC">           0 : @inline mph_to_ftpmin(::Type{T}) where {T&lt;:AbstractFloat} = T(88)</span></span>
 <span id="L40"><span class="lineNum">      40</span>              : </span>
 <span id="L41"><span class="lineNum">      41</span>              : # kW/m² to BTU/(ft²·min)</span>
-<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC tlaBgGNC">      766078 : @inline kwpm2_to_btupft2min(::Type{T}) where {T&lt;:AbstractFloat} = T(60) * T(0.3048) * T(0.3048) / T(1.055)</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC tlaBgGNC">      925439 : @inline kwpm2_to_btupft2min(::Type{T}) where {T&lt;:AbstractFloat} = T(60) * T(0.3048) * T(0.3048) / T(1.055)</span></span>
 <span id="L43"><span class="lineNum">      43</span>              : const KWPM2_TO_BTUPFT2MIN = kwpm2_to_btupft2min(DefaultFloat)</span>
 <span id="L44"><span class="lineNum">      44</span>              : </span>
 <span id="L45"><span class="lineNum">      45</span>              : # Effective mid-flame wind speed (ft/min) to the units of the Anderson (1982)</span>
 <span id="L46"><span class="lineNum">      46</span>              : # length-to-breadth correlation. ELMFIRE's `WSMFEFF_LOW_MULT` namelist default.</span>
-<span id="L47"><span class="lineNum">      47</span> <span class="tlaGNC">      766094 : @inline wsmfeff_low_mult(::Type{T}) where {T&lt;:AbstractFloat} = T(5.07955e-3)</span></span>
+<span id="L47"><span class="lineNum">      47</span> <span class="tlaGNC">      925455 : @inline wsmfeff_low_mult(::Type{T}) where {T&lt;:AbstractFloat} = T(5.07955e-3)</span></span>
 <span id="L48"><span class="lineNum">      48</span>              : const WSMFEFF_LOW_MULT = wsmfeff_low_mult(DefaultFloat)</span>
 <span id="L49"><span class="lineNum">      49</span>              : </span>
 <span id="L50"><span class="lineNum">      50</span>              : #-----------------------------------------------------------------------------#</span>
@@ -114,25 +114,25 @@
 <span id="L52"><span class="lineNum">      52</span>              : #-----------------------------------------------------------------------------#</span>
 <span id="L53"><span class="lineNum">      53</span>              : </span>
 <span id="L54"><span class="lineNum">      54</span>              : # Fixed surface area to volume ratios (1/ft)</span>
-<span id="L55"><span class="lineNum">      55</span> <span class="tlaGNC">       51054 : @inline sig_10hr(::Type{T}) where {T&lt;:AbstractFloat} = T(109)</span></span>
-<span id="L56"><span class="lineNum">      56</span> <span class="tlaGNC">       51054 : @inline sig_100hr(::Type{T}) where {T&lt;:AbstractFloat} = T(30)</span></span>
+<span id="L55"><span class="lineNum">      55</span> <span class="tlaGNC">       53602 : @inline sig_10hr(::Type{T}) where {T&lt;:AbstractFloat} = T(109)</span></span>
+<span id="L56"><span class="lineNum">      56</span> <span class="tlaGNC">       53602 : @inline sig_100hr(::Type{T}) where {T&lt;:AbstractFloat} = T(30)</span></span>
 <span id="L57"><span class="lineNum">      57</span>              : const SIG_10HR = sig_10hr(DefaultFloat)</span>
 <span id="L58"><span class="lineNum">      58</span>              : const SIG_100HR = sig_100hr(DefaultFloat)</span>
 <span id="L59"><span class="lineNum">      59</span>              : </span>
 <span id="L60"><span class="lineNum">      60</span>              : # Particle density (lb/ft³)</span>
-<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC">       51055 : @inline rhop_default(::Type{T}) where {T&lt;:AbstractFloat} = T(32)</span></span>
+<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC">       53603 : @inline rhop_default(::Type{T}) where {T&lt;:AbstractFloat} = T(32)</span></span>
 <span id="L62"><span class="lineNum">      62</span>              : const RHOP_DEFAULT = rhop_default(DefaultFloat)</span>
 <span id="L63"><span class="lineNum">      63</span>              : </span>
 <span id="L64"><span class="lineNum">      64</span>              : # Mineral content (lb minerals / lb ovendry mass)</span>
-<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">       51054 : @inline st_default(::Type{T}) where {T&lt;:AbstractFloat} = T(0.055)</span></span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">       53602 : @inline st_default(::Type{T}) where {T&lt;:AbstractFloat} = T(0.055)</span></span>
 <span id="L66"><span class="lineNum">      66</span>              : const ST_DEFAULT = st_default(DefaultFloat)</span>
 <span id="L67"><span class="lineNum">      67</span>              : </span>
 <span id="L68"><span class="lineNum">      68</span>              : # Silica-effective mineral content</span>
-<span id="L69"><span class="lineNum">      69</span> <span class="tlaGNC">       51055 : @inline se_default(::Type{T}) where {T&lt;:AbstractFloat} = T(0.01)</span></span>
+<span id="L69"><span class="lineNum">      69</span> <span class="tlaGNC">       53603 : @inline se_default(::Type{T}) where {T&lt;:AbstractFloat} = T(0.01)</span></span>
 <span id="L70"><span class="lineNum">      70</span>              : const SE_DEFAULT = se_default(DefaultFloat)</span>
 <span id="L71"><span class="lineNum">      71</span>              : </span>
 <span id="L72"><span class="lineNum">      72</span>              : # Mineral damping coefficient</span>
-<span id="L73"><span class="lineNum">      73</span> <span class="tlaGNC">       51055 : @inline etas_default(::Type{T}) where {T&lt;:AbstractFloat} = T(0.174) / se_default(T)^T(0.19)</span></span>
+<span id="L73"><span class="lineNum">      73</span> <span class="tlaGNC">       53603 : @inline etas_default(::Type{T}) where {T&lt;:AbstractFloat} = T(0.174) / se_default(T)^T(0.19)</span></span>
 <span id="L74"><span class="lineNum">      74</span>              : const ETAS_DEFAULT = etas_default(DefaultFloat)</span>
 <span id="L75"><span class="lineNum">      75</span>              : </span>
 <span id="L76"><span class="lineNum">      76</span>              : # Non-burnable fuel model ID</span>

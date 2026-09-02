@@ -82,7 +82,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-73b0ff3878a4e6fc3716dc69a6aaefa3.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-75457b1ed21a3fdd221c49358c654c3f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-7f48b52cfed0612b99a5f135dc6cfa1a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -448,7 +448,7 @@ Close all
 <div class="card-body">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>FireState{T<span class="op">&lt;:</span><span class="dt">AbstractFloat</span>, A<span class="op">&lt;:</span><span class="dt">AbstractMatrix{T}</span>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Complete state of a fire simulation. Parameterized on element type <code>T</code> and array type <code>A</code> to support both CPU (<code>Matrix{T}</code>) and GPU arrays.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">FireState</span><span class="dt">{T}</span>(ncols, nrows, cellsize; xllcorner<span class="op">=</span><span class="fu">zero</span>(T), yllcorner<span class="op">=</span><span class="fu">zero</span>(T), padding<span class="op">=</span><span class="fl">2</span>, band_thickness<span class="op">=</span><span class="fl">5</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">FireState</span><span class="dt">{T}</span>(ncols, nrows, cellsize; xllcorner<span class="op">=</span><span class="fu">zero</span>(T), yllcorner<span class="op">=</span><span class="fu">zero</span>(T), padding<span class="op">=</span><span class="fl">2</span>, band_thickness<span class="op">=</span><span class="fl">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Create a new fire simulation state with specified precision.</p>
 <section id="arguments" class="level1">
 <h1>Arguments</h1>
@@ -459,7 +459,7 @@ Close all
 <li><code>xllcorner</code>: X coordinate of lower-left corner (default 0.0)</li>
 <li><code>yllcorner</code>: Y coordinate of lower-left corner (default 0.0)</li>
 <li><code>padding</code>: Boundary padding for stencil operations (default 2)</li>
-<li><code>band_thickness</code>: Narrow band half-width (default 5)</li>
+<li><code>band_thickness</code>: Narrow band half-width (ELMFIRE <code>BANDTHICKNESS</code>, default 2). A wider band tags cells well ahead of the front while their <code>phi</code> is still the uninitialized far-field value, and advection across that discontinuity can flip them negative — which shows up as detached islands of “burned” cells ahead of a diagonally-driven fire.</li>
 </ul>
 </section>
 </div>
@@ -601,7 +601,7 @@ Close all
 <div class="card-body">
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb19"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>FireState{T<span class="op">&lt;:</span><span class="dt">AbstractFloat</span>, A<span class="op">&lt;:</span><span class="dt">AbstractMatrix{T}</span>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Complete state of a fire simulation. Parameterized on element type <code>T</code> and array type <code>A</code> to support both CPU (<code>Matrix{T}</code>) and GPU arrays.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">FireState</span><span class="dt">{T}</span>(ncols, nrows, cellsize; xllcorner<span class="op">=</span><span class="fu">zero</span>(T), yllcorner<span class="op">=</span><span class="fu">zero</span>(T), padding<span class="op">=</span><span class="fl">2</span>, band_thickness<span class="op">=</span><span class="fl">5</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb20"><pre class="sourceCode julia code-with-copy"><code class="sourceCode julia"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">FireState</span><span class="dt">{T}</span>(ncols, nrows, cellsize; xllcorner<span class="op">=</span><span class="fu">zero</span>(T), yllcorner<span class="op">=</span><span class="fu">zero</span>(T), padding<span class="op">=</span><span class="fl">2</span>, band_thickness<span class="op">=</span><span class="fl">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Create a new fire simulation state with specified precision.</p>
 <section id="arguments-1" class="level1">
 <h1>Arguments</h1>
@@ -612,7 +612,7 @@ Close all
 <li><code>xllcorner</code>: X coordinate of lower-left corner (default 0.0)</li>
 <li><code>yllcorner</code>: Y coordinate of lower-left corner (default 0.0)</li>
 <li><code>padding</code>: Boundary padding for stencil operations (default 2)</li>
-<li><code>band_thickness</code>: Narrow band half-width (default 5)</li>
+<li><code>band_thickness</code>: Narrow band half-width (ELMFIRE <code>BANDTHICKNESS</code>, default 2). A wider band tags cells well ahead of the front while their <code>phi</code> is still the uninitialized far-field value, and advection across that discontinuity can flip them negative — which shows up as detached islands of “burned” cells ahead of a diagonally-driven fire.</li>
 </ul>
 </section>
 </div>
@@ -2799,7 +2799,7 @@ Close all
 <section id="returns-11" class="level1">
 <h1>Returns</h1>
 <ul>
-<li><code>(ix, iy, dist)</code>: Landing grid indices and actual distance traveled</li>
+<li><code>(ix, iy, dist)</code>: Landing grid indices and distance traveled. <code>ix == iy == 0</code> means the ember left the domain and is lost.</li>
 </ul>
 </section>
 </div>
@@ -3648,7 +3648,7 @@ julia&gt; Float64(pi, RoundUp)
       &nbsp;
     </div>   
     <div class="nav-footer-center">
-<p>Built on 2026-09-01</p>
+<p>Built on 2026-09-02</p>
 </div>
     <div class="nav-footer-right">
       &nbsp;

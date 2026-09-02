@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-09-01 11:34:44</td>
+            <td class="headerValue">2026-09-02 17:31:23</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -83,7 +83,7 @@
 <span id="L21"><span class="lineNum">      21</span>              : Constant (spatially and temporally uniform) weather conditions.</span>
 <span id="L22"><span class="lineNum">      22</span>              : &quot;&quot;&quot;</span>
 <span id="L23"><span class="lineNum">      23</span>              : struct ConstantWeather{T&lt;:AbstractFloat}</span>
-<span id="L24"><span class="lineNum">      24</span> <span class="tlaGNC tlaBgGNC">          39 :     wind_speed_20ft::T      # 20-ft wind speed (mph)</span></span>
+<span id="L24"><span class="lineNum">      24</span> <span class="tlaGNC tlaBgGNC">          52 :     wind_speed_20ft::T      # 20-ft wind speed (mph)</span></span>
 <span id="L25"><span class="lineNum">      25</span>              :     wind_direction::T       # Wind direction (degrees, meteorological: FROM)</span>
 <span id="L26"><span class="lineNum">      26</span>              :     M1::T                   # 1-hr dead fuel moisture (fraction)</span>
 <span id="L27"><span class="lineNum">      27</span>              :     M10::T                  # 10-hr dead fuel moisture (fraction)</span>
@@ -107,7 +107,7 @@
 <span id="L45"><span class="lineNum">      45</span>              : end</span>
 <span id="L46"><span class="lineNum">      46</span>              : </span>
 <span id="L47"><span class="lineNum">      47</span>              : # Default to Float64 for backwards compatibility</span>
-<span id="L48"><span class="lineNum">      48</span> <span class="tlaGNC">          22 : function ConstantWeather(;</span></span>
+<span id="L48"><span class="lineNum">      48</span> <span class="tlaGNC">          35 : function ConstantWeather(;</span></span>
 <span id="L49"><span class="lineNum">      49</span>              :     wind_speed_mph::Float64 = 10.0,</span>
 <span id="L50"><span class="lineNum">      50</span>              :     wind_direction::Float64 = 0.0,</span>
 <span id="L51"><span class="lineNum">      51</span>              :     M1::Float64 = 0.06,</span>
@@ -116,7 +116,7 @@
 <span id="L54"><span class="lineNum">      54</span>              :     MLH::Float64 = 0.60,</span>
 <span id="L55"><span class="lineNum">      55</span>              :     MLW::Float64 = 0.90</span>
 <span id="L56"><span class="lineNum">      56</span>              : )</span>
-<span id="L57"><span class="lineNum">      57</span> <span class="tlaGNC">          22 :     ConstantWeather{Float64}(wind_speed_mph, wind_direction, M1, M10, M100, MLH, MLW)</span></span>
+<span id="L57"><span class="lineNum">      57</span> <span class="tlaGNC">          35 :     ConstantWeather{Float64}(wind_speed_mph, wind_direction, M1, M10, M100, MLH, MLW)</span></span>
 <span id="L58"><span class="lineNum">      58</span>              : end</span>
 <span id="L59"><span class="lineNum">      59</span>              : </span>
 <span id="L60"><span class="lineNum">      60</span>              : </span>
@@ -264,34 +264,34 @@
 <span id="L202"><span class="lineNum">     202</span>              : value = (1-f) * grids[i_lo] + f * grids[i_hi]</span>
 <span id="L203"><span class="lineNum">     203</span>              : &quot;&quot;&quot;</span>
 <span id="L204"><span class="lineNum">     204</span> <span class="tlaGNC">           5 : function find_time_indices(wts::WeatherTimeSeries{T}, t::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">        7195 :     n = length(wts.times)</span></span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">        3056 :     n = length(wts.times)</span></span>
 <span id="L206"><span class="lineNum">     206</span>              : </span>
-<span id="L207"><span class="lineNum">     207</span> <span class="tlaGNC">        7195 :     if n == 1</span></span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaGNC">        3056 :     if n == 1</span></span>
 <span id="L208"><span class="lineNum">     208</span> <span class="tlaGNC">           1 :         return (1, 1, zero(T))</span></span>
 <span id="L209"><span class="lineNum">     209</span>              :     end</span>
 <span id="L210"><span class="lineNum">     210</span>              : </span>
 <span id="L211"><span class="lineNum">     211</span>              :     # Find bracketing indices</span>
-<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">        7194 :     i_lo = 1</span></span>
-<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">        7194 :     for i in 1:n-1</span></span>
-<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">        7199 :         if wts.times[i] &lt;= t &lt; wts.times[i+1]</span></span>
-<span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">        7191 :             i_lo = i</span></span>
-<span id="L216"><span class="lineNum">     216</span> <span class="tlaGNC">        7191 :             break</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">        3055 :     i_lo = 1</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">        3055 :     for i in 1:n-1</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">        3060 :         if wts.times[i] &lt;= t &lt; wts.times[i+1]</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">        3052 :             i_lo = i</span></span>
+<span id="L216"><span class="lineNum">     216</span> <span class="tlaGNC">        3052 :             break</span></span>
 <span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC">           8 :         elseif i == n-1 &amp;&amp; t &gt;= wts.times[n]</span></span>
 <span id="L218"><span class="lineNum">     218</span> <span class="tlaGNC">           3 :             i_lo = n</span></span>
 <span id="L219"><span class="lineNum">     219</span>              :         end</span>
 <span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">           8 :     end</span></span>
 <span id="L221"><span class="lineNum">     221</span>              : </span>
-<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC">        7194 :     i_hi = min(i_lo + 1, n)</span></span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC">        3055 :     i_hi = min(i_lo + 1, n)</span></span>
 <span id="L223"><span class="lineNum">     223</span>              : </span>
 <span id="L224"><span class="lineNum">     224</span>              :     # Interpolation weight</span>
-<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">        7194 :     if i_lo == i_hi</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">        3055 :     if i_lo == i_hi</span></span>
 <span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">           3 :         f = zero(T)</span></span>
 <span id="L227"><span class="lineNum">     227</span>              :     else</span>
-<span id="L228"><span class="lineNum">     228</span> <span class="tlaGNC">        7191 :         f = (t - wts.times[i_lo]) / (wts.times[i_hi] - wts.times[i_lo])</span></span>
-<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">        7191 :         f = clamp(f, zero(T), one(T))</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaGNC">        3052 :         f = (t - wts.times[i_lo]) / (wts.times[i_hi] - wts.times[i_lo])</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">        3052 :         f = clamp(f, zero(T), one(T))</span></span>
 <span id="L230"><span class="lineNum">     230</span>              :     end</span>
 <span id="L231"><span class="lineNum">     231</span>              : </span>
-<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">        7194 :     return (i_lo, i_hi, f)</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">        3055 :     return (i_lo, i_hi, f)</span></span>
 <span id="L233"><span class="lineNum">     233</span>              : end</span>
 <span id="L234"><span class="lineNum">     234</span>              : </span>
 <span id="L235"><span class="lineNum">     235</span>              : </span>
@@ -300,26 +300,26 @@
 <span id="L238"><span class="lineNum">     238</span>              : </span>
 <span id="L239"><span class="lineNum">     239</span>              : Interpolate wind direction, handling the 0°/360° wrap-around.</span>
 <span id="L240"><span class="lineNum">     240</span>              : &quot;&quot;&quot;</span>
-<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">        7196 : function interpolate_wind_direction(wd1::T, wd2::T, f::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">        3057 : function interpolate_wind_direction(wd1::T, wd2::T, f::T) where {T&lt;:AbstractFloat}</span></span>
 <span id="L242"><span class="lineNum">     242</span>              :     # Convert to radians</span>
-<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">        7196 :     r1 = wd1 * pio180(T)</span></span>
-<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">        7196 :     r2 = wd2 * pio180(T)</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">        3057 :     r1 = wd1 * pio180(T)</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">        3057 :     r2 = wd2 * pio180(T)</span></span>
 <span id="L245"><span class="lineNum">     245</span>              : </span>
 <span id="L246"><span class="lineNum">     246</span>              :     # Compute unit vectors</span>
-<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">        7196 :     x1, y1 = sin(r1), cos(r1)</span></span>
-<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">        7196 :     x2, y2 = sin(r2), cos(r2)</span></span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">        3057 :     x1, y1 = sin(r1), cos(r1)</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">        3057 :     x2, y2 = sin(r2), cos(r2)</span></span>
 <span id="L249"><span class="lineNum">     249</span>              : </span>
 <span id="L250"><span class="lineNum">     250</span>              :     # Interpolate unit vectors</span>
-<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">        7196 :     x = (one(T) - f) * x1 + f * x2</span></span>
-<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">        7196 :     y = (one(T) - f) * y1 + f * y2</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">        3057 :     x = (one(T) - f) * x1 + f * x2</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">        3057 :     y = (one(T) - f) * y1 + f * y2</span></span>
 <span id="L253"><span class="lineNum">     253</span>              : </span>
 <span id="L254"><span class="lineNum">     254</span>              :     # Convert back to degrees</span>
-<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">        7196 :     wd = atan(x, y) / pio180(T)</span></span>
-<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">        7196 :     if wd &lt; zero(T)</span></span>
-<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">        7189 :         wd += T(360)</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">        3057 :     wd = atan(x, y) / pio180(T)</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">        3057 :     if wd &lt; zero(T)</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">        3050 :         wd += T(360)</span></span>
 <span id="L258"><span class="lineNum">     258</span>              :     end</span>
 <span id="L259"><span class="lineNum">     259</span>              : </span>
-<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">        7196 :     return wd</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">        3057 :     return wd</span></span>
 <span id="L261"><span class="lineNum">     261</span>              : end</span>
 <span id="L262"><span class="lineNum">     262</span>              : </span>
 <span id="L263"><span class="lineNum">     263</span>              : </span>
@@ -466,44 +466,44 @@
 <span id="L404"><span class="lineNum">     404</span>              : </span>
 <span id="L405"><span class="lineNum">     405</span>              : Returns named tuple with fields: ws, wd, m1, m10, m100, mlh, mlw</span>
 <span id="L406"><span class="lineNum">     406</span>              : &quot;&quot;&quot;</span>
-<span id="L407"><span class="lineNum">     407</span> <span class="tlaGNC">      398960 : function get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) where {T&lt;:AbstractFloat}</span></span>
-<span id="L408"><span class="lineNum">     408</span> <span class="tlaGNC">      398960 :     wts = interp.weather_series</span></span>
-<span id="L409"><span class="lineNum">     409</span> <span class="tlaGNC">      398960 :     fx  = interp.xcol_map[ix]</span></span>
-<span id="L410"><span class="lineNum">     410</span> <span class="tlaGNC">      398960 :     fy  = interp.yrow_map[iy]</span></span>
+<span id="L407"><span class="lineNum">     407</span> <span class="tlaGNC">      178248 : function get_weather_at(interp::WeatherInterpolator{T}, ix::Int, iy::Int, t::T) where {T&lt;:AbstractFloat}</span></span>
+<span id="L408"><span class="lineNum">     408</span> <span class="tlaGNC">      178248 :     wts = interp.weather_series</span></span>
+<span id="L409"><span class="lineNum">     409</span> <span class="tlaGNC">      178248 :     fx  = interp.xcol_map[ix]</span></span>
+<span id="L410"><span class="lineNum">     410</span> <span class="tlaGNC">      178248 :     fy  = interp.yrow_map[iy]</span></span>
 <span id="L411"><span class="lineNum">     411</span>              : </span>
-<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC">      805110 :     function _wd_from_sincos(s, c)</span></span>
-<span id="L413"><span class="lineNum">     413</span> <span class="tlaGNC">      406150 :         wd = atan(s, c) / pio180(T)</span></span>
-<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">      406150 :         wd &lt; zero(T) &amp;&amp; (wd += T(360))</span></span>
-<span id="L415"><span class="lineNum">     415</span> <span class="tlaGNC">      406150 :         wd</span></span>
+<span id="L412"><span class="lineNum">     412</span> <span class="tlaGNC">      359547 :     function _wd_from_sincos(s, c)</span></span>
+<span id="L413"><span class="lineNum">     413</span> <span class="tlaGNC">      181299 :         wd = atan(s, c) / pio180(T)</span></span>
+<span id="L414"><span class="lineNum">     414</span> <span class="tlaGNC">      181299 :         wd &lt; zero(T) &amp;&amp; (wd += T(360))</span></span>
+<span id="L415"><span class="lineNum">     415</span> <span class="tlaGNC">      181299 :         wd</span></span>
 <span id="L416"><span class="lineNum">     416</span>              :     end</span>
 <span id="L417"><span class="lineNum">     417</span>              : </span>
-<span id="L418"><span class="lineNum">     418</span> <span class="tlaGNC">      398960 :     if length(wts.times) == 1</span></span>
-<span id="L419"><span class="lineNum">     419</span> <span class="tlaGNC">      391770 :         ws  = interp.ws_itps[1](fx, fy)</span></span>
-<span id="L420"><span class="lineNum">     420</span> <span class="tlaGNC">      391770 :         wd  = _wd_from_sincos(interp.wd_sin_itps[1](fx, fy), interp.wd_cos_itps[1](fx, fy))</span></span>
-<span id="L421"><span class="lineNum">     421</span> <span class="tlaGNC">      391770 :         m1  = interp.m1_itps[1](fx, fy)</span></span>
-<span id="L422"><span class="lineNum">     422</span> <span class="tlaGNC">      391770 :         m10 = interp.m10_itps[1](fx, fy)</span></span>
-<span id="L423"><span class="lineNum">     423</span> <span class="tlaGNC">      391770 :         m100 = interp.m100_itps[1](fx, fy)</span></span>
-<span id="L424"><span class="lineNum">     424</span> <span class="tlaGNC">      391770 :         mlh = interp.mlh_itps[1](fx, fy)</span></span>
-<span id="L425"><span class="lineNum">     425</span> <span class="tlaGNC">      391770 :         mlw = interp.mlw_itps[1](fx, fy)</span></span>
-<span id="L426"><span class="lineNum">     426</span> <span class="tlaGNC">      391770 :         return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)</span></span>
+<span id="L418"><span class="lineNum">     418</span> <span class="tlaGNC">      178248 :     if length(wts.times) == 1</span></span>
+<span id="L419"><span class="lineNum">     419</span> <span class="tlaGNC">      175197 :         ws  = interp.ws_itps[1](fx, fy)</span></span>
+<span id="L420"><span class="lineNum">     420</span> <span class="tlaGNC">      175197 :         wd  = _wd_from_sincos(interp.wd_sin_itps[1](fx, fy), interp.wd_cos_itps[1](fx, fy))</span></span>
+<span id="L421"><span class="lineNum">     421</span> <span class="tlaGNC">      175197 :         m1  = interp.m1_itps[1](fx, fy)</span></span>
+<span id="L422"><span class="lineNum">     422</span> <span class="tlaGNC">      175197 :         m10 = interp.m10_itps[1](fx, fy)</span></span>
+<span id="L423"><span class="lineNum">     423</span> <span class="tlaGNC">      175197 :         m100 = interp.m100_itps[1](fx, fy)</span></span>
+<span id="L424"><span class="lineNum">     424</span> <span class="tlaGNC">      175197 :         mlh = interp.mlh_itps[1](fx, fy)</span></span>
+<span id="L425"><span class="lineNum">     425</span> <span class="tlaGNC">      175197 :         mlw = interp.mlw_itps[1](fx, fy)</span></span>
+<span id="L426"><span class="lineNum">     426</span> <span class="tlaGNC">      175197 :         return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)</span></span>
 <span id="L427"><span class="lineNum">     427</span>              :     end</span>
 <span id="L428"><span class="lineNum">     428</span>              : </span>
-<span id="L429"><span class="lineNum">     429</span> <span class="tlaGNC">       14380 :     i_lo, i_hi, f = find_time_indices(wts, t)</span></span>
-<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC">        7190 :     lo, hi = one(T) - f, f</span></span>
+<span id="L429"><span class="lineNum">     429</span> <span class="tlaGNC">        6102 :     i_lo, i_hi, f = find_time_indices(wts, t)</span></span>
+<span id="L430"><span class="lineNum">     430</span> <span class="tlaGNC">        3051 :     lo, hi = one(T) - f, f</span></span>
 <span id="L431"><span class="lineNum">     431</span>              : </span>
-<span id="L432"><span class="lineNum">     432</span> <span class="tlaGNC">        7190 :     ws  = lo * interp.ws_itps[i_lo](fx, fy)  + hi * interp.ws_itps[i_hi](fx, fy)</span></span>
+<span id="L432"><span class="lineNum">     432</span> <span class="tlaGNC">        3051 :     ws  = lo * interp.ws_itps[i_lo](fx, fy)  + hi * interp.ws_itps[i_hi](fx, fy)</span></span>
 <span id="L433"><span class="lineNum">     433</span>              : </span>
-<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">        7190 :     wd_lo = _wd_from_sincos(interp.wd_sin_itps[i_lo](fx, fy), interp.wd_cos_itps[i_lo](fx, fy))</span></span>
-<span id="L435"><span class="lineNum">     435</span> <span class="tlaGNC">        7190 :     wd_hi = _wd_from_sincos(interp.wd_sin_itps[i_hi](fx, fy), interp.wd_cos_itps[i_hi](fx, fy))</span></span>
-<span id="L436"><span class="lineNum">     436</span> <span class="tlaGNC">        7190 :     wd = interpolate_wind_direction(wd_lo, wd_hi, f)</span></span>
+<span id="L434"><span class="lineNum">     434</span> <span class="tlaGNC">        3051 :     wd_lo = _wd_from_sincos(interp.wd_sin_itps[i_lo](fx, fy), interp.wd_cos_itps[i_lo](fx, fy))</span></span>
+<span id="L435"><span class="lineNum">     435</span> <span class="tlaGNC">        3051 :     wd_hi = _wd_from_sincos(interp.wd_sin_itps[i_hi](fx, fy), interp.wd_cos_itps[i_hi](fx, fy))</span></span>
+<span id="L436"><span class="lineNum">     436</span> <span class="tlaGNC">        3051 :     wd = interpolate_wind_direction(wd_lo, wd_hi, f)</span></span>
 <span id="L437"><span class="lineNum">     437</span>              : </span>
-<span id="L438"><span class="lineNum">     438</span> <span class="tlaGNC">        7190 :     m1   = lo * interp.m1_itps[i_lo](fx, fy)   + hi * interp.m1_itps[i_hi](fx, fy)</span></span>
-<span id="L439"><span class="lineNum">     439</span> <span class="tlaGNC">        7190 :     m10  = lo * interp.m10_itps[i_lo](fx, fy)  + hi * interp.m10_itps[i_hi](fx, fy)</span></span>
-<span id="L440"><span class="lineNum">     440</span> <span class="tlaGNC">        7190 :     m100 = lo * interp.m100_itps[i_lo](fx, fy) + hi * interp.m100_itps[i_hi](fx, fy)</span></span>
-<span id="L441"><span class="lineNum">     441</span> <span class="tlaGNC">        7190 :     mlh  = lo * interp.mlh_itps[i_lo](fx, fy)  + hi * interp.mlh_itps[i_hi](fx, fy)</span></span>
-<span id="L442"><span class="lineNum">     442</span> <span class="tlaGNC">        7190 :     mlw  = lo * interp.mlw_itps[i_lo](fx, fy)  + hi * interp.mlw_itps[i_hi](fx, fy)</span></span>
+<span id="L438"><span class="lineNum">     438</span> <span class="tlaGNC">        3051 :     m1   = lo * interp.m1_itps[i_lo](fx, fy)   + hi * interp.m1_itps[i_hi](fx, fy)</span></span>
+<span id="L439"><span class="lineNum">     439</span> <span class="tlaGNC">        3051 :     m10  = lo * interp.m10_itps[i_lo](fx, fy)  + hi * interp.m10_itps[i_hi](fx, fy)</span></span>
+<span id="L440"><span class="lineNum">     440</span> <span class="tlaGNC">        3051 :     m100 = lo * interp.m100_itps[i_lo](fx, fy) + hi * interp.m100_itps[i_hi](fx, fy)</span></span>
+<span id="L441"><span class="lineNum">     441</span> <span class="tlaGNC">        3051 :     mlh  = lo * interp.mlh_itps[i_lo](fx, fy)  + hi * interp.mlh_itps[i_hi](fx, fy)</span></span>
+<span id="L442"><span class="lineNum">     442</span> <span class="tlaGNC">        3051 :     mlw  = lo * interp.mlw_itps[i_lo](fx, fy)  + hi * interp.mlw_itps[i_hi](fx, fy)</span></span>
 <span id="L443"><span class="lineNum">     443</span>              : </span>
-<span id="L444"><span class="lineNum">     444</span> <span class="tlaGNC">        7190 :     return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)</span></span>
+<span id="L444"><span class="lineNum">     444</span> <span class="tlaGNC">        3051 :     return (ws=ws, wd=wd, m1=m1, m10=m10, m100=m100, mlh=mlh, mlw=mlw)</span></span>
 <span id="L445"><span class="lineNum">     445</span>              : end</span>
 <span id="L446"><span class="lineNum">     446</span>              : </span>
 <span id="L447"><span class="lineNum">     447</span>              : </span>
